@@ -14,7 +14,7 @@ The authoritative scope/estimate document is `docs/01-project-estimation.md` (Hu
 
 ## Repo state
 
-This repo is currently a **bare `create-next-app` scaffold** — Next.js 16.3, React 19.2, TypeScript (strict), Tailwind CSS v4 (PostCSS plugin, no `tailwind.config`), ESLint 9 flat config. `app/` holds only `layout.tsx`, `page.tsx`, `globals.css`. Nothing from the spec is implemented yet.
+Next.js 16.3, React 19.2, TypeScript (strict), Tailwind CSS v4 (PostCSS plugin, no `tailwind.config`), ESLint 9 flat config. Beyond the i18n setup below, nothing from the spec is implemented yet — `app/[locale]/` holds a placeholder landing page.
 
 Commands:
 ```bash
@@ -63,6 +63,33 @@ Roughly **710 hours / ~24 weeks**, single senior full-stack developer. Each mile
 - Fully responsive: mobile / tablet / desktop.
 - Brand identity and logo design are **out of scope**; work from the color guidance.
 
+## Internationalization
+
+English-only at launch, but every page already runs through **next-intl** so adding a language is config plus a JSON file — no component changes.
+
+| File | Role |
+|---|---|
+| `i18n/routing.ts` | Locale list and prefix strategy — the only place locales are declared |
+| `i18n/request.ts` | Per-request locale + message loading (resolved by convention from `next.config.ts`) |
+| `i18n/navigation.ts` | Locale-aware `Link`, `useRouter`, `redirect`, `usePathname` |
+| `i18n/messages.d-check.ts` | Compile-time check that each locale file is complete |
+| `messages/en.json` | Source of truth for the message shape |
+| `global.d.ts` | Types message keys and `Locale` off `messages/en.json` |
+| `proxy.ts` | Locale negotiation and redirects (`middleware.ts` was renamed in Next 16) |
+
+Rules:
+
+- **All user-facing copy goes in `messages/*.json`.** No hardcoded strings in components — that's what makes translation a data task later instead of a refactor.
+- **Import `Link`, `useRouter`, `redirect`, `usePathname` from `@/i18n/navigation`**, never from `next/link` / `next/navigation`. These keep the active locale in the URL; nothing should hand-build a `/${locale}/...` path.
+- `useTranslations()` is synchronous and works in Server Components. Use `getTranslations()` only in async contexts (`generateMetadata`, Server Actions, Route Handlers).
+- **English is unprefixed** (`/`, `/faq`); other languages are prefixed (`/hu/faq`), and `/en/*` redirects to the unprefixed URL so each page has one canonical URL. Adding a language never changes an English URL.
+- Locale resolution order: path prefix → `NEXT_LOCALE` cookie → `Accept-Language` → `en`.
+- `i18n/request.ts` reads the locale from `next/root-params`, **not** `requestLocale` — the latter inspects the request and would opt every page out of static prerendering. Server Actions and Route Handlers, where root params are unavailable, must pass a locale explicitly: `getTranslations({locale})`.
+- Use ICU syntax for plurals and interpolation (see `home.gradedCount`) rather than concatenating strings — grading counts and prices are pluralized differently per language.
+- Format numbers, dates and currency with `useFormatter()`/`getFormatter()`, never hand-formatted.
+
+**To add a language:** add the code to `routing.locales`, add `messages/<code>.json`, and register it in `i18n/messages.d-check.ts` so missing keys fail the build. Routing, `<html lang>`, metadata and every `Link` follow automatically. Verified end-to-end: both locales prerender as static HTML.
+
 ## Conventions & constraints
 
 - Orders are driven by an explicit **state machine** — submission, payment, shipping, and grading all mutate order status. Keep transitions in one place; never scatter ad-hoc status writes.
@@ -76,4 +103,6 @@ Roughly **710 hours / ~24 weeks**, single senior full-stack developer. Each mile
 
 ## Explicitly out of scope
 
-Native mobile apps, i18n beyond the base language, brand/logo design, marketing & SEO, long-term support (separate agreement), and legal content (ToS, privacy policy — drafted by a lawyer).
+Native mobile apps, brand/logo design, marketing & SEO, long-term support (separate agreement), and legal content (ToS, privacy policy — drafted by a lawyer).
+
+Note: the estimate lists i18n as out of scope. The *infrastructure* is in place (above) so translation stays cheap, but **translating the site into further languages is still separately scoped work** — it means writing and maintaining every message file, not flipping a flag.

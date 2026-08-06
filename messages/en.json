@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "title": "ArtsGrading — Card Grading & Authentication",
+    "description": "Professional grading and authentication for trading cards and sports cards."
+  },
+  "nav": {
+    "home": "Home",
+    "howItWorks": "How it works",
+    "popReport": "Pop Report",
+    "faq": "FAQ",
+    "submit": "Submit cards",
+    "signIn": "Sign in"
+  },
+  "home": {
+    "title": "Grading and authentication you can trust",
+    "subtitle": "Send us your cards. Our experts authenticate and grade them, and every result becomes part of the public database.",
+    "ctaPrimary": "Start a submission",
+    "ctaSecondary": "See how it works",
+    "trendingTitle": "Trending cards",
+    "gradedCount": "{count, plural, =0 {No cards graded yet} one {# card graded} other {# cards graded}}"
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "Something went wrong.",
+    "retry": "Try again"
+  }
+}
