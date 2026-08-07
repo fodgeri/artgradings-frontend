@@ -1,0 +1,41 @@
+# Build artifacts
+node_modules
+.next
+.turbo
+out
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Docker (don't recursively copy itself)
+Dockerfile
+.dockerignore
+
+# Local env — we use build args and runtime env, never baked .env files
+.env
+.env.*
+!.env.example
+
+# Docs — includes the client-facing estimation document
+README.md
+docs
+*.md
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Tooling caches
+.eslintcache
+coverage
+playwright-report
+test-results
+
+# Project-local agent / scratch dirs
+.claude
+.superpowers
+skills-lock.json
