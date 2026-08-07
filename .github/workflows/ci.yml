@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  lint-build-typecheck:
+    # Self-hosted (geri-mint) — does not consume GitHub Actions minutes.
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          # No `cache: npm` on self-hosted: ~/.npm persists on the box between
+          # runs (the runner wipes only _work), so npm ci already hits a warm
+          # local cache. The remote GHA cache would re-upload the tree each run.
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # Build MUST run before the type check. Next 16 generates types into
+      # .next/types/ during the build (LayoutProps, PageProps, route types).
+      # On a clean checkout there is no .next/, so `tsc --noEmit` first fails
+      # with "Cannot find name 'LayoutProps'" in app/[locale]/layout.tsx.
+      - name: Build
+        run: npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+          # Placeholders, not real credentials. CI must never need production
+          # secrets to prove the code compiles — that way a hostile PR has
+          # nothing to exfiltrate from this job.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
+          NEXT_PUBLIC_SENTRY_DSN: ""
+
+      - name: Type check
+        run: npx tsc --noEmit
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
