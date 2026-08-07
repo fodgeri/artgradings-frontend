@@ -33,6 +33,13 @@ Infrastructure is therefore verified by **executable commands with exact expecte
 3. Run the same check and watch it **pass**.
 4. Commit.
 
+**Order matters: always `npm run build` before `npx tsc --noEmit`.** Next 16
+generates `LayoutProps`, `PageProps` and route types into `.next/types/` during
+the build. Running `tsc` on a tree with no `.next/` fails with
+`Cannot find name 'LayoutProps'` in `app/[locale]/layout.tsx` — a tooling
+artifact, not a code error. This applies to every verification step below and to
+the CI workflow in Task 5.
+
 Do not skip step 1. A check you never saw fail is a check you have not verified — a `grep` with a typo passes silently against anything, and a health endpoint that was already returning 200 from a stale container tells you nothing.
 
 ## Before you start
@@ -306,8 +313,11 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0
 
+# --ingroup is load-bearing: without it adduser drops nextjs into `nogroup`,
+# and the `--chown=nextjs:nodejs` copies below would set a group the runtime
+# user is not a member of.
 RUN addgroup --system --gid 1001 nodejs \
- && adduser --system --uid 1001 nextjs
+ && adduser --system --uid 1001 --ingroup nodejs nextjs
 
 # .next/standalone already contains a minimal server.js + the node_modules it
 # needs. public/ and .next/static are not included by default and must be
@@ -633,11 +643,10 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Type check
-        run: npx tsc --noEmit
-        env:
-          NODE_OPTIONS: --max-old-space-size=6144
-
+      # Build MUST run before the type check. Next 16 generates types into
+      # .next/types/ during the build (LayoutProps, PageProps, route types).
+      # On a clean checkout there is no .next/, so `tsc --noEmit` first fails
+      # with "Cannot find name 'LayoutProps'" in app/[locale]/layout.tsx.
       - name: Build
         run: npm run build
         env:
@@ -650,7 +659,14 @@ jobs:
           NEXT_PUBLIC_APP_URL: http://localhost:3000
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
           NEXT_PUBLIC_SENTRY_DSN: ""
+
+      - name: Type check
+        run: npx tsc --noEmit
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
 ```
+
+**Job name is `lint-build-typecheck`**, reflecting that order.
 
 - [ ] **Step 2: Validate the YAML parses**
 
@@ -1057,10 +1073,10 @@ export default withSentryConfig(withNextIntl(nextConfig), {
 - [ ] **Step 4: Verify the build still succeeds**
 
 ```bash
-npx tsc --noEmit && npm run build && echo "BUILD OK"
+npm run build && npx tsc --noEmit && echo "BUILD OK"
 ```
 
-Expected: `BUILD OK`. With no `SENTRY_AUTH_TOKEN` set locally, sourcemap upload is skipped with a warning — that is correct, not an error.
+Expected: `BUILD OK`. Build before typecheck — see the verification note above. With no `SENTRY_AUTH_TOKEN` set locally, sourcemap upload is skipped with a warning — that is correct, not an error.
 
 - [ ] **Step 5: Add the Sentry build args to the workflow**
 
