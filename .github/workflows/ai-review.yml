@@ -26,10 +26,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - label: "GLM-5.2 (Z.ai)"
-            model: "zai-coding-plan/glm-5.2"
-          - label: "Kimi K3 (Kimi for Coding)"
-            model: "kimi-for-coding/k3"
           - label: "GPT-5.6 Sol (OpenAI)"
             model: "openai/gpt-5.6-sol"
           # Swap or add legs freely (all via OpenCode). Auth comes from the
@@ -37,6 +33,10 @@ jobs:
           # The opencode-go subscription is no longer active; Kimi is billed
           # directly via the "Kimi For Coding" connector, so prefer
           # kimi-for-coding/* over opencode-go/* for new legs.
+          # - label: "GLM-5.2 (Z.ai)"
+          #   model: "zai-coding-plan/glm-5.2"
+          # - label: "Kimi K3 (Kimi for Coding)"
+          #   model: "kimi-for-coding/k3"
           # - label: "Kimi K2 Thinking (Kimi for Coding)"
           #   model: "kimi-for-coding/kimi-k2-thinking"
           # - label: "Kimi K2.7 (Kimi for Coding)"
