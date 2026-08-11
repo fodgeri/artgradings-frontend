@@ -38,4 +38,6 @@ test-results
 # Project-local agent / scratch dirs
 .claude
 .superpowers
+.opencode
+opencode.json
 skills-lock.json
