@@ -108,8 +108,24 @@ Every step is additive; nothing from phase 1 is undone.
 | Kind | Where | Why |
 |---|---|---|
 | `NEXT_PUBLIC_*` | Docker build args, from GitHub environment vars/secrets | Inlined into the client bundle; public by definition |
-| `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` | Build args | Needed at build time for sourcemap upload; not shipped in the bundle |
+| `SENTRY_ORG`, `SENTRY_PROJECT` | Build args | Identifiers, not credentials |
+| `SENTRY_AUTH_TOKEN` | **BuildKit secret mount** | A real credential. Never an `ARG` — CI uses `cache-to: type=gha,mode=max`, which exports intermediate builder layers *and their ENV metadata* to the Actions cache. Pass it via `secrets:` in `docker/build-push-action` and `RUN --mount=type=secret`. |
 | Everything else | **Runtime env in Coolify** | A build arg is baked into image layers and readable by anyone who can pull the image |
+
+### Self-hosted runner exposure
+
+This repo is **public** and the runner is persistent, shared with other
+projects, and its user is in the `docker` group — root-equivalent on the host.
+Both PR-triggered workflows (`ci.yml`, `ai-review.yml`) therefore carry:
+
+```yaml
+if: github.event.pull_request.head.repo.full_name == github.repository
+```
+
+Fork PRs must never execute on this runner. `npm ci` alone runs lifecycle
+scripts from the PR's own `package.json`, so no workflow edit is even needed to
+get code execution. If external contributions are wanted later, add a separate
+GitHub-hosted job for them rather than relaxing this guard.
 
 Server-side secrets that must **never** be build args: `SUPABASE_SERVICE_ROLE_KEY`,
 `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `MEILISEARCH_MASTER_KEY`,

@@ -8,8 +8,10 @@ preference. Try lever 1 first — it is almost always the right one.
 ## Lever 1 — Retag a known-good image (preferred)
 
 Fast, surgical, no data implications. The image for **every** past commit on
-`main` is still in GHCR, because `build-and-push.yml` never cancels in-progress
-builds.
+`main` is still in GHCR, because `build-and-push.yml` keys its concurrency group
+by `github.sha` — each commit gets its own group, so no build can cancel
+another's. (A ref-keyed group would keep only one pending run and silently drop
+SHAs under rapid pushes, which would break this guarantee.)
 
 **1. Find the last good SHA**
 

@@ -116,9 +116,13 @@ Nothing in phase 1 is undone. Steps 1–4 and 6 are a single afternoon.
 
 Written down now, before M3 (R2), M6 (FedEx) and M7 (Stripe) introduce real secrets:
 
-- **Build arg** — `NEXT_PUBLIC_*` only, plus the Sentry sourcemap triple
-  (`SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`) and `GIT_SHA`.
-  Baked into the image and, by definition, public.
+- **Build arg** — `NEXT_PUBLIC_*` only, plus `SENTRY_ORG`, `SENTRY_PROJECT` and
+  `GIT_SHA`. Baked into the image and, by definition, public.
+- **BuildKit secret mount** — `SENTRY_AUTH_TOKEN`. An earlier draft of this spec
+  listed it as a build arg; that was wrong. It is a credential, and CI uses
+  `cache-to: type=gha,mode=max`, which exports intermediate builder layers and
+  their ENV metadata to the Actions cache. Pass it via `secrets:` in
+  `docker/build-push-action` with `RUN --mount=type=secret`, never `ARG`.
 - **Runtime env, set in Coolify** — `SUPABASE_SERVICE_ROLE_KEY`, `R2_ACCESS_KEY_ID`,
   `R2_SECRET_ACCESS_KEY`, `MEILISEARCH_MASTER_KEY`, `STRIPE_SECRET_KEY`,
   `STRIPE_WEBHOOK_SECRET`, FedEx credentials.

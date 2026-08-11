@@ -1078,14 +1078,30 @@ npm run build && npx tsc --noEmit && echo "BUILD OK"
 
 Expected: `BUILD OK`. Build before typecheck — see the verification note above. With no `SENTRY_AUTH_TOKEN` set locally, sourcemap upload is skipped with a warning — that is correct, not an error.
 
-- [ ] **Step 5: Add the Sentry build args to the workflow**
+- [ ] **Step 5: Wire the Sentry credentials into the workflow**
 
-In `.github/workflows/build-and-push.yml`, extend `build-args`:
+`SENTRY_ORG` and `SENTRY_PROJECT` are identifiers — extend `build-args`:
 
 ```yaml
             SENTRY_ORG=${{ vars.SENTRY_ORG }}
             SENTRY_PROJECT=${{ vars.SENTRY_PROJECT }}
-            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+```
+
+`SENTRY_AUTH_TOKEN` is a credential and **must not** be a build arg — CI uses
+`cache-to: type=gha,mode=max`, which exports intermediate builder layers and
+their ENV metadata to the Actions cache. Add a sibling `secrets:` key instead:
+
+```yaml
+          secrets: |
+            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
+```
+
+and consume it in the Dockerfile's build step, where it never lands in a layer:
+
+```dockerfile
+RUN --mount=type=secret,id=sentry_auth_token \
+    SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token 2>/dev/null || true)" \
+    npm run build
 ```
 
 - [ ] **Step 6: Add release marking after the build step**

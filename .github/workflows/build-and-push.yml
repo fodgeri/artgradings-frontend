@@ -9,9 +9,12 @@ permissions:
   packages: write
 
 concurrency:
-  group: build-${{ github.ref }}
-  # Do NOT cancel in progress: every commit deserves its own immutable image,
-  # so that any past SHA can be redeployed for a rollback.
+  # Keyed by SHA, NOT by ref. A ref-keyed group holds at most one running and
+  # one pending run — a third push cancels the previously-pending one, so rapid
+  # pushes silently skip `prod-<sha>` images and break the retag rollback in
+  # docs/deployment/ROLLBACK.md. `cancel-in-progress: false` does not prevent
+  # that; only a unique group per commit does.
+  group: build-${{ github.sha }}
   cancel-in-progress: false
 
 env:

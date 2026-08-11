@@ -16,6 +16,14 @@ permissions:
 
 jobs:
   review:
+    # SECURITY — do not remove. The repo is public and this runner is
+    # persistent, shared with other projects, and its user is in the docker
+    # group (root on the host) with ~/.local/share/opencode/auth.json on disk.
+    # For `pull_request`, GitHub runs the workflow file FROM THE PR, so a fork
+    # can rewrite the steps below — the base-ref pin further down protects the
+    # reviewer agent config, but it cannot protect this file. Same-repo only is
+    # the control that actually holds.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, linux, x64]
     # Hard cap — a leg can never run away. On a large PR (~100 files) GPT-5.6 Sol
     # finishes in ~4 min but GLM and Kimi were still actively working when a

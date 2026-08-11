@@ -15,6 +15,13 @@ env:
 
 jobs:
   lint-build-typecheck:
+    # SECURITY — do not remove. This repo is public and the runner is
+    # self-hosted, persistent, and its user is in the docker group (root on the
+    # host). A fork PR runs its OWN package.json, and `npm ci` executes
+    # lifecycle scripts — arbitrary code execution on our box, no workflow edit
+    # required. Fork PRs must never reach this runner. If external
+    # contributions are wanted later, give them a separate GitHub-hosted job.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     # Self-hosted (geri-mint) — does not consume GitHub Actions minutes.
     runs-on: [self-hosted, linux, x64]
     timeout-minutes: 20
