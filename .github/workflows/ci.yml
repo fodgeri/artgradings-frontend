@@ -41,6 +41,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Runs before the build on purpose: the unit suite needs no .next/ and
+      # finishes in seconds, so a failure here saves the ~2-minute build.
+      - name: Test
+        run: npm test
+
       # Build MUST run before the type check. Next 16 generates types into
       # .next/types/ during the build (LayoutProps, PageProps, route types).
       # On a clean checkout there is no .next/, so `tsc --noEmit` first fails

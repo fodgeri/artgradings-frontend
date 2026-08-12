@@ -23,6 +23,24 @@ export default defineConfig({
     // them, so `node_modules` has to be listed explicitly or every test
     // fixture inside a dependency gets collected.
     exclude: ["**/node_modules/**", "**/.next/**"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html", "lcov"],
+      // Restricted to source extensions — a bare `app/**` also drags
+      // favicon.ico and globals.css into the denominator. `components` and
+      // `lib` do not exist yet; declared now so M1 code is measured the
+      // moment it lands.
+      include: [
+        "app/**/*.{ts,tsx}",
+        "components/**/*.{ts,tsx}",
+        "i18n/**/*.{ts,tsx}",
+        "lib/**/*.{ts,tsx}",
+      ],
+      exclude: ["**/*.test.{ts,tsx}", "**/*.d.ts"],
+      // No thresholds. With this few source files any number is arbitrary and
+      // would get moved for the wrong reasons. Revisit when M3 and M5 land
+      // real business logic.
+    },
     server: {
       deps: {
         // `next-intl` must be transformed by Vite rather than loaded natively

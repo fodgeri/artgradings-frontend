@@ -102,6 +102,44 @@ Rules:
 - Never commit API keys (Supabase, Stripe, FedEx, R2, Cloudflare). Use env vars; `.env*` stays gitignored.
 - Content (FAQ text, How it works copy, marketing copy), the **grading scale**, pricing rules, and turnaround times are **client-supplied**. Don't invent business rules — flag missing definitions instead.
 
+## Testing
+
+Vitest 4 + React Testing Library, one jsdom environment, config in
+`vitest.config.mts`.
+
+```bash
+npm test            # single-shot — what CI runs
+npm run test:watch  # local loop
+npm run test:coverage
+```
+
+- **Tests are colocated.** `foo.test.ts` sits beside `foo.ts`. `test/` holds
+  shared infrastructure only. Colocating inside `app/` is safe — the App Router
+  only treats reserved filenames (`page`, `route`, `layout`, …) as routes.
+- **Component tests go through `renderWithIntl` from `@/test/i18n`**, never
+  `render` from `@testing-library/react` directly. It supplies
+  `NextIntlClientProvider` with the real `messages/en.json`.
+- **Never assert user-facing copy as a literal.** Import `messages/en.json` and
+  assert against `messages.home.title`. A test that hardcodes copy silently
+  stops matching when the message changes.
+- **`globals: false`** — import `describe`/`test`/`expect` from `vitest` in
+  every file.
+- **A test needing Node instead of jsdom** puts `// @vitest-environment node`
+  on line 1 (see `messages/messages.test.ts`). When there is enough server code
+  to warrant it (M7 webhooks), promote this to `test.projects`.
+- **`next-intl` is inlined via `server.deps.inline`, and must stay that way.**
+  Its ESM build imports `next/navigation`, and the `next` package ships no
+  `exports` map — so native Node ESM resolves that to a literal path and throws
+  `ERR_MODULE_NOT_FOUND`. Vite's resolver finds `navigation.js` the way webpack
+  and turbopack do. Any future dependency that imports `next/*` internally needs
+  the same treatment.
+- **Async Server Components cannot be unit-tested** — Vitest does not support
+  them, and neither `app/[locale]/layout.tsx` nor multi-step flows nor
+  `proxy.ts` locale negotiation are covered here. That is E2E's job in M8.
+  Don't lose an afternoon fighting Vitest over `layout.tsx`.
+- **Coverage is reported, not gated.** No thresholds until M3/M5 land real
+  business logic.
+
 ## Git Workflow & CI/CD
 
 **Branches — phase 1: `main` only.** The project is at M0; a second branch with
