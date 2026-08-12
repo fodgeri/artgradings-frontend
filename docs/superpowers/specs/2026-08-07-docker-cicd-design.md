@@ -164,8 +164,13 @@ ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_SENTRY_DSN
 ARG SENTRY_ORG
 ARG SENTRY_PROJECT
-ARG SENTRY_AUTH_TOKEN
 ARG GIT_SHA
+
+# SENTRY_AUTH_TOKEN is deliberately NOT an ARG — see §2.4. It is a credential,
+# and `cache-to: type=gha,mode=max` exports builder layers and their ENV
+# metadata to the Actions cache. Pass it as a BuildKit secret mount instead:
+#   RUN --mount=type=secret,id=sentry_auth_token \
+#       SENTRY_AUTH_TOKEN=$(cat /run/secrets/sentry_auth_token) npm run build
 
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
@@ -174,7 +179,6 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
     SENTRY_ORG=$SENTRY_ORG \
     SENTRY_PROJECT=$SENTRY_PROJECT \
-    SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN \
     NEXT_PUBLIC_GIT_SHA=$GIT_SHA \
     NEXT_TELEMETRY_DISABLED=1 \
     CI=1 \

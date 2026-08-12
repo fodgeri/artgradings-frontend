@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - **Node 24 everywhere.** `node:24-alpine` in the Dockerfile, `node-version: 24` in every `setup-node`, `"engines": { "node": ">=24.0.0", "npm": ">=10.0.0" }` in `package.json`.
-- **Build args are `NEXT_PUBLIC_*` only**, plus `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`, `GIT_SHA`. Every other secret (`SUPABASE_SERVICE_ROLE_KEY`, `R2_*`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `MEILISEARCH_MASTER_KEY`, FedEx credentials) is **runtime env set in Coolify, never a build arg**. A build arg is baked into image layers and is readable by anyone who can pull the image.
+- **Build args are `NEXT_PUBLIC_*` only**, plus `SENTRY_ORG`, `SENTRY_PROJECT`, `GIT_SHA`. `SENTRY_AUTH_TOKEN` is **not** a build arg — it is a credential and is passed as a **BuildKit secret mount** (`secrets:` in `docker/build-push-action` + `RUN --mount=type=secret`); see Task 8. Every other secret (`SUPABASE_SERVICE_ROLE_KEY`, `R2_*`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `MEILISEARCH_MASTER_KEY`, FedEx credentials) is **runtime env set in Coolify, never a build arg**. A build arg is baked into image layers and is readable by anyone who can pull the image.
 - **Image tags are `prod-<sha>` and `prod-latest`** from the first build. Do not use `latest`, `main`, or an unprefixed SHA — phase 2 adds `test-*` alongside these and nothing should need renaming.
 - **Registry:** `ghcr.io/<owner>/artgradings-frontend`. Always derive the owner from `${{ github.repository_owner }}`, never hardcode it.
 - **All runners:** `runs-on: [self-hosted, linux, x64]`.
@@ -287,8 +287,16 @@ ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_SENTRY_DSN
 ARG SENTRY_ORG
 ARG SENTRY_PROJECT
-ARG SENTRY_AUTH_TOKEN
 ARG GIT_SHA
+
+# SENTRY_AUTH_TOKEN is deliberately NOT an ARG. It is a real credential (it can
+# read and write releases for the org), and `cache-to: type=gha,mode=max` in CI
+# exports intermediate builder layers — including their ENV metadata — to the
+# Actions cache. When Sentry lands, pass it with a BuildKit secret mount, which
+# is never persisted to a layer:
+#   RUN --mount=type=secret,id=sentry_auth_token \
+#       SENTRY_AUTH_TOKEN=$(cat /run/secrets/sentry_auth_token) npm run build
+# and `secrets:` (not `build-args:`) in docker/build-push-action.
 
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
@@ -297,7 +305,6 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
     SENTRY_ORG=$SENTRY_ORG \
     SENTRY_PROJECT=$SENTRY_PROJECT \
-    SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN \
     NEXT_PUBLIC_GIT_SHA=$GIT_SHA \
     NEXT_TELEMETRY_DISABLED=1 \
     CI=1 \
