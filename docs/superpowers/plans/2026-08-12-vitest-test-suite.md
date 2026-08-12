@@ -10,6 +10,21 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-12-vitest-test-suite-design.md`
 
+> **Executed 2026-08-12.** Two things below did not survive contact and are
+> recorded here rather than edited out, since the steps are a historical
+> record. The spec has been updated to match what was actually built; read it,
+> not this, for current truth.
+>
+> 1. **`vite-tsconfig-paths` was dropped.** Vite resolves tsconfig path aliases
+>    natively via `resolve.tsconfigPaths` as of v7, and Vitest warns that the
+>    plugin is redundant. Removing it also removed the deprecated `tsconfck`.
+> 2. **`next-intl` had to be inlined** via `test.server.deps.inline`. Task 1
+>    Step 6's contingency (switch to the node environment) was wrong — the
+>    failure was module *resolution*, not environment. `next` ships no
+>    `exports` map, so native Node ESM cannot resolve the extensionless
+>    `next/navigation` that next-intl imports internally. Externalized deps are
+>    loaded by Node; inlining routes them through Vite's resolver.
+
 ## Global Constraints
 
 - **Node >= 24, npm >= 10** — enforced by `engines` in `package.json`.

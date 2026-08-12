@@ -29,7 +29,6 @@ codebase.
 |---|---|---|
 | `vitest` | ^4.1 | runner |
 | `@vitejs/plugin-react` | ^6.0 | JSX transform |
-| `vite-tsconfig-paths` | ^6.1 | resolves the `@/*` alias from `tsconfig.json` |
 | `jsdom` | ^30.0 | DOM environment |
 | `@testing-library/react` | ^16.3 | component rendering (React 19 compatible) |
 | `@testing-library/dom` | ^10.4 | RTL peer dependency |
@@ -48,24 +47,42 @@ another package's dependency tree.
 `vitest.config.mts` at the repo root:
 
 ```ts
-import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
-import tsconfigPaths from "vite-tsconfig-paths";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  plugins: [tsconfigPaths(), react()],
+  plugins: [react()],
+  resolve: { tsconfigPaths: true },
   test: {
     environment: "jsdom",
     setupFiles: ["test/setup.ts"],
     globals: false,
-    exclude: ["node_modules/**", ".next/**"],
+    exclude: ["**/node_modules/**", "**/.next/**"],
     coverage: { /* see below */ },
+    server: { deps: { inline: ["next-intl"] } },
   },
 });
 ```
 
 This is Next.js's documented configuration plus a setup file. One environment
 for everything.
+
+Two departures from what Next's docs show, both forced by evidence during
+implementation:
+
+- **No `vite-tsconfig-paths`.** Vite resolves `tsconfig` path aliases natively
+  as of v7 via `resolve.tsconfigPaths`, and Vitest emits a warning when the
+  plugin is present. Dropping it also drops the deprecated `tsconfck`
+  transitive dependency.
+- **`next-intl` is inlined.** Its ESM build does
+  `import {useRouter} from "next/navigation"`, and the `next` package ships **no
+  `exports` map**. Vitest externalizes `node_modules` by default, so that file
+  is loaded by native Node ESM — which, absent an `exports` map, resolves
+  `next/navigation` to a literal path and throws `ERR_MODULE_NOT_FOUND`
+  ("Did you mean next/navigation.js?"). Bundlers do extensionless resolution
+  and find `navigation.js`; Node does not. Inlining routes the file through
+  Vite's resolver. Any future dependency that imports `next/*` internally will
+  need the same treatment.
 
 **Rejected: splitting node and jsdom into two `test.projects`.** Multi-project
 configs are standard in monorepos; within a single package the documented
