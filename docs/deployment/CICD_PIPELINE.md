@@ -15,14 +15,32 @@ push to main
     │
     ├─▶ CI (ci.yml)              lint → build → typecheck
     │
-    └─▶ Build and Push           docker build → ghcr.io/<owner>/artgradings-frontend
-        (build-and-push.yml)     tags: prod-<sha>, prod-latest
+    └─▶ Build and Push (build-and-push.yml)
             │
-            └─▶ Coolify deploy   only if vars.AUTO_DEPLOY == 'true'
-                (netcup)         → https://<domain>/api/health returns the new sha
+            ├─▶ job: build       docker build → ghcr.io/<owner>/artgradings-frontend
+            │                    tag: prod-<sha>  (immutable, one per commit)
+            │
+            └─▶ job: promote     retag prod-<sha> → prod-latest
+                                 only if <sha> is still the tip of main
+                    │
+                    └─▶ Coolify deploy   only if vars.AUTO_DEPLOY == 'true'
+                        (netcup)         → https://<domain>/api/health returns the new sha
 ```
 
 One branch, one environment. `main` is production.
+
+**Why build and promote are separate jobs.** The concurrency group is keyed by
+`github.sha`, so every commit gets its own image and no build can cancel
+another's — that is what the rollback runbook depends on. The trade-off is that
+rapid pushes build *concurrently*, so completion order is not commit order.
+Writing the mutable `prod-latest` tag from the build job would therefore let an
+older build that finishes late overwrite a newer one and redeploy stale code.
+
+`promote` guards against that twice: a ref-keyed job concurrency group cancels a
+superseded promotion that has not started yet, and — the control that actually
+holds — it re-reads main's tip and promotes only if it still equals this run's
+SHA. A superseded run still publishes its `prod-<sha>` image; it just does not
+touch `prod-latest`.
 
 **Why build runs before typecheck in CI:** Next 16 generates types into
 `.next/types/` during the build — `LayoutProps`, `PageProps`, route types. On a

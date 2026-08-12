@@ -4,7 +4,7 @@
 
 **Goal:** Ship `artgradings-frontend` as a containerized image built by CI on every push to `main`, pushed to GHCR, and deployed to the netcup production host — with the switch to a two-environment/promotion model already designed in.
 
-**Architecture:** A three-stage Dockerfile turns the Next.js standalone output into a lean non-root image. GitHub Actions on a self-hosted runner lints, typechecks and builds every PR; pushes to `main` build and push `prod-<sha>` + `prod-latest` to GHCR and optionally trigger a Coolify redeploy. Deployment is gated on a repo variable rather than hardcoded, so closing the gate at launch is a config change. Phase 2 (a `develop` branch + test environment + promotion workflow) is purely additive.
+**Architecture:** A three-stage Dockerfile turns the Next.js standalone output into a lean non-root image. GitHub Actions on a self-hosted runner lints, typechecks and builds every PR; pushes to `main` build and push `prod-<sha>` to GHCR, then a separate tip-guarded promote job moves `prod-latest` and optionally triggers a Coolify redeploy. Deployment is gated on a repo variable rather than hardcoded, so closing the gate at launch is a config change. Phase 2 (a `develop` branch + test environment + promotion workflow) is purely additive.
 
 **Tech Stack:** Next.js 16.3 (App Router, `output: 'standalone'`), React 19.2, TypeScript strict, next-intl, Node 24, Docker + BuildKit, GitHub Actions (self-hosted), GHCR, Coolify on netcup.
 
@@ -734,7 +734,7 @@ Expected: green again.
 
 **Interfaces:**
 - Consumes: the `Dockerfile` and its exact `ARG` names from Task 2; `/api/health` from Task 3.
-- Produces: `ghcr.io/<owner>/artgradings-frontend:prod-<sha>` and `:prod-latest` on every push to `main`, plus a Coolify deploy conditional on `vars.AUTO_DEPLOY`.
+- Produces: `ghcr.io/<owner>/artgradings-frontend:prod-<sha>` on every push to `main`, and `:prod-latest` + a Coolify deploy (conditional on `vars.AUTO_DEPLOY`) for whichever commit is still `main`'s tip when its build finishes.
 
 **External prerequisites — complete these before Step 1:**
 
@@ -758,16 +758,24 @@ permissions:
   packages: write
 
 concurrency:
-  group: build-${{ github.ref }}
-  # Do NOT cancel in progress: every commit deserves its own immutable image,
-  # so that any past SHA can be redeployed for a rollback.
+  # Keyed by SHA, NOT by ref, and never cancelling: every commit deserves its own
+  # immutable image so any past SHA can be redeployed for a rollback. A ref-keyed
+  # group holds at most one running and one pending run, so a third push cancels
+  # the previously-pending one and silently skips its prod-<sha> image —
+  # cancel-in-progress: false does not prevent that.
+  #
+  # The cost is that rapid pushes build CONCURRENTLY, so completion order is not
+  # commit order. Hence two jobs: `build` writes only the immutable prod-<sha>
+  # tag; `promote` — which moves the mutable prod-latest and deploys — is
+  # serialized and tip-guarded. Never move prod-latest back into `build`.
+  group: build-${{ github.sha }}
   cancel-in-progress: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
-  build-and-push:
+  build:
     runs-on: [self-hosted, linux, x64]
     timeout-minutes: 40
     environment: production
@@ -786,11 +794,11 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/artgradings-frontend
-          # Environment-prefixed from day one so phase 2 can add test-* tags
-          # alongside these without renaming anything.
+          # Immutable, per-commit, and environment-prefixed from day one so
+          # phase 2 can add test-* alongside without renaming anything.
+          # prod-latest is deliberately NOT here — see the promote job.
           tags: |
             type=raw,value=prod-${{ github.sha }}
-            type=raw,value=prod-latest
 
       - uses: docker/build-push-action@v5
         with:
@@ -809,12 +817,60 @@ jobs:
             NEXT_PUBLIC_SENTRY_DSN=${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
             GIT_SHA=${{ github.sha }}
 
+  # Everything mutable and outward-facing lives here: moving prod-latest and
+  # telling Coolify to redeploy. Two independent controls keep production from
+  # rolling backward when concurrent builds finish out of order:
+  #
+  #   1. A ref-keyed group cancels a superseded promotion that has not run yet.
+  #   2. The tip guard below — load-bearing. Concurrency alone cannot help when
+  #      the newer build finishes FIRST and promotes: the older promotion then
+  #      finds nothing to cancel and would overwrite prod-latest with stale code.
+  promote:
+    needs: build
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 10
+    environment: production
+    concurrency:
+      group: promote-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Check this commit is still the tip of ${{ github.ref_name }}
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TIP=$(gh api "repos/${{ github.repository }}/git/ref/heads/${{ github.ref_name }}" --jq .object.sha)
+          if [ "$TIP" = "$GITHUB_SHA" ]; then
+            echo "promote=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "promote=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Superseded by ${TIP} — prod-${GITHUB_SHA} is published but will not be promoted."
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.guard.outputs.promote == 'true'
+
+      - uses: docker/login-action@v3
+        if: steps.guard.outputs.promote == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Registry-side manifest copy — no pull, no rebuild, so the bits deployed
+      # are bit-for-bit the ones CI already built and pushed as prod-<sha>.
+      - name: Promote prod-${{ github.sha }} to prod-latest
+        if: steps.guard.outputs.promote == 'true'
+        run: |
+          IMG="ghcr.io/${{ github.repository_owner }}/artgradings-frontend"
+          docker buildx imagetools create --tag "$IMG:prod-latest" "$IMG:prod-$GITHUB_SHA"
+
       # The single switch between the pre-launch and post-launch pipeline.
       # Pre-launch: AUTO_DEPLOY=true, merges go live immediately.
       # At M8 launch: set AUTO_DEPLOY=false and revoke the Coolify API token —
       # deployment becomes a human clicking Deploy in Coolify. No workflow edit.
       - name: Trigger Coolify deploy
-        if: success() && vars.AUTO_DEPLOY == 'true'
+        if: steps.guard.outputs.promote == 'true' && vars.AUTO_DEPLOY == 'true'
         run: |
           curl -fsSL --max-time 30 --request GET \
             --header "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
@@ -826,10 +882,17 @@ jobs:
           {
             echo "## Image published"
             echo ""
-            echo "**Tags:** \`prod-${GITHUB_SHA}\`, \`prod-latest\`"
-            echo "**Auto-deploy:** \`${{ vars.AUTO_DEPLOY }}\`"
-            echo ""
-            echo "Verify: \`curl https://<domain>/api/health | jq .sha\` should return \`${GITHUB_SHA}\`"
+            echo "**Tag:** \`prod-${GITHUB_SHA}\`"
+            if [ "${{ steps.guard.outputs.promote }}" = "true" ]; then
+              echo "**Promoted to \`prod-latest\`:** yes"
+              echo "**Auto-deploy:** \`${{ vars.AUTO_DEPLOY }}\`"
+              echo ""
+              echo "Verify: \`curl https://<domain>/api/health | jq .sha\` should return \`${GITHUB_SHA}\`"
+            else
+              echo "**Promoted to \`prod-latest\`:** no — superseded by a newer commit on \`${{ github.ref_name }}\`"
+              echo ""
+              echo "The image exists and is deployable by hand; a newer run owns \`prod-latest\`."
+            fi
           } | tee -a "$GITHUB_STEP_SUMMARY"
 ```
 
@@ -847,9 +910,11 @@ Expected: `YAML OK`.
 git add .github/workflows/build-and-push.yml
 git commit -m "ci: build and push images to GHCR
 
-Tags prod-<sha> and prod-latest on every main push. The Coolify deploy step
-is gated on vars.AUTO_DEPLOY so closing the gate at launch is a variable
-change rather than a workflow edit."
+Tags prod-<sha> on every main push. A separate promote job moves prod-latest
+and deploys, but only while the commit is still main's tip, so concurrent
+builds finishing out of order cannot roll production backward. The Coolify
+deploy step is gated on vars.AUTO_DEPLOY so closing the gate at launch is a
+variable change rather than a workflow edit."
 git push
 gh pr merge --merge
 gh run watch

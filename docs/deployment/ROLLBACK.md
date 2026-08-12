@@ -13,6 +13,11 @@ by `github.sha` — each commit gets its own group, so no build can cancel
 another's. (A ref-keyed group would keep only one pending run and silently drop
 SHAs under rapid pushes, which would break this guarantee.)
 
+Note that `prod-<sha>` existing does **not** mean that SHA was ever deployed: the
+separate `promote` job moves `prod-latest` only while the commit is still main's
+tip, so a superseded commit has an image but never shipped. Confirm what is
+actually running with `/api/health` before assuming.
+
 **1. Find the last good SHA**
 
 ```bash

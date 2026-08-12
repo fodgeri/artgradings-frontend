@@ -341,22 +341,42 @@ E2 depend on this endpoint.
 
 - Trigger: `push` on `main`.
 - `permissions: contents: read, packages: write, actions: read`.
-- `concurrency: build-${{ github.ref }}`, **`cancel-in-progress: false`** — every
-  commit deserves its own image.
-- `environment: production`, `timeout-minutes: 40`, self-hosted.
-- Steps:
+- `concurrency: build-${{ github.sha }}`, **`cancel-in-progress: false`** — every
+  commit deserves its own image. Keyed by **SHA, not ref**: a ref-keyed group
+  holds one running plus one pending run and drops the older pending one, so
+  rapid pushes would silently skip `prod-<sha>` images and break the retag
+  rollback in §4.
+- **Two jobs, because a per-SHA group means concurrent builds and therefore
+  completion order ≠ commit order.** The immutable per-commit tag is safe to
+  write from any order; the mutable `prod-latest` tag and the deploy are not.
+- `environment: production`, self-hosted.
+
+**Job `build`** (`timeout-minutes: 40`) — writes only `prod-<sha>`:
   1. `checkout`
   2. `docker/setup-buildx-action@v3`
   3. `docker/login-action@v3` → `ghcr.io`, `${{ secrets.GITHUB_TOKEN }}`
   4. `docker/metadata-action@v5` → `ghcr.io/${{ github.repository_owner }}/artgradings-frontend`,
-     tags `prod-${{ github.sha }}` and `prod-latest`
+     tag `prod-${{ github.sha }}` **only**
   5. `docker/build-push-action@v5` → `cache-from/to: type=gha,mode=max`, build args
-     from `vars.*` (public) and `secrets.*` (Sentry token)
+     from `vars.*` (public); `SENTRY_AUTH_TOKEN` via `secrets:` secret mount (§2.4)
   6. Sentry release + deploy marking (D1)
-  7. Coolify deploy, **conditional on `vars.AUTO_DEPLOY == 'true'`** (§2.2)
 
-Phase 2 adds `test-*` tags gated on `develop` to step 4 and flips the variable in
-step 7. Steps 1–6 are untouched.
+**Job `promote`** (`needs: build`, `timeout-minutes: 10`) — everything mutable:
+  1. **Tip guard** — `gh api .../git/ref/heads/<branch>`; promote only if the tip
+     still equals `github.sha`. This is the load-bearing control.
+  2. `prod-<sha>` → `prod-latest` via `docker buildx imagetools create` (a
+     registry-side manifest copy — no pull, no rebuild, so what ships is
+     bit-for-bit what CI built)
+  3. Coolify deploy, **conditional on `vars.AUTO_DEPLOY == 'true'`** (§2.2)
+
+  Job-level `concurrency: promote-${{ github.ref }}`, `cancel-in-progress: true`
+  drops a superseded promotion that has not started. It is **not sufficient on
+  its own**: if the newer build finishes first and promotes, the older promotion
+  finds nothing to cancel and would overwrite `prod-latest` with stale code and
+  redeploy it. The tip guard is what catches that case.
+
+Phase 2 adds `test-*` tags gated on `develop` to `build` step 4 and flips the
+variable in `promote` step 3. Everything else is untouched.
 
 ### D. Selected extras
 
