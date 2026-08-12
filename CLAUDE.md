@@ -32,13 +32,14 @@ Path alias: `@/*` → repo root.
 | Frontend | Next.js (App Router), React, TypeScript, Tailwind |
 | Backend / DB / Auth | Supabase (managed Postgres + Auth + Storage, RLS) |
 | Object storage | Cloudflare R2 (card images) |
-| Search | Meilisearch (self-hosted on Hetzner) |
+| Search | Meilisearch (self-hosted on the netcup box) |
 | Payments | Stripe Checkout + webhooks |
 | Shipping | FedEx API (labels, rates, tracking) |
 | Transactional email | via Cloudflare |
-| Hosting | Hetzner (prod: webapp + services VPS), Contabo (staging) |
+| Hosting | netcup RS 1000 G12 (Coolify) — production; test env added in phase 2 |
+| CI/CD | GitHub Actions on a self-hosted runner → GHCR → Coolify |
 
-Environments are split **Prod / Test**. Never point local or test code at production Supabase/Stripe/FedEx credentials.
+Environments will be split **Prod / Test**. Today only production exists (one branch, one host) — see `docs/deployment/CICD_PIPELINE.md` for the phase-2 migration. Never point local or test code at production Supabase/Stripe/FedEx credentials.
 
 ## Modules (development phases)
 
@@ -100,6 +101,42 @@ Rules:
 - Pop Report counts are aggregations over finalized grades only — draft/in-progress grades must never leak into public counts or the public database.
 - Never commit API keys (Supabase, Stripe, FedEx, R2, Cloudflare). Use env vars; `.env*` stays gitignored.
 - Content (FAQ text, How it works copy, marketing copy), the **grading scale**, pricing rules, and turnaround times are **client-supplied**. Don't invent business rules — flag missing definitions instead.
+
+## Git Workflow & CI/CD
+
+**Branches — phase 1: `main` only.** The project is at M0; a second branch with
+nothing to integrate is overhead. `develop` arrives in phase 2, together with the
+test host (see below).
+
+- Short-lived `feature/*` / `fix/*` branches off `main`, squash-merged back.
+- Every push to `main` runs CI (lint → build → typecheck), builds a Docker image,
+  and pushes `prod-<sha>` + `prod-latest` to GHCR.
+- Deployment to netcup happens automatically **only while `vars.AUTO_DEPLOY` is
+  `true`**. At launch it flips to `false` and deploying becomes a manual Coolify
+  click. Build and release are separate events either way.
+
+**CI runs build before typecheck.** Next 16 generates `LayoutProps`, `PageProps`
+and route types into `.next/types/` during the build, so `tsc --noEmit` on a
+clean checkout fails without a prior build. Don't reorder them.
+
+**Secrets — the boundary that matters.** `NEXT_PUBLIC_*` values are inlined into
+the client bundle at build time, so they are Docker build args and are public by
+definition. Everything else — `SUPABASE_SERVICE_ROLE_KEY`, `R2_*`,
+`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `MEILISEARCH_MASTER_KEY`, FedEx
+credentials — is **runtime env set in Coolify and must never be a build arg**. A
+build arg is baked into the image layers and readable by anyone who can pull it.
+
+An image built with test values *is* a test image and must never be retagged for
+production. The corollary: never point a future test environment at `main` — add
+a branch and a host together.
+
+### CI/CD reference docs
+
+- `docs/deployment/CICD_PIPELINE.md` — the pipeline as built, the `AUTO_DEPLOY`
+  switch, and the phase-2 migration to `develop` + test env
+- `docs/deployment/ROLLBACK.md` — retag-and-redeploy, the snapshot last resort,
+  and why migrations must be backwards-compatible
+- `docs/superpowers/specs/2026-08-07-docker-cicd-design.md` — design rationale
 
 ## Explicitly out of scope
 

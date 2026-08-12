@@ -1,0 +1,100 @@
+name: AI Code Review (self-hosted)
+
+on:
+  pull_request:
+    # Phase 1 is main-only. Add `develop` here when the test env lands.
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    # SECURITY — do not remove. The repo is public and this runner is
+    # persistent, shared with other projects, and its user is in the docker
+    # group (root on the host) with ~/.local/share/opencode/auth.json on disk.
+    # For `pull_request`, GitHub runs the workflow file FROM THE PR, so a fork
+    # can rewrite the steps below — the base-ref pin further down protects the
+    # reviewer agent config, but it cannot protect this file. Same-repo only is
+    # the control that actually holds.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, linux, x64]
+    # Hard cap — a leg can never run away. On a large PR (~100 files) GPT-5.6 Sol
+    # finishes in ~4 min but GLM and Kimi were still actively working when a
+    # 15 min cap killed them, so the review silently degraded to a single leg.
+    # Queue time does not count toward this.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: "GPT-5.6 Sol (OpenAI)"
+            model: "openai/gpt-5.6-sol"
+          # Swap or add legs freely (all via OpenCode). Auth comes from the
+          # runner user's ~/.local/share/opencode/auth.json — no GH secrets.
+          # The opencode-go subscription is no longer active; Kimi is billed
+          # directly via the "Kimi For Coding" connector, so prefer
+          # kimi-for-coding/* over opencode-go/* for new legs.
+          # - label: "GLM-5.2 (Z.ai)"
+          #   model: "zai-coding-plan/glm-5.2"
+          # - label: "Kimi K3 (Kimi for Coding)"
+          #   model: "kimi-for-coding/k3"
+          # - label: "Kimi K2 Thinking (Kimi for Coding)"
+          #   model: "kimi-for-coding/kimi-k2-thinking"
+          # - label: "Kimi K2.7 (Kimi for Coding)"
+          #   model: "kimi-for-coding/k2p7"
+    env:
+      GH_TOKEN: ${{ github.token }}   # GitHub's automatic token — for posting comments
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Defense-in-depth: never let a PR's own copy of the reviewer agent/config
+      # drive the run (it could remove `edit: deny` or widen bash on our runner).
+      # Overwrite them with the trusted versions from the PR's base branch.
+      # On the bootstrap PR (config not yet on base) this no-ops and uses the PR copy.
+      - name: Pin reviewer config to trusted base ref
+        run: |
+          git fetch --depth=1 origin "${{ github.event.pull_request.base.ref }}" || exit 0
+          if git checkout FETCH_HEAD -- .opencode/agents/reviewer.md opencode.json 2>/dev/null; then
+            echo "Pinned reviewer config to base ref: ${{ github.event.pull_request.base.ref }}"
+          else
+            echo "::notice::reviewer config not on base ref yet; using PR version (bootstrap)"
+          fi
+
+      # Every leg runs as the same user on the same host, so by default all
+      # three share ~/.local/share/opencode/opencode.db (a 1.1 GB SQLite file
+      # in WAL mode). Three processes starting in the same second contend on it
+      # and a loser dies instantly with "Unexpected error / database is locked".
+      #
+      # Give each leg its own XDG_DATA_HOME under RUNNER_TEMP (unique per job,
+      # cleaned between jobs) so it gets a private, empty DB. auth.json is the
+      # one thing that must still be shared: it is SYMLINKED, not copied, so a
+      # refreshed token is written back to the real file instead of being
+      # discarded with the temp dir.
+      - name: Isolate opencode state for this leg
+        run: |
+          AUTH="$HOME/.local/share/opencode/auth.json"
+          if [ ! -f "$AUTH" ]; then
+            echo "::error::opencode auth.json not found at $AUTH — the runner user is not logged in"
+            exit 1
+          fi
+          LEG_DATA="${RUNNER_TEMP}/opencode-data"
+          mkdir -p "$LEG_DATA/opencode"
+          ln -sfn "$AUTH" "$LEG_DATA/opencode/auth.json"
+          echo "XDG_DATA_HOME=$LEG_DATA" >> "$GITHUB_ENV"
+          echo "Isolated opencode state at $LEG_DATA (auth.json symlinked)"
+
+      - name: Review with ${{ matrix.label }}
+        run: |
+          opencode run \
+            --agent reviewer \
+            --model "${{ matrix.model }}" \
+            "You are running as model '${{ matrix.label }}'. Begin your posted PR comment with the header line '## 🤖 Review by ${{ matrix.label }}'. Review pull request #${{ github.event.pull_request.number }} in repo ${{ github.repository }}. The PR branch is checked out. Run 'gh pr diff ${{ github.event.pull_request.number }}' to get the full diff, read every changed file plus the surrounding code needed to verify findings, then follow your reviewer instructions to post exactly one comment with 'gh pr comment'."
