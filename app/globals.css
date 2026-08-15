@@ -1,26 +1,17 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
- * Dark variant — tri-state.
+ * Dark variant.
  *
- * An explicit choice on <html data-theme> wins in both directions; with no
- * choice recorded, the system preference decides. The `:not([data-theme=light])`
- * guard is what lets someone pick light while their OS is dark.
+ * Light is the product default and `prefers-color-scheme` deliberately does
+ * NOT participate: dark is opt-in via `data-theme="dark"` on <html>, nothing
+ * else. A visitor on a dark OS still lands on the light brand palette.
  *
  * Note that components need this variant only rarely: `bg-surface` resolves
  * through `var(--ag-surface)`, which the palette blocks below already swap.
  * Theming is a cascade concern here, not a variant concern.
  * ------------------------------------------------------------------------- */
-@custom-variant dark {
-  &:where([data-theme="dark"], [data-theme="dark"] *) {
-    @slot;
-  }
-  @media (prefers-color-scheme: dark) {
-    &:where(:root:not([data-theme="light"]) *) {
-      @slot;
-    }
-  }
-}
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /* ---------------------------------------------------------------------------
  * Palette — light (default).
@@ -98,73 +89,12 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Palette — dark.
+ * Palette — dark. Opt-in only.
  *
- * Declared TWICE on purpose. CSS cannot share a declaration list across a
- * media-query boundary, and giving a token its only definition inside a media
- * block means it is undefined when the attribute wins instead. The token test
- * in `app/globals.token.test.ts` asserts the two copies stay identical — edit
- * both or the test fails.
+ * Every token declared in `:root` must be redeclared here, or it keeps its
+ * light value in dark mode. `app/globals.token.test.ts` enforces that both
+ * ways round.
  * ------------------------------------------------------------------------- */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-
-    --ag-surface: #08080b;
-    --ag-surface-sunken: #0c0c10;
-    --ag-surface-raised: #141418;
-
-    --ag-ink: #f2f1ec;
-    --ag-ink-strong: #e8e7e1;
-    --ag-muted: rgb(242 241 236 / 0.62);
-
-    --ag-hairline: rgb(255 255 255 / 0.14);
-    --ag-hairline-faint: rgb(255 255 255 / 0.08);
-
-    --ag-gold: #cba45a;
-    --ag-gold-ink: #cba45a;
-    --ag-gold-bright: #ddbc7a;
-    --ag-gold-soft: rgb(203 164 90 / 0.16);
-    --ag-gold-line: rgb(203 164 90 / 0.55);
-    --ag-on-gold: #160f02;
-
-    --ag-gold-fill: linear-gradient(180deg, var(--ag-gold-bright), var(--ag-gold));
-
-    --ag-invert-surface: transparent;
-    --ag-invert-surface-raised: #141418;
-    --ag-invert-ink: #f2f1ec;
-    --ag-invert-muted: rgb(242 241 236 / 0.62);
-    --ag-invert-hairline: rgb(255 255 255 / 0.14);
-    --ag-invert-gold-ink: #cba45a;
-
-    --ag-glow-cool: #6c7ca8;
-    --ag-glow-opacity: 0.55;
-
-    --ag-glass-bg: rgb(255 255 255 / 0.065);
-    --ag-glass-bg-strong: rgb(255 255 255 / 0.1);
-    --ag-glass-border: rgb(255 255 255 / 0.18);
-    --ag-glass-highlight: rgb(255 255 255 / 0.14);
-    --ag-glass-blur: 24px;
-    --ag-glass-saturate: 160%;
-
-    --ag-radius-control: 10px;
-    --ag-radius-group: 13px;
-    --ag-radius-card: 18px;
-    --ag-radius-panel: 22px;
-
-    --ag-shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.14),
-      0 30px 64px -32px rgb(0 0 0 / 0.75);
-    --ag-shadow-gold: inset 0 1px 0 rgb(255 255 255 / 0.4),
-      0 14px 34px -14px rgb(203 164 90 / 0.8);
-    --ag-shadow-feature: 0 0 0 1px var(--ag-gold-line),
-      inset 0 1px 0 rgb(255 255 255 / 0.18),
-      0 44px 90px -44px rgb(203 164 90 / 0.55);
-
-    --ag-container: 1180px;
-    --ag-gutter: 2rem;
-  }
-}
-
 [data-theme="dark"] {
   color-scheme: dark;
 

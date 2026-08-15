@@ -16,23 +16,21 @@ describe("ThemeToggle", () => {
     delete document.documentElement.dataset.theme;
   });
 
-  test("offers light, dark and system", () => {
+  test("offers exactly light and dark", () => {
     renderWithIntl(<ThemeToggle />);
+    expect(screen.getAllByRole("button")).toHaveLength(2);
     expect(
       screen.getByRole("button", { name: messages.a11y.themeLight }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: messages.a11y.themeDark }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: messages.a11y.themeSystem }),
-    ).toBeInTheDocument();
   });
 
-  test("defaults to system when nothing is stored", () => {
+  test("defaults to light when nothing is stored", () => {
     renderWithIntl(<ThemeToggle />);
     expect(
-      screen.getByRole("button", { name: messages.a11y.themeSystem }),
+      screen.getByRole("button", { name: messages.a11y.themeLight }),
     ).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -43,18 +41,27 @@ describe("ThemeToggle", () => {
     expect(localStorage.getItem("theme")).toBe("dark");
   });
 
-  test("choosing system clears both the attribute and the stored value", async () => {
-    // This is what hands control back to prefers-color-scheme. Leaving a
-    // stale data-theme behind would pin the user to their last explicit pick.
+  test("choosing light clears both the attribute and the stored value", async () => {
+    // Light is the document default, so it is expressed as the ABSENCE of
+    // data-theme. Writing data-theme="light" would be a second way to be
+    // light and the two would drift.
     const { user } = renderWithIntl(<ThemeToggle />);
     await user.click(screen.getByRole("button", { name: messages.a11y.themeDark }));
-    await user.click(screen.getByRole("button", { name: messages.a11y.themeSystem }));
+    await user.click(screen.getByRole("button", { name: messages.a11y.themeLight }));
     expect(document.documentElement.dataset.theme).toBeUndefined();
     expect(localStorage.getItem("theme")).toBeNull();
   });
 
-  test("reflects an already-stored choice on mount", () => {
-    localStorage.setItem("theme", "light");
+  test("reflects an already-stored dark choice on mount", () => {
+    localStorage.setItem("theme", "dark");
+    renderWithIntl(<ThemeToggle />);
+    expect(
+      screen.getByRole("button", { name: messages.a11y.themeDark }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("treats an unrecognised stored value as light", () => {
+    localStorage.setItem("theme", "system");
     renderWithIntl(<ThemeToggle />);
     expect(
       screen.getByRole("button", { name: messages.a11y.themeLight }),

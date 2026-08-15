@@ -22,15 +22,7 @@ function block(head: string): string {
   throw new Error(`Unbalanced braces after: ${head}`);
 }
 
-/**
- * Maps every `--ag-*` declaration in a block to its value.
- *
- * Internal whitespace is collapsed because the two dark blocks sit at
- * different nesting depths, so a wrapped multi-line shadow value carries two
- * extra spaces of indentation in the media-query copy. CSS does not care, and
- * neither should the comparison — otherwise the test fails on indentation
- * while the stylesheet is correct.
- */
+/** Maps every `--ag-*` declaration in a block to its value. */
 function tokens(body: string): Map<string, string> {
   const found = new Map<string, string>();
   for (const m of body.matchAll(/(--ag-[a-z0-9-]+)\s*:\s*([^;]+);/g)) {
@@ -40,7 +32,6 @@ function tokens(body: string): Map<string, string> {
 }
 
 const light = tokens(block("\n:root {"));
-const darkMedia = tokens(block(':root:not([data-theme="light"]) {'));
 const darkAttr = tokens(block('\n[data-theme="dark"] {'));
 
 describe("design tokens", () => {
@@ -58,11 +49,12 @@ describe("design tokens", () => {
     expect(extra).toEqual([]);
   });
 
-  test("the two dark blocks are identical", () => {
-    // The prefers-color-scheme block and the [data-theme=dark] block are
-    // hand-duplicated because CSS cannot share a declaration list across a
-    // media boundary. This is the test that keeps them from drifting.
-    expect(Object.fromEntries(darkMedia)).toEqual(Object.fromEntries(darkAttr));
+  test("light is the default and the system preference does not override it", () => {
+    // Dark is opt-in via data-theme only. A `prefers-color-scheme` block
+    // defining palette tokens would hand a dark-OS visitor the dark theme
+    // without them ever choosing it, which is not the product default.
+    const paletteUnderMedia = /@media[^{]*prefers-color-scheme[^{]*\{[^}]*--ag-/;
+    expect(css).not.toMatch(paletteUnderMedia);
   });
 
   test("gold-ink differs from gold in the light theme", () => {
