@@ -23,5 +23,11 @@
     "loading": "Loading…",
     "error": "Something went wrong.",
     "retry": "Try again"
+  },
+  "a11y": {
+    "theme": "Colour theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System"
   }
 }
