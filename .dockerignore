@@ -29,6 +29,12 @@ docs
 .DS_Store
 Thumbs.db
 
+# Tests — never needed to build the app, and never shipped in the image
+**/*.test.ts
+**/*.test.tsx
+test
+vitest.config.mts
+
 # Tooling caches
 .eslintcache
 coverage
