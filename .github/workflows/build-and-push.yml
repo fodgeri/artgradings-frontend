@@ -67,7 +67,16 @@ jobs:
             NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
             NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
             NEXT_PUBLIC_SENTRY_DSN=${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+            NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
+            SENTRY_ORG=${{ vars.SENTRY_ORG }}
+            SENTRY_PROJECT=${{ vars.SENTRY_PROJECT }}
             GIT_SHA=${{ github.sha }}
+          # `secrets:`, NOT `build-args:` — a build arg would be baked into the
+          # builder layer's ENV metadata, and `cache-to: mode=max` above exports
+          # those layers to the Actions cache, where anyone with repo read
+          # access could recover the token.
+          secrets: |
+            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
 
   # Everything mutable and outward-facing lives here: moving `prod-latest` and
   # telling Coolify to redeploy. Two independent controls keep production from

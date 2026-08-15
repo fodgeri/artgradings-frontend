@@ -80,7 +80,7 @@ English-only at launch, but every page already runs through **next-intl** so add
 
 Rules:
 
-- **All user-facing copy goes in `messages/*.json`.** No hardcoded strings in components — that's what makes translation a data task later instead of a refactor.
+- **All user-facing copy goes in `messages/*.json`.** No hardcoded strings in components — that's what makes translation a data task later instead of a refactor. The single exception is `app/global-error.tsx`: it renders *instead of* the root layout, so there is no provider, no `locale` param and no messages. It renders Next's built-in error page rather than copy of ours. Don't "fix" it by adding a `useTranslations` call — there is no context for it to read.
 - **Import `Link`, `useRouter`, `redirect`, `usePathname` from `@/i18n/navigation`**, never from `next/link` / `next/navigation`. These keep the active locale in the URL; nothing should hand-build a `/${locale}/...` path.
 - `useTranslations()` is synchronous and works in Server Components. Use `getTranslations()` only in async contexts (`generateMetadata`, Server Actions, Route Handlers).
 - **English is unprefixed** (`/`, `/faq`); other languages are prefixed (`/hu/faq`), and `/en/*` redirects to the unprefixed URL so each page has one canonical URL. Adding a language never changes an English URL.
@@ -90,6 +90,52 @@ Rules:
 - Format numbers, dates and currency with `useFormatter()`/`getFormatter()`, never hand-formatted.
 
 **To add a language:** add the code to `routing.locales`, add `messages/<code>.json`, and register it in `i18n/messages.d-check.ts` so missing keys fail the build. Routing, `<html lang>`, metadata and every `Link` follow automatically. Verified end-to-end: both locales prerender as static HTML.
+
+## Observability
+
+Sentry (`@sentry/nextjs`), errors + tracing. No Session Replay, no Logs, no
+Profiling — those are separate products with separate quota; add one
+deliberately, not by reflex.
+
+| File | Runtime |
+|---|---|
+| `instrumentation.ts` | Registers the server SDKs and exports `onRequestError` — the hook that catches Server Component, Route Handler, Server Action and `proxy.ts` errors |
+| `sentry.server.config.ts` | Node |
+| `sentry.edge.config.ts` | Edge — this is where `proxy.ts` runs |
+| `instrumentation-client.ts` | Browser; also exports `onRouterTransitionStart` |
+| `app/global-error.tsx` | Root-layout error boundary |
+| `next.config.ts` | `withSentryConfig` wraps `withNextIntl` — source maps, tunnel route |
+
+Rules:
+
+- **All three runtimes need `tracesSampleRate`/`tracesSampler`.** Missing one
+  means that runtime silently produces no spans. Editing sampling means editing
+  three files.
+- **Never pass a `dataCollection` object to `Sentry.init` without reading what
+  it does.** Passing it — *even as `{}`* — flips every unset category to its
+  permissive default and starts shipping request headers, cookies, query params
+  and bodies. Omitting it entirely leaves `sendDefaultPii: false`. For an EU
+  platform that will hold names and shipping addresses, the omission is the
+  security control.
+- **Errors Next.js catches are not captured automatically.** Anything caught
+  and not re-thrown — a Server Action returning `{error}` instead of throwing,
+  an `error.tsx` boundary — needs an explicit `Sentry.captureException`. This
+  matters most for the M3 submission flow and the M7 webhooks.
+- **`/api/health` is sampled at 0** in `sentry.server.config.ts`. Coolify polls
+  it continuously; without the carve-out it would dominate the trace quota.
+- **`tunnelRoute: "/monitoring"`** routes browser events through our own origin
+  so ad blockers don't eat them. It is a Next *rewrite*, which runs after
+  middleware — so `monitoring` must stay in the `proxy.ts` matcher exclusion or
+  locale negotiation redirects it to `/en/monitoring` and every client-side
+  report is lost.
+- **`release` is `NEXT_PUBLIC_GIT_SHA`** — the same value `/api/health` returns
+  as `sha`, so "which release broke" and "which image is live" are one string.
+- **`SENTRY_AUTH_TOKEN` is a BuildKit secret, never a build arg.** See the
+  Secrets note under Git Workflow & CI/CD; the Dockerfile mounts it for the
+  single `npm run build` layer.
+- `includeLocalVariables: true` on the server attaches local variable values to
+  stack frames. Re-review it at M3/M7, when those frames start holding customer
+  data.
 
 ## Conventions & constraints
 
