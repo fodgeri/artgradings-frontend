@@ -3,6 +3,7 @@ import {
   type RenderOptions,
   type RenderResult,
 } from "@testing-library/react";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { type Locale, NextIntlClientProvider } from "next-intl";
 import type { ReactElement, ReactNode } from "react";
 
@@ -29,7 +30,7 @@ type RenderWithIntlOptions = Omit<RenderOptions, "wrapper"> & {
 export function renderWithIntl(
   ui: ReactElement,
   { locale = routing.defaultLocale, ...options }: RenderWithIntlOptions = {},
-): RenderResult {
+): RenderResult & { user: UserEvent } {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <NextIntlClientProvider locale={locale} messages={messages}>
@@ -38,5 +39,9 @@ export function renderWithIntl(
     );
   }
 
-  return render(ui, { wrapper: Wrapper, ...options });
+  // A userEvent instance per render. Interaction tests need one, and setting
+  // it up here keeps every test from repeating the boilerplate — and from
+  // reaching for `fireEvent`, which skips the pointer and focus events real
+  // browsers dispatch.
+  return { user: userEvent.setup(), ...render(ui, { wrapper: Wrapper, ...options }) };
 }
