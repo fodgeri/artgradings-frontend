@@ -3481,6 +3481,19 @@ git commit -m "test: guard the gold text token; document the design system"
 
 ## Notes for the executor
 
+- **`cn()` must teach tailwind-merge our custom scales, and Task 1 as written
+  did not.** tailwind-merge resolves conflicts by parsing class *names* and
+  never reads `globals.css`, so it took `text-eyebrow` for a text colour:
+  `cn("text-eyebrow", "text-gold-ink")` returned only `text-gold-ink` and the
+  font size silently vanished. It got `rounded-*` and `max-w-page` wrong too.
+  `lib/cn.ts` now uses `extendTailwindMerge` with `font-size`, `rounded` and
+  `max-w` groups. **Anything added to the `--text-*`, `--radius-*` or
+  `--container-*` namespaces in `app/globals.css` must be added there too**, or
+  it will be dropped at random.
+- **`\btext-gold\b` matches inside `text-gold-ink`** — a hyphen is a word
+  boundary. Every assertion guarding the gold split needs the `(?!-)`
+  lookahead.
+
 - **`light-dark()` was considered and rejected** for the palette. It would remove the duplicated dark block entirely, but it accepts only `<color>` values — the themed radii, blur lengths, and the gradient `--ag-gold-fill` cannot use it, so the mechanism would be split in two. The duplication plus a test that guards it is the simpler contract. Do not "improve" this without revisiting the spec.
 - **If Base UI's rendered markup differs from what a test expects**, fix the component, not the assertion — except where a step above explicitly names the fallback. The ARIA attributes asserted here (`aria-pressed` on Toggle, `aria-checked` + `role="switch"` on Switch, `aria-expanded` + `aria-controls` on Accordion.Trigger) were read out of the published 1.0.0-rc.0 package and are correct.
 - **Do not add `dark:` variants reflexively.** If you find yourself writing one, check first whether the difference belongs in a token.
