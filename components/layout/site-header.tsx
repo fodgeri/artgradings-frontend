@@ -1,22 +1,11 @@
 import { useTranslations } from "next-intl";
 
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { Wordmark } from "@/components/layout/wordmark";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/cn";
-
-/** The typographic wordmark. Logo design is out of scope; this is the design's own mark. */
-function Wordmark() {
-  return (
-    <Link
-      href="/"
-      className="focus-ring flex items-baseline font-serif text-[23px] font-medium text-ink"
-    >
-      Art<span className="text-gold">.</span>
-    </Link>
-  );
-}
 
 export function SiteHeader() {
   const t = useTranslations("nav");
@@ -32,7 +21,9 @@ export function SiteHeader() {
     <header className="glass sticky top-0 z-50 rounded-none border-x-0 border-t-0">
       <Container>
         <nav className="flex h-[70px] items-center justify-between">
-          <Wordmark />
+          <Link href="/" className="focus-ring">
+            <Wordmark />
+          </Link>
 
           {/* Below `lg` the link row is replaced by the theme toggle and the
               CTA alone. A drawer arrives with the real page set in M1; there

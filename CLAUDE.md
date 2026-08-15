@@ -14,13 +14,16 @@ The authoritative scope/estimate document is `docs/01-project-estimation.md` (Hu
 
 ## Repo state
 
-Next.js 16.3, React 19.2, TypeScript (strict), Tailwind CSS v4 (PostCSS plugin, no `tailwind.config`), ESLint 9 flat config. Beyond the i18n setup below, nothing from the spec is implemented yet — `app/[locale]/` holds a placeholder landing page.
+Next.js 16.3, React 19.2, TypeScript (strict), Tailwind CSS v4 (PostCSS plugin, no `tailwind.config`), ESLint 9 flat config.
+
+Built so far: the i18n setup, Sentry, the Vitest harness, and the M1 design system foundation (tokens, primitives, site shell, `/design` gallery). Not yet built: every public page. `app/[locale]/page.tsx` is still a placeholder landing page.
 
 Commands:
 ```bash
 npm run dev      # next dev
 npm run build    # next build
 npm run lint     # eslint
+npm test         # vitest run
 ```
 
 Path alias: `@/*` → repo root.
@@ -90,6 +93,68 @@ Rules:
 - Format numbers, dates and currency with `useFormatter()`/`getFormatter()`, never hand-formatted.
 
 **To add a language:** add the code to `routing.locales`, add `messages/<code>.json`, and register it in `i18n/messages.d-check.ts` so missing keys fail the build. Routing, `<html lang>`, metadata and every `Link` follow automatically. Verified end-to-end: both locales prerender as static HTML.
+
+## Design system
+
+Ported from the Claude Design project *Card grading webapplication design*
+(light "paper" + dark liquid glass). Spec:
+`docs/superpowers/specs/2026-08-15-design-system-foundation-design.md`.
+
+| File | Role |
+|---|---|
+| `app/globals.css` | The whole token layer — palettes, `@theme inline` mapping, glass utilities |
+| `lib/cn.ts` | `cn()` — clsx + tailwind-merge, taught our custom scales |
+| `components/ui/*` | Primitives (Button, Card, Field, Switch, Accordion, SegmentedControl, Stat, Chip, …) |
+| `components/slab/*` | The branded slab and its grade badge |
+| `components/layout/*` | Header, footer, wordmark, ambient glow, theme script and toggle |
+| `app/[locale]/design/` | Internal gallery of every token and component |
+
+Rules:
+
+- **Raw tokens are `--ag-*`; Tailwind namespaces map from them.** Writing
+  `--radius-card: var(--radius-card)` in `@theme inline` is self-referential and
+  silently resolves to nothing. The prefix is what keeps the two sides distinct.
+- **`--gold` is fills, borders and decoration. `--gold-ink` is the only gold
+  allowed as a text colour.** The design's `#B0883A` on `#FAFAF8` measures
+  3.13:1 and fails WCAG AA. Inside `surface-invert` the relationship *flips* —
+  the darkened `#836428` drops to 3.51:1 on ink while `#B0883A` passes at
+  5.91:1 — which is why that utility redefines `--gold-ink` too.
+  `components/gold-ink.test.ts` enforces it; never write `text-gold`. The one
+  allowlisted exception is `components/layout/wordmark.tsx` (WCAG 1.4.3 exempts
+  logotypes).
+- **`cn()` must know every custom scale.** tailwind-merge resolves conflicts by
+  parsing class *names* and never reads `globals.css`, so an unknown
+  `text-eyebrow` looks like a text colour and gets dropped when a colour is set
+  alongside it. Anything added to the `--text-*`, `--radius-*` or
+  `--container-*` namespaces must also be added to `extendTailwindMerge` in
+  `lib/cn.ts`.
+- **Light is the default; `prefers-color-scheme` deliberately does not
+  participate.** Dark is opt-in via `data-theme="dark"` on `<html>`. Light is
+  the *absence* of the attribute, never `data-theme="light"` — one way to be
+  light, not two. A dark-OS visitor still gets the light brand palette.
+- **Every token in `:root` must be redeclared in `[data-theme="dark"]`**, or it
+  keeps its light value in dark mode. `app/globals.token.test.ts` enforces that
+  both ways round.
+- **Components rarely need `dark:`.** `bg-surface` emits `var(--ag-surface)`,
+  which the palette blocks already swap. Reach for the variant only when a
+  difference is not expressible as a token.
+- **Radii are themed, not constant** (card 13px light / 18px dark). Glass reads
+  softer, so the design grows its corners. Use `rounded-card` / `rounded-panel`,
+  never a literal.
+- **`surface-invert` is how a dark band works**, not a pile of `dark:` classes.
+  It redefines the role tokens locally so nested components follow.
+- **The reduced-transparency fallback needs two rules.**
+  `prefers-reduced-transparency` is a media feature; `not (backdrop-filter: …)`
+  is a `@supports` condition. Combining them in one media query list is a parse
+  error that Lightning CSS rejects — it fails the whole build, not just the rule.
+- **The `/design` gallery is exempt from the no-hardcoded-strings rule**, the
+  same way `app/global-error.tsx` is. It is internal tooling whose labels are
+  token and component names; translating "Buttons" is pure cost.
+- Base UI is at a release candidate (`1.0.0-rc.0`). It supplies behaviour only —
+  keyboard interaction, focus management, ARIA — and every visual is ours. Note
+  `ToggleGroup`'s value is an **array** even when single-select, and `Toggle`
+  renders `aria-pressed`, not `aria-checked`. Re-evaluate at M3 when the
+  submission form leans on `field` and `select` hard.
 
 ## Observability
 

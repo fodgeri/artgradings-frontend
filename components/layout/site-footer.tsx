@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
+import { Wordmark } from "@/components/layout/wordmark";
 import { Container } from "@/components/ui/container";
 import { Link } from "@/i18n/navigation";
 
@@ -36,9 +37,7 @@ export function SiteFooter() {
         <div className="border-t border-hairline pb-[50px] pt-[70px]">
           <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
             <div>
-              <span className="flex items-baseline font-serif text-[23px] font-medium text-ink">
-                Art<span className="text-gold">.</span>
-              </span>
+              <Wordmark />
               <p className="mt-4 max-w-[260px] text-sm text-muted">{t("tagline")}</p>
             </div>
 

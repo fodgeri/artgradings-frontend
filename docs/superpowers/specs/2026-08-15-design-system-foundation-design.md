@@ -1,7 +1,7 @@
 # Design system foundation
 
 **Date:** 2026-08-15
-**Status:** Approved, not yet implemented
+**Status:** Implemented on `feat/design-system-foundation`
 **Module:** M1 — Design system & public pages
 
 ## Goal
@@ -98,7 +98,7 @@ assumed:
 - `@theme inline` + `var()` indirection emits `background-color: var(--surface)`.
 - `@utility glass {…}` compiles and composes with variants
   (`dark:glass` → `.dark\:glass:where([data-theme=dark], …)`).
-- The multi-rule `@custom-variant dark` form below parses.
+- The `@custom-variant dark` form below parses.
 - `border-gold/40` resolves to `color-mix(in oklab, var(--gold) 40%, transparent)`,
   which covers the design's `--goldline`.
 
@@ -122,9 +122,9 @@ and every visual is ours. The subpaths this spec depends on (`accordion`,
 minor; re-check at M3 when the submission form leans on `field` and `select`
 much harder.
 
-No `next-themes`. The pre-paint script below is eight lines, adds no dependency,
-and the three-block CSS keeps no-JS users correct — which a JS-only provider
-would not.
+No `next-themes`. The pre-paint script below is a few lines, adds no
+dependency, and light being the CSS default keeps no-JS users correct — they
+get light, which is exactly what the server rendered.
 
 ## Token layer
 
@@ -132,22 +132,26 @@ would not.
 
 ### Dark variant
 
-Tri-state: an explicit choice wins in both directions; absent a choice, the
-system preference decides.
+**Light is the product default, and `prefers-color-scheme` deliberately does
+not participate.** Dark is opt-in via `data-theme="dark"` on `<html>`, nothing
+else; a visitor on a dark OS still lands on the light brand palette.
 
 ```css
-@custom-variant dark {
-  &:where([data-theme=dark], [data-theme=dark] *) { @slot; }
-  @media (prefers-color-scheme: dark) {
-    &:where(:root:not([data-theme=light]) *) { @slot; }
-  }
-}
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 ```
 
-Palettes are declared three times to match: `:root` (light), then
-`@media (prefers-color-scheme: dark) { :root:not([data-theme=light]) }`, then
-`[data-theme=dark]`. Never give a token its only definition inside a media or
-attribute block.
+Two palette blocks, not three: `:root` (light) and `[data-theme="dark"]`. Every
+token declared in one must be declared in the other, which
+`app/globals.token.test.ts` enforces both ways round.
+
+*Revised during implementation, at the client's direction.* The original design
+was tri-state — light / dark / system, with the system preference deciding by
+default. That required the dark palette to be hand-duplicated across a media
+boundary (CSS cannot share a declaration list across one) plus a test to keep
+the copies from drifting. Dropping system removed 59 lines of duplication, the
+drift test, and the whole `:not([data-theme=light])` guard. Light being the
+default is now expressed as the *absence* of `data-theme`, so there is exactly
+one way to be light rather than two.
 
 ### Colour
 
@@ -343,21 +347,26 @@ rather than a size change, so the visual is preserved.
 | `SiteHeader` | sticky, `glass`, 70px. Desktop link row; below `md` a Base UI `navigation-menu` drawer. All links from `@/i18n/navigation` |
 | `SiteFooter` | inverted 4-column grid → 2 → 1, legal bar |
 | `AmbientGlow` | the three blobs, `aria-hidden` |
-| `ThemeToggle` | **client** — cycles light / dark / system, writes `localStorage.theme` and `document.documentElement.dataset.theme` |
+| `ThemeToggle` | **client** — light / dark only. Dark writes `localStorage.theme` and `data-theme`; light clears both |
 | `ThemeScript` | blocking inline `<script>` in `<head>` |
 
 `ThemeScript` runs before first paint to avoid a flash:
 
 ```js
 try {
-  var t = localStorage.theme;
-  if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
+  if (localStorage.getItem("theme") === "dark") document.documentElement.dataset.theme = "dark";
 } catch {}
 ```
 
-It stamps nothing when the user has expressed no preference, which is what lets
-the `prefers-color-scheme` block stay authoritative. `suppressHydrationWarning`
-goes on `<html>` because the script mutates it before React hydrates.
+Only dark is ever stamped, because light is the document default — so a visitor
+with no stored choice gets exactly what the server rendered.
+`suppressHydrationWarning` goes on `<html>` because the script mutates it
+before React hydrates.
+
+`ThemeToggle` reads the stored value through `useSyncExternalStore` rather than
+a `setState` in an effect — which the `react-hooks/set-state-in-effect` lint
+rejects outright. It also buys an honest SSR snapshot and cross-tab sync via
+the `storage` event.
 
 `app/[locale]/layout.tsx` gains the font wiring, `ThemeScript`, `AmbientGlow`,
 `SiteHeader`, and `SiteFooter` around `{children}`.
@@ -421,7 +430,7 @@ never assert copy as a literal.
 | Test | Asserts |
 |---|---|
 | `components/ui/button.test.tsx` | each variant renders, `asChild` produces an anchor, `disabled` blocks click |
-| `components/ui/segmented-control.test.tsx` | selection changes, arrow-key roving focus, `aria-checked` |
+| `components/ui/segmented-control.test.tsx` | selection changes, arrow-key roving focus, `aria-pressed` (Base UI `Toggle` uses pressed, not checked) |
 | `components/ui/accordion.test.tsx` | opens and closes, sign flips, `aria-expanded` |
 | `components/ui/switch.test.tsx` | toggles, `role="switch"`, `aria-checked` |
 | `components/ui/field.test.tsx` | label is associated with the control |
@@ -432,13 +441,21 @@ Two Node-environment tests (`// @vitest-environment node` on line 1) guard the
 token layer itself:
 
 - `app/globals.token.test.ts` parses `app/globals.css` and asserts every token
-  declared in `:root` also has a value in the `[data-theme=dark]` block, and
+  declared in `:root` also has a value in the `[data-theme="dark"]` block, and
   vice versa. This catches the actual recurring failure mode — a token added to
-  one theme and forgotten in the other.
+  one theme and forgotten in the other. It also asserts no palette hides under
+  a `prefers-color-scheme` block, which would quietly undo the light default.
 - `components/gold-ink.test.ts` scans `components/**` and `app/**` for
   `text-gold` used without the `-ink` suffix, and fails on a hit. Cheap, and it
   is the only automated defence for finding 4; without it the split silently
-  erodes the first time someone types the shorter class name.
+  erodes the first time someone types the shorter class name. Comments are
+  stripped before matching, and `components/layout/wordmark.tsx` is
+  allowlisted — WCAG 1.4.3 exempts logotypes, and the wordmark's gold full stop
+  is a brand mark. A second test asserts the allowlisted path still exists, so
+  a rename cannot silently widen the exception.
+
+Both were mutation-tested: each was confirmed to fail on a deliberately
+introduced violation before being accepted.
 
 Both are text assertions on source, not rendered ones. jsdom does not implement
 `backdrop-filter` and does not resolve custom properties through `@theme`, so no
