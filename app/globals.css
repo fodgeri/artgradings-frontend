@@ -1,26 +1,394 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ---------------------------------------------------------------------------
+ * Dark variant — tri-state.
+ *
+ * An explicit choice on <html data-theme> wins in both directions; with no
+ * choice recorded, the system preference decides. The `:not([data-theme=light])`
+ * guard is what lets someone pick light while their OS is dark.
+ *
+ * Note that components need this variant only rarely: `bg-surface` resolves
+ * through `var(--ag-surface)`, which the palette blocks below already swap.
+ * Theming is a cascade concern here, not a variant concern.
+ * ------------------------------------------------------------------------- */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]) *) {
+      @slot;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ---------------------------------------------------------------------------
+ * Palette — light (default).
+ *
+ * Tokens are named by ROLE, never by value: `paper` and `ink` swap places
+ * between themes, so those names could not survive as literals.
+ *
+ * Every raw token is `--ag-*`. The `@theme inline` block further down maps
+ * them onto Tailwind's namespaces; without the prefix, a mapping like
+ * `--radius-card: var(--radius-card)` would be self-referential.
+ * ------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  --ag-surface: #fafaf8;
+  --ag-surface-sunken: #f2f1ec;
+  --ag-surface-raised: #ffffff;
+
+  --ag-ink: #0e0e0f;
+  --ag-ink-strong: #1a1a1c;
+  --ag-muted: rgb(14 14 15 / 0.6);
+
+  --ag-hairline: rgb(14 14 15 / 0.1);
+  --ag-hairline-faint: rgb(14 14 15 / 0.06);
+
+  /* `--ag-gold` is fills, borders, decoration. `--ag-gold-ink` is the ONLY
+     gold allowed as a text colour: #B0883A on #FAFAF8 measures 3.13:1 and
+     fails WCAG AA, while #836428 measures 5.26:1. */
+  --ag-gold: #b0883a;
+  --ag-gold-ink: #836428;
+  --ag-gold-bright: #c9a24b;
+  --ag-gold-soft: rgb(176 136 58 / 0.12);
+  --ag-gold-line: rgb(176 136 58 / 0.4);
+  --ag-on-gold: #160f02;
+
+  /* The gold button is a flat fill on paper and a vertical gradient on glass,
+     so this token holds an <image>, not a <color>. */
+  --ag-gold-fill: var(--ag-gold);
+
+  /* Inverted regions (dark bands inside a light page, and the order summary).
+     Gold flips role here: on ink it is `--ag-gold` that passes AA at 5.91:1,
+     while the darkened `--ag-gold-ink` drops to 3.51:1 and fails. */
+  --ag-invert-surface: #0e0e0f;
+  --ag-invert-surface-raised: #1a1a1c;
+  --ag-invert-ink: #fafaf8;
+  --ag-invert-muted: rgb(250 250 248 / 0.58);
+  --ag-invert-hairline: rgb(255 255 255 / 0.1);
+  --ag-invert-gold-ink: #b0883a;
+
+  --ag-glow-cool: #6c7ca8;
+  --ag-glow-opacity: 0.18;
+
+  --ag-glass-bg: rgb(255 255 255 / 0.7);
+  --ag-glass-bg-strong: rgb(255 255 255 / 0.85);
+  --ag-glass-border: rgb(14 14 15 / 0.08);
+  --ag-glass-highlight: rgb(255 255 255 / 0.6);
+  --ag-glass-blur: 14px;
+  --ag-glass-saturate: 140%;
+
+  /* Radii are themed: glass surfaces read softer, so the design grows their
+     corners (slab 13 -> 18, panel 16 -> 22). */
+  --ag-radius-control: 9px;
+  --ag-radius-group: 11px;
+  --ag-radius-card: 13px;
+  --ag-radius-panel: 16px;
+
+  --ag-shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 26px 50px -30px rgb(0 0 0 / 0.4);
+  --ag-shadow-gold: inset 0 1px 0 rgb(255 255 255 / 0.25),
+    0 10px 24px -14px rgb(176 136 58 / 0.9);
+  --ag-shadow-feature: 0 0 0 1px var(--ag-gold-line),
+    0 30px 60px -36px rgb(176 136 58 / 0.55);
+
+  --ag-container: 1180px;
+  --ag-gutter: 2rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Palette — dark.
+ *
+ * Declared TWICE on purpose. CSS cannot share a declaration list across a
+ * media-query boundary, and giving a token its only definition inside a media
+ * block means it is undefined when the attribute wins instead. The token test
+ * in `app/globals.token.test.ts` asserts the two copies stay identical — edit
+ * both or the test fails.
+ * ------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --ag-surface: #08080b;
+    --ag-surface-sunken: #0c0c10;
+    --ag-surface-raised: #141418;
+
+    --ag-ink: #f2f1ec;
+    --ag-ink-strong: #e8e7e1;
+    --ag-muted: rgb(242 241 236 / 0.62);
+
+    --ag-hairline: rgb(255 255 255 / 0.14);
+    --ag-hairline-faint: rgb(255 255 255 / 0.08);
+
+    --ag-gold: #cba45a;
+    --ag-gold-ink: #cba45a;
+    --ag-gold-bright: #ddbc7a;
+    --ag-gold-soft: rgb(203 164 90 / 0.16);
+    --ag-gold-line: rgb(203 164 90 / 0.55);
+    --ag-on-gold: #160f02;
+
+    --ag-gold-fill: linear-gradient(180deg, var(--ag-gold-bright), var(--ag-gold));
+
+    --ag-invert-surface: transparent;
+    --ag-invert-surface-raised: #141418;
+    --ag-invert-ink: #f2f1ec;
+    --ag-invert-muted: rgb(242 241 236 / 0.62);
+    --ag-invert-hairline: rgb(255 255 255 / 0.14);
+    --ag-invert-gold-ink: #cba45a;
+
+    --ag-glow-cool: #6c7ca8;
+    --ag-glow-opacity: 0.55;
+
+    --ag-glass-bg: rgb(255 255 255 / 0.065);
+    --ag-glass-bg-strong: rgb(255 255 255 / 0.1);
+    --ag-glass-border: rgb(255 255 255 / 0.18);
+    --ag-glass-highlight: rgb(255 255 255 / 0.14);
+    --ag-glass-blur: 24px;
+    --ag-glass-saturate: 160%;
+
+    --ag-radius-control: 10px;
+    --ag-radius-group: 13px;
+    --ag-radius-card: 18px;
+    --ag-radius-panel: 22px;
+
+    --ag-shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.14),
+      0 30px 64px -32px rgb(0 0 0 / 0.75);
+    --ag-shadow-gold: inset 0 1px 0 rgb(255 255 255 / 0.4),
+      0 14px 34px -14px rgb(203 164 90 / 0.8);
+    --ag-shadow-feature: 0 0 0 1px var(--ag-gold-line),
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      0 44px 90px -44px rgb(203 164 90 / 0.55);
+
+    --ag-container: 1180px;
+    --ag-gutter: 2rem;
+  }
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ag-surface: #08080b;
+  --ag-surface-sunken: #0c0c10;
+  --ag-surface-raised: #141418;
+
+  --ag-ink: #f2f1ec;
+  --ag-ink-strong: #e8e7e1;
+  --ag-muted: rgb(242 241 236 / 0.62);
+
+  --ag-hairline: rgb(255 255 255 / 0.14);
+  --ag-hairline-faint: rgb(255 255 255 / 0.08);
+
+  --ag-gold: #cba45a;
+  --ag-gold-ink: #cba45a;
+  --ag-gold-bright: #ddbc7a;
+  --ag-gold-soft: rgb(203 164 90 / 0.16);
+  --ag-gold-line: rgb(203 164 90 / 0.55);
+  --ag-on-gold: #160f02;
+
+  --ag-gold-fill: linear-gradient(180deg, var(--ag-gold-bright), var(--ag-gold));
+
+  --ag-invert-surface: transparent;
+  --ag-invert-surface-raised: #141418;
+  --ag-invert-ink: #f2f1ec;
+  --ag-invert-muted: rgb(242 241 236 / 0.62);
+  --ag-invert-hairline: rgb(255 255 255 / 0.14);
+  --ag-invert-gold-ink: #cba45a;
+
+  --ag-glow-cool: #6c7ca8;
+  --ag-glow-opacity: 0.55;
+
+  --ag-glass-bg: rgb(255 255 255 / 0.065);
+  --ag-glass-bg-strong: rgb(255 255 255 / 0.1);
+  --ag-glass-border: rgb(255 255 255 / 0.18);
+  --ag-glass-highlight: rgb(255 255 255 / 0.14);
+  --ag-glass-blur: 24px;
+  --ag-glass-saturate: 160%;
+
+  --ag-radius-control: 10px;
+  --ag-radius-group: 13px;
+  --ag-radius-card: 18px;
+  --ag-radius-panel: 22px;
+
+  --ag-shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.14),
+    0 30px 64px -32px rgb(0 0 0 / 0.75);
+  --ag-shadow-gold: inset 0 1px 0 rgb(255 255 255 / 0.4),
+    0 14px 34px -14px rgb(203 164 90 / 0.8);
+  --ag-shadow-feature: 0 0 0 1px var(--ag-gold-line),
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    0 44px 90px -44px rgb(203 164 90 / 0.55);
+
+  --ag-container: 1180px;
+  --ag-gutter: 2rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Tailwind theme mapping.
+ *
+ * `inline` means Tailwind emits `var(--ag-surface)` into the utility rather
+ * than the resolved value, which is exactly what makes the cascade do the
+ * theming.
+ * ------------------------------------------------------------------------- */
+@theme inline {
+  --color-surface: var(--ag-surface);
+  --color-surface-sunken: var(--ag-surface-sunken);
+  --color-surface-raised: var(--ag-surface-raised);
+  --color-ink: var(--ag-ink);
+  --color-ink-strong: var(--ag-ink-strong);
+  --color-muted: var(--ag-muted);
+  --color-hairline: var(--ag-hairline);
+  --color-hairline-faint: var(--ag-hairline-faint);
+  --color-gold: var(--ag-gold);
+  --color-gold-ink: var(--ag-gold-ink);
+  --color-gold-bright: var(--ag-gold-bright);
+  --color-gold-soft: var(--ag-gold-soft);
+  --color-gold-line: var(--ag-gold-line);
+  --color-on-gold: var(--ag-on-gold);
+  --color-glow-cool: var(--ag-glow-cool);
+
+  --radius-control: var(--ag-radius-control);
+  --radius-group: var(--ag-radius-group);
+  --radius-card: var(--ag-radius-card);
+  --radius-panel: var(--ag-radius-panel);
+
+  --shadow-card: var(--ag-shadow-card);
+  --shadow-gold: var(--ag-shadow-gold);
+  --shadow-feature: var(--ag-shadow-feature);
+
+  --font-sans: var(--ag-font-sans), system-ui, sans-serif;
+  --font-serif: var(--ag-font-serif), Georgia, serif;
+  --font-mono: var(--ag-font-mono), ui-monospace, monospace;
+
+  /* The upper clamp bound of each display size is the design's literal value,
+     so desktop is a faithful port. The design is authored at a fixed 1180px
+     and has no responsive behaviour; everything below that bound is new. */
+  --text-display: clamp(2.5rem, 1.6rem + 3.8vw, 4.125rem);
+  --text-display--line-height: 1.03;
+  --text-display--letter-spacing: -0.015em;
+  --text-h2: clamp(1.875rem, 1.4rem + 2vw, 2.625rem);
+  --text-h2--line-height: 1.07;
+  --text-h2--letter-spacing: -0.01em;
+  --text-h3: 1.375rem;
+  --text-h3--line-height: 1.2;
+  --text-lead: clamp(1.0625rem, 1rem + 0.3vw, 1.1875rem);
+  --text-lead--line-height: 1.6;
+  --text-eyebrow: 0.75rem;
+  --text-eyebrow--letter-spacing: 0.22em;
+  --text-kicker: 0.6875rem;
+  --text-kicker--letter-spacing: 0.2em;
+  --text-label: 0.6875rem;
+  --text-label--letter-spacing: 0.12em;
+  --text-meta: 0.625rem;
+  --text-meta--letter-spacing: 0.04em;
+
+  --container-page: var(--ag-container);
+}
+
+/* ---------------------------------------------------------------------------
+ * Custom utilities.
+ * ------------------------------------------------------------------------- */
+
+/** Frosted panel. Subtle white on paper, full liquid glass on black. */
+@utility glass {
+  background: var(--ag-glass-bg);
+  backdrop-filter: blur(var(--ag-glass-blur)) saturate(var(--ag-glass-saturate));
+  -webkit-backdrop-filter: blur(var(--ag-glass-blur)) saturate(var(--ag-glass-saturate));
+  border: 1px solid var(--ag-glass-border);
+  box-shadow: inset 0 1px 0 var(--ag-glass-highlight);
+}
+
+/** Elevated frosted panel — same recipe plus the card drop shadow. */
+@utility glass-strong {
+  background: var(--ag-glass-bg-strong);
+  backdrop-filter: blur(var(--ag-glass-blur)) saturate(var(--ag-glass-saturate));
+  -webkit-backdrop-filter: blur(var(--ag-glass-blur)) saturate(var(--ag-glass-saturate));
+  border: 1px solid var(--ag-glass-border);
+  box-shadow: inset 0 1px 0 var(--ag-glass-highlight), var(--ag-shadow-card);
+}
+
+/** The gold button fill — flat in light, gradient in dark. */
+@utility gold-fill {
+  background: var(--ag-gold-fill);
+}
+
+/**
+ * Locally redefines the role tokens so nested components theme correctly with
+ * no extra classes. In the dark theme this is close to a no-op, which is what
+ * the design shows: its dark bands are simply transparent.
+ */
+@utility surface-invert {
+  --ag-surface: var(--ag-invert-surface);
+  --ag-surface-raised: var(--ag-invert-surface-raised);
+  --ag-ink: var(--ag-invert-ink);
+  --ag-muted: var(--ag-invert-muted);
+  --ag-hairline: var(--ag-invert-hairline);
+  --ag-gold-ink: var(--ag-invert-gold-ink);
+  background-color: var(--ag-surface);
+  color: var(--ag-ink);
+}
+
+/**
+ * The focus indicator. `outline` rather than `box-shadow` so it is never
+ * clipped by an ancestor's `overflow: hidden`. Gold measures 3.13:1 against
+ * the light surface, which clears the 3:1 floor WCAG 1.4.11 sets for
+ * non-text contrast.
+ */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--ag-gold);
+    outline-offset: 2px;
+  }
+}
+
+/** Section rhythm — the design's 104px, reduced on small viewports. */
+@utility section-y {
+  padding-block: 3.5rem;
+  @media (width >= 48rem) {
+    padding-block: 6.5rem;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Base.
+ * ------------------------------------------------------------------------- */
+@layer base {
+  body {
+    background-color: var(--ag-surface);
+    color: var(--ag-ink);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: var(--ag-gold-soft);
+  }
+}
+
+/**
+ * Transparency fallback. Two independent triggers, and they cannot share a
+ * rule: `prefers-reduced-transparency` is a media feature while
+ * `not (backdrop-filter: ...)` is a SUPPORTS condition. Putting the latter in
+ * a media query list is a parse error, not a no-op — Lightning CSS rejects the
+ * whole stylesheet.
+ *
+ * Both land on an opaque raised surface, which is why `--ag-surface-raised` is
+ * opaque in both themes and translucency lives only in the `--ag-glass-*`
+ * tokens.
+ */
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-strong {
+    background: var(--ag-surface-raised);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .glass-strong {
+    background: var(--ag-surface-raised);
+  }
 }

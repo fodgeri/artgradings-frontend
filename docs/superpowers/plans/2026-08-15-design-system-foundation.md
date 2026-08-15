@@ -189,11 +189,19 @@ function block(head: string): string {
   throw new Error(`Unbalanced braces after: ${head}`);
 }
 
-/** Maps every `--ag-*` declaration in a block to its value. */
+/**
+ * Maps every `--ag-*` declaration in a block to its value.
+ *
+ * Internal whitespace is collapsed because the two dark blocks sit at
+ * different nesting depths, so a wrapped multi-line shadow value carries two
+ * extra spaces of indentation in the media-query copy. CSS does not care, and
+ * neither should the comparison — otherwise the test fails on indentation
+ * while the stylesheet is correct.
+ */
 function tokens(body: string): Map<string, string> {
   const found = new Map<string, string>();
   for (const m of body.matchAll(/(--ag-[a-z0-9-]+)\s*:\s*([^;]+);/g)) {
-    found.set(m[1], m[2].trim());
+    found.set(m[1], m[2].replace(/\s+/g, " ").trim());
   }
   return found;
 }
@@ -617,17 +625,29 @@ Delete the existing contents entirely (the Geist placeholder) and write:
 }
 
 /**
- * Transparency fallback. Two triggers: a user who has asked for less
- * transparency, and a browser without `backdrop-filter` at all. Both land on
- * an opaque raised surface — which is why `--ag-surface-raised` is opaque in
- * both themes and translucency lives only in the `--ag-glass-*` tokens.
+ * Transparency fallback. Two independent triggers, and they cannot share a
+ * rule: `prefers-reduced-transparency` is a media feature while
+ * `not (backdrop-filter: ...)` is a SUPPORTS condition. Putting the latter in
+ * a media query list is a parse error, not a no-op — Lightning CSS rejects the
+ * whole stylesheet.
+ *
+ * Both land on an opaque raised surface, which is why `--ag-surface-raised` is
+ * opaque in both themes and translucency lives only in the `--ag-glass-*`
+ * tokens.
  */
-@media (prefers-reduced-transparency: reduce), (not (backdrop-filter: blur(1px))) {
+@media (prefers-reduced-transparency: reduce) {
   .glass,
   .glass-strong {
     background: var(--ag-surface-raised);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .glass-strong {
+    background: var(--ag-surface-raised);
   }
 }
 ```
