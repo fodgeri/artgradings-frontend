@@ -28,4 +28,13 @@ describe("SiteFooter", () => {
     renderWithIntl(<SiteFooter />);
     expect(screen.getByRole("contentinfo")).toBeInTheDocument();
   });
+
+  test("carries the theme control the header drops on mobile", () => {
+    // Below `sm` the header has no room for it, so this is the only theme
+    // control a phone gets. Deleting it strands mobile visitors on light.
+    renderWithIntl(<SiteFooter />);
+    expect(
+      screen.getByRole("group", { name: messages.a11y.theme }),
+    ).toBeInTheDocument();
+  });
 });

@@ -41,7 +41,14 @@ export function SiteHeader() {
           </div>
 
           <div className="flex items-center gap-3.5">
-            <ThemeToggle />
+            {/* The theme control is the widest thing in the row (150px) and
+                the least essential one on a phone: with it, the wordmark, the
+                toggle and the CTA need 342px of the 309px a 375px viewport
+                leaves inside the gutters. Below `sm` it renders in the footer
+                instead — present at every width, but only ever once. */}
+            <div className="hidden sm:block">
+              <ThemeToggle />
+            </div>
             <Link
               href="/sign-in"
               className="focus-ring hidden text-sm font-medium text-muted transition-colors duration-150 hover:text-ink sm:block"
