@@ -60,4 +60,18 @@ describe("ThemeToggle", () => {
       screen.getByRole("button", { name: messages.a11y.themeLight }),
     ).toHaveAttribute("aria-pressed", "true");
   });
+
+  test("picks up a choice made in another tab", async () => {
+    // `useSyncExternalStore` subscribes to `storage`, which fires only in the
+    // tabs that did NOT make the change. Without this the two tabs disagree
+    // until reload.
+    renderWithIntl(<ThemeToggle />);
+    localStorage.setItem("theme", "dark");
+    window.dispatchEvent(new StorageEvent("storage", { key: "theme" }));
+
+    await screen.findByRole("button", { name: messages.a11y.themeDark });
+    expect(
+      screen.getByRole("button", { name: messages.a11y.themeDark }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
 });

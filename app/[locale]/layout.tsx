@@ -4,6 +4,9 @@ import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations } from "next-intl/server";
 
+import { AmbientGlow } from "@/components/layout/ambient-glow";
+import { SiteFooter } from "@/components/layout/site-footer";
+import { SiteHeader } from "@/components/layout/site-header";
 import { ThemeScript } from "@/components/layout/theme-script";
 import { routing } from "@/i18n/routing";
 import "../globals.css";
@@ -68,7 +71,16 @@ export default async function LocaleLayout({
       <body className="flex min-h-full flex-col font-sans">
         {/* Without props, the provider inherits locale, messages, time zone
             and formats from the server config in `i18n/request.ts`. */}
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          <AmbientGlow />
+          {/* The glow is `position: fixed` at z-0, so page content needs its
+              own stacking context to sit above it. */}
+          <div className="relative z-10 flex min-h-full flex-col">
+            <SiteHeader />
+            <main className="flex flex-1 flex-col">{children}</main>
+            <SiteFooter />
+          </div>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

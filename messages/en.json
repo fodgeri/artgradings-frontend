@@ -6,10 +6,25 @@
   "nav": {
     "home": "Home",
     "howItWorks": "How it works",
+    "showcase": "Showcase",
+    "pricing": "Pricing",
     "popReport": "Pop Report",
     "faq": "FAQ",
     "submit": "Submit cards",
     "signIn": "Sign in"
+  },
+  "footer": {
+    "tagline": "Precision grading and authentication for sports cards and trading card games.",
+    "service": "Service",
+    "company": "Company",
+    "support": "Support",
+    "about": "About",
+    "standard": "Authentication standard",
+    "track": "Track a submission",
+    "certLookup": "Certificate lookup",
+    "contact": "Contact",
+    "copyright": "© {year} ArtsGrading",
+    "legal": "Privacy · Terms"
   },
   "home": {
     "title": "Grading and authentication you can trust",

@@ -37,16 +37,21 @@ export function FieldInput({ className, ...props }: ComponentProps<"input">) {
   return <BaseField.Control className={cn(controlClass, className)} {...props} />;
 }
 
+/**
+ * `Field.Control` is typed against `<input>`, so select-specific props cannot
+ * be spread onto it — `onError` alone is enough to break the check. They go on
+ * the rendered `<select>` instead, which is what `render` is for: Base UI
+ * merges its generated id and ARIA onto that element.
+ */
 export function FieldSelect({ className, children, ...props }: ComponentProps<"select">) {
   return (
     <BaseField.Control
-      render={<select>{children}</select>}
+      render={<select {...props}>{children}</select>}
       className={cn(
         controlClass,
         "cursor-pointer bg-[url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>\")] bg-[position:right_16px_center] bg-no-repeat pr-10",
         className,
       )}
-      {...props}
     />
   );
 }

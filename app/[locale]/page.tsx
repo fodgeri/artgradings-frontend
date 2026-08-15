@@ -9,7 +9,9 @@ export default function Home() {
 
   return (
     <div className="flex flex-1 flex-col items-center bg-surface">
-      <main className="flex w-full max-w-3xl flex-1 flex-col justify-center gap-10 px-8 py-32 sm:px-16">
+      {/* Not a <main>: the locale layout already provides the one main
+          landmark, and a second would make the document ambiguous. */}
+      <div className="flex w-full max-w-3xl flex-1 flex-col justify-center gap-10 px-8 py-32 sm:px-16">
         <div className="flex flex-col gap-6">
           <h1 className="max-w-xl font-serif text-display text-ink">
             {t("title")}
@@ -31,7 +33,7 @@ export default function Home() {
             {t("ctaSecondary")}
           </Link>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

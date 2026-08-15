@@ -1,19 +1,48 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import { SegmentedControl } from "@/components/ui/segmented-control";
 
 type Choice = "light" | "dark" | "system";
 
-function readStored(): Choice {
+const STORAGE_KEY = "theme";
+
+/** Subscribers in this tab. `storage` events only fire in the *other* tabs. */
+const listeners = new Set<() => void>();
+
+/**
+ * Used only when `localStorage` throws — some privacy modes and embedded
+ * webviews do. The choice then applies for the session but does not persist.
+ */
+let memoryFallback: Choice | null = null;
+
+function subscribe(onChange: () => void) {
+  listeners.add(onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    listeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function getSnapshot(): Choice {
   try {
-    const stored = localStorage.getItem("theme");
+    const stored = localStorage.getItem(STORAGE_KEY);
     return stored === "light" || stored === "dark" ? stored : "system";
   } catch {
-    return "system";
+    return memoryFallback ?? "system";
   }
+}
+
+/**
+ * The server has no `localStorage`, so "system" is the only honest value it
+ * can render. `useSyncExternalStore` swaps in the real one after hydration
+ * without a `setState` in an effect.
+ */
+function getServerSnapshot(): Choice {
+  return "system";
 }
 
 /**
@@ -26,30 +55,26 @@ function readStored(): Choice {
  */
 export function ThemeToggle() {
   const t = useTranslations("a11y");
-  const [choice, setChoice] = useState<Choice>("system");
-
-  // Read after mount, not during render: the server has no localStorage, and
-  // reading it during render would produce a hydration mismatch.
-  useEffect(() => {
-    setChoice(readStored());
-  }, []);
+  const choice = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   function apply(next: string) {
     const value = next as Choice;
-    setChoice(value);
 
     try {
       if (value === "system") {
-        localStorage.removeItem("theme");
+        localStorage.removeItem(STORAGE_KEY);
         delete document.documentElement.dataset.theme;
       } else {
-        localStorage.setItem("theme", value);
+        localStorage.setItem(STORAGE_KEY, value);
         document.documentElement.dataset.theme = value;
       }
     } catch {
-      // Private-mode Safari throws on localStorage. The in-page choice still
-      // applies; it just will not survive a reload.
+      memoryFallback = value;
+      if (value === "system") delete document.documentElement.dataset.theme;
+      else document.documentElement.dataset.theme = value;
     }
+
+    for (const listener of listeners) listener();
   }
 
   return (
