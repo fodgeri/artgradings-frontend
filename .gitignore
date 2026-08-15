@@ -31,8 +31,13 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
+# NB: this already covers .env.sentry-build-plugin, which the Sentry build
+# plugin writes the auth token into.
 .env*
 !.env.example
+
+# sentry
+.sentryclirc
 
 # vercel
 .vercel

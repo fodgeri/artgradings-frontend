@@ -24,6 +24,7 @@ ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_SENTRY_DSN
+ARG NEXT_PUBLIC_SENTRY_ENVIRONMENT
 ARG SENTRY_ORG
 ARG SENTRY_PROJECT
 ARG GIT_SHA
@@ -31,17 +32,16 @@ ARG GIT_SHA
 # SENTRY_AUTH_TOKEN is deliberately NOT an ARG. It is a real credential (it can
 # read and write releases for the org), and `cache-to: type=gha,mode=max` in CI
 # exports intermediate builder layers — including their ENV metadata — to the
-# Actions cache. When Sentry lands, pass it with a BuildKit secret mount, which
-# is never persisted to a layer:
-#   RUN --mount=type=secret,id=sentry_auth_token \
-#       SENTRY_AUTH_TOKEN=$(cat /run/secrets/sentry_auth_token) npm run build
-# and `secrets:` (not `build-args:`) in docker/build-push-action.
+# Actions cache. It is passed as a BuildKit secret instead (see the build step
+# below and `secrets:` in .github/workflows/build-and-push.yml), which is
+# mounted for the duration of one RUN and never written to a layer.
 
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
     NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY \
     NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
+    NEXT_PUBLIC_SENTRY_ENVIRONMENT=$NEXT_PUBLIC_SENTRY_ENVIRONMENT \
     SENTRY_ORG=$SENTRY_ORG \
     SENTRY_PROJECT=$SENTRY_PROJECT \
     NEXT_PUBLIC_GIT_SHA=$GIT_SHA \
@@ -49,7 +49,12 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     CI=1 \
     NODE_OPTIONS=--max-old-space-size=6144
 
-RUN npm run build
+# The token is optional: with no `secrets:` entry the mount is simply absent,
+# SENTRY_AUTH_TOKEN stays empty, and the Sentry plugin skips source map upload
+# instead of failing the build. That is what a local `docker build` does.
+RUN --mount=type=secret,id=sentry_auth_token \
+    SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token 2>/dev/null || true)" \
+    npm run build
 
 # ---- runner: lean prod image ----
 FROM node:24-alpine AS runner
