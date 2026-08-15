@@ -18,12 +18,34 @@ const listeners = new Set<() => void>();
  */
 let memoryFallback: Theme | null = null;
 
+/**
+ * Dark is the only stamped value: light is the ABSENCE of `data-theme`, so the
+ * default state of the document is also the default state of the toggle and
+ * there is only ever one way to be light.
+ */
+function stamp(value: Theme) {
+  if (value === "dark") document.documentElement.dataset.theme = "dark";
+  else delete document.documentElement.dataset.theme;
+}
+
 function subscribe(onChange: () => void) {
   listeners.add(onChange);
-  window.addEventListener("storage", onChange);
+
+  /**
+   * A `storage` event means another tab changed the choice, so this tab has to
+   * repaint as well as re-render — nothing else stamps the document here.
+   * `key` is null when the whole store was cleared, which is a change too.
+   */
+  function onStorage(event: StorageEvent) {
+    if (event.key !== null && event.key !== STORAGE_KEY) return;
+    stamp(getSnapshot());
+    onChange();
+  }
+
+  window.addEventListener("storage", onStorage);
   return () => {
     listeners.delete(onChange);
-    window.removeEventListener("storage", onChange);
+    window.removeEventListener("storage", onStorage);
   };
 }
 
@@ -48,14 +70,7 @@ function getServerSnapshot(): Theme {
   return "light";
 }
 
-/**
- * Light / dark.
- *
- * Dark is the only stamped value: choosing light REMOVES `data-theme` rather
- * than writing `data-theme="light"`, so the default state of the document is
- * also the default state of the toggle and there is only ever one way to be
- * light.
- */
+/** Light / dark. */
 export function ThemeToggle() {
   const t = useTranslations("a11y");
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
@@ -63,8 +78,7 @@ export function ThemeToggle() {
   function apply(next: string) {
     const value: Theme = next === "dark" ? "dark" : "light";
 
-    if (value === "dark") document.documentElement.dataset.theme = "dark";
-    else delete document.documentElement.dataset.theme;
+    stamp(value);
 
     try {
       if (value === "dark") localStorage.setItem(STORAGE_KEY, "dark");

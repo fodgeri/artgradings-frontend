@@ -81,4 +81,30 @@ describe("ThemeToggle", () => {
       screen.getByRole("button", { name: messages.a11y.themeDark }),
     ).toHaveAttribute("aria-pressed", "true");
   });
+
+  test("repaints the document when another tab changes the choice", async () => {
+    // The toggle re-rendering is only half of it — the palette lives on
+    // <html>, and nothing else stamps it in the tab that did not click.
+    renderWithIntl(<ThemeToggle />);
+    localStorage.setItem("theme", "dark");
+    window.dispatchEvent(new StorageEvent("storage", { key: "theme" }));
+
+    await screen.findByRole("button", { name: messages.a11y.themeDark });
+    expect(document.documentElement.dataset.theme).toBe("dark");
+
+    localStorage.removeItem("theme");
+    window.dispatchEvent(new StorageEvent("storage", { key: "theme" }));
+
+    await screen.findByRole("button", { name: messages.a11y.themeLight });
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+  });
+
+  test("ignores storage events for unrelated keys", () => {
+    localStorage.setItem("theme", "dark");
+    renderWithIntl(<ThemeToggle />);
+    delete document.documentElement.dataset.theme;
+
+    window.dispatchEvent(new StorageEvent("storage", { key: "cart" }));
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+  });
 });
