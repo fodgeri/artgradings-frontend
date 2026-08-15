@@ -16,11 +16,15 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@base-ui-components/react": "^1.0.0-rc.0",
     "@sentry/nextjs": "^10.70.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "next": "16.3.0",
     "next-intl": "^4.13.5",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
