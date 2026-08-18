@@ -31,10 +31,10 @@ screen ships in this work.
   `orders`.
 - **Storage buckets.** Card images go to Cloudflare R2, not Supabase Storage.
   Supabase Storage is not configured, and R2 is a separate M0 line item.
-- **A second hosted Supabase project.** The prod/test split is phase 2 and
-  arrives with `develop` and the test host, per
-  `docs/deployment/CICD_PIPELINE.md`. Local isolation is provided by the
-  container stack, not by another cloud project.
+- **Creating the production Supabase project.** The one hosted project is a
+  dev project; production is created at launch, and the phase-2 test host
+  arrives with `develop` per `docs/deployment/CICD_PIPELINE.md`. This work
+  records the consequences (see *At launch*) without provisioning anything.
 - **Automated migration deployment.** Applying DDL to production from CI, with
   no test project to rehearse against, is a worse risk than a manual step. See
   *Migrations*.
@@ -532,12 +532,41 @@ rather than being rewritten.
 
 ### Applying to the cloud
 
-Migrations reach the hosted project through `supabase db push`, run by a
-developer after the PR merges — **not** by CI. The local stack proves a
-migration *runs* and that policies behave; it holds no real data, so it cannot
-prove a migration is safe against live rows. Automating the push would also
-require CI to hold a privileged access token and the database password on a
-runner this spec has already noted is persistent and root-capable.
+The single hosted EU project is a **development** project. Production is
+created at launch. Migrations therefore reach it through `supabase db push`
+run by a developer after the PR merges — routine, since it holds no customer
+data.
+
+It stays a manual step rather than a CI step even so, for one reason that will
+not change when production exists: automating the push requires CI to hold a
+privileged access token and the database password, on a runner this spec has
+already noted is persistent, root-capable, and attached to a public repository.
+The habit is also worth forming now, while it is cheap — the same command will
+one day point at a database holding customer addresses.
+
+`CLAUDE.md` currently states that "today only production exists (one branch,
+one host)". That is inaccurate: the Supabase project is a dev project.
+Correcting that line is part of this work.
+
+### At launch — consequences to plan for now
+
+Creating the production project is out of scope here, but two of its
+consequences are decided by choices in this spec and are cheaper to record than
+to rediscover:
+
+- **Production images must be rebuilt, not retagged.** `build-and-push.yml`
+  tags images `prod-<sha>` and bakes `NEXT_PUBLIC_SUPABASE_URL` and
+  `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in as build args. Those values point
+  at the dev project, so by the repo's own rule — *an image built with test
+  values IS a test image and must never be retagged for production* — every
+  image built before launch is a dev image regardless of its tag. Launch means
+  a rebuild with production build args, and the `prod-` tag prefix is
+  misleading until then.
+- **The schema arrives by replaying migrations, never by cloning the dev
+  project.** The migration set is the source of truth and is proven from empty
+  on every CI run, which is exactly the guarantee needed to stand up a new
+  project. A database dump of the dev project would carry seed users and
+  whatever was tried by hand along with it.
 
 `lib/supabase/database.types.ts` is generated and committed, and excluded from
 lint and coverage. Regenerating it is part of writing a migration, not a
