@@ -31,9 +31,10 @@ screen ships in this work.
   `orders`.
 - **Storage buckets.** Card images go to Cloudflare R2, not Supabase Storage.
   Supabase Storage is not configured, and R2 is a separate M0 line item.
-- **A local Supabase stack for development.** Day-to-day development runs
-  against the hosted project. A local database container exists solely to run
-  the pgTAP suite — see *Environment strategy*.
+- **A second hosted Supabase project.** The prod/test split is phase 2 and
+  arrives with `develop` and the test host, per
+  `docs/deployment/CICD_PIPELINE.md`. Local isolation is provided by the
+  container stack, not by another cloud project.
 - **Automated migration deployment.** Applying DDL to production from CI, with
   no test project to rehearse against, is a worse risk than a manual step. See
   *Migrations*.
@@ -42,36 +43,50 @@ screen ships in this work.
 
 ## Decisions and their rationale
 
-### Environment strategy: hosted for development, local Postgres for tests
+### Environment strategy: local-first, cloud on merge
 
-A hosted EU project already exists and remains the source of truth for
-development and production. Migrations are authored against it and pushed to
-it; there is no second Supabase project to keep in sync.
+Development runs against a **full local Supabase stack**. `supabase start`
+brings up Postgres, GoTrue, PostgREST, Storage, Studio and Inbucket; the
+application points at `http://127.0.0.1:54321` with the fixed local demo keys.
+The hosted EU project receives migrations after review, not during development.
 
-Tests are the exception. `supabase db start` brings up **only the database
-container** — not the ten-container full stack — and `supabase test db` runs
-pgTAP against it. Docker is therefore required to run the database test suite,
-but not to develop the application.
+The working loop:
 
-An earlier draft of this spec rejected any local stack and accepted, as its
-largest known weakness, that **RLS policy behaviour would have no automated
-test**. That trade was wrong once it became clear how narrow the requirement
-actually is: RLS is the security boundary of this platform — the single
-mechanism standing between one customer and another customer's orders,
-addresses and payment records — and "verified by reading it" is not an adequate
-standard for that. A database-only container is a much smaller commitment than
-the full local stack that was rejected, and it buys the one thing worth having.
+```
+supabase start        one-time per session
+supabase db reset     replays every migration into an empty database,
+                      then applies supabase/seed.sql
+                      → build the feature against local
+supabase test db      pgTAP proves the policies still hold
+PR                    CI replays migrations from empty and runs both suites
+merge                 supabase db push  → hosted project
+```
 
-Two consequences follow, both improvements:
+An earlier draft of this spec had developers working directly against the
+hosted project. That was wrong on its own terms: `CLAUDE.md` states plainly
+that local code must **never** point at production Supabase credentials, and
+with only one cloud project in existence, "develop against the hosted project"
+is precisely that. The local stack is what makes the rule satisfiable rather
+than aspirational.
 
-- **Migrations must run cleanly from empty.** `supabase db reset` replays every
-  migration into a fresh database on each test run, so a migration that only
-  works against the current production state fails in CI rather than in six
-  months.
-- **Policy changes become reviewable by evidence.** A pull request touching a
-  policy shows a passing or failing assertion, not a reviewer's reasoning about
-  `SECURITY DEFINER` semantics — which, on the evidence of this spec's own
-  first draft, is not reliable.
+What this buys, beyond the rule:
+
+- **A destructive experiment costs `supabase db reset`.** Trying a schema shape,
+  a policy, or a trigger against real customer data is not a thing anyone has
+  to weigh.
+- **Auth is exercisable.** Signup, confirmation email and session refresh run
+  end to end locally — GoTrue is in the stack and Inbucket catches the mail —
+  which is what M2 needs and what a database-only container could not provide.
+- **Migrations must replay from empty**, every reset, so one that silently
+  depends on the current cloud state fails locally rather than in production.
+- **Policy changes become reviewable by evidence.** A PR touching a policy
+  carries a passing or failing assertion rather than a reviewer's reasoning
+  about `SECURITY DEFINER` semantics — which, on the evidence of this spec's
+  own first draft, is not reliable.
+
+Docker is therefore a prerequisite for backend work. It is not required to run
+the Next.js app against an already-running stack, nor for front-end-only
+changes.
 
 ### Roles: table-resolved, not JWT-resolved
 
@@ -84,12 +99,12 @@ Two mechanisms were considered for getting a user's role into a policy:
 
 **Chosen: 2.** Three reasons, in order of weight:
 
-- **It is entirely versioned SQL.** The auth hook is enabled through dashboard
-  configuration, not a migration — so it is invisible to `supabase db reset`,
-  meaning the local test database would not have it and the pgTAP suite could
-  not exercise the role mechanism at all. Every piece of un-versioned
-  configuration is also something that must be reproduced by hand when the
-  phase-2 test project is created, with no diff to check it against.
+- **It is versioned SQL rather than project configuration.** Locally the hook
+  could be declared in `config.toml` under `[auth.hook.custom_access_token]`,
+  so this argument is weaker than an earlier draft of this spec claimed — it is
+  not un-versionable. It remains true that enabling it on each *hosted* project
+  is dashboard configuration, reproduced by hand with no diff to check it
+  against. The decisive reason is the one below, not this one.
 - **Revocation is immediate.** A JWT-borne role persists until the token
   refreshes. The elevated roles here belong to staff who can finalize grades
   and issue refunds; a revocation that takes effect within the hour, silently,
@@ -436,6 +451,21 @@ verify locally instead of calling the auth server per request.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Build arg |
 | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` | **Runtime only** |
 
+### Local versus cloud
+
+`.env.local` points at the local stack during development. The local API URL
+and keys are fixed, well-known demo values printed by `supabase start` — they
+are not secrets, grant access to nothing but a container on the developer's own
+machine, and are documented in `.env.example` as the local defaults so a fresh
+checkout runs without anyone having to be handed credentials.
+
+This is the practical form of `CLAUDE.md`'s rule that local code must never
+point at production Supabase credentials: the default configuration of a fresh
+clone is local, and reaching production requires a deliberate edit rather than
+being what happens if you do nothing.
+
+### The build-arg boundary
+
 The build-arg versus runtime split documented in `.env.example` and
 `CLAUDE.md` is unchanged and remains the boundary that matters: `NEXT_PUBLIC_*`
 values are inlined into the client bundle and are public by definition; the
@@ -452,41 +482,66 @@ new keys must be generated in the Supabase dashboard and
 this work merges; the old secret is removed after. Reversing that order breaks
 the image build on `main`.
 
-## Migrations
+## Migrations, seed data and types
 
-The Supabase CLI is a devDependency. The project is linked by ref; migrations
-are hand-written SQL in `supabase/migrations/`, committed, and applied with
-`supabase db push`.
+The Supabase CLI is a devDependency; the project is linked to the hosted
+project by ref. Migrations are hand-written SQL in `supabase/migrations/`,
+committed, and applied to the cloud with `supabase db push` after review.
 
 ```
-db:new    supabase migration new <name>
-db:push   supabase db push                       -- hosted project
-db:types  supabase gen types typescript --linked > lib/supabase/database.types.ts
-db:test   supabase db start && supabase test db  -- local container
+db:start  supabase start                          -- full local stack
 db:stop   supabase stop --no-backup
+db:new    supabase migration new <name>
+db:reset  supabase db reset                       -- replay migrations + seed, local
+db:test   supabase test db                        -- pgTAP, local
+db:push   supabase db push                        -- hosted project
+db:types  supabase gen types typescript --local > lib/supabase/database.types.ts
 ```
 
-`db:new`, `db:push` and `db:types` talk to the hosted project and need no
-Docker. `db:test` needs it. `supabase db diff` also needs it but is not used —
-migrations are authored by hand, which at this schema size is the simpler
-trade and keeps the file a reviewable artifact rather than a generated one.
+Types are generated from **local**, not `--linked`. The local database is the
+one that matches the branch being worked on; generating from the cloud would
+type the code against whatever was last pushed, which during feature work is
+the previous schema.
 
-Migrations are **written to be replayable from empty**, because `db:test`
-replays all of them into a fresh database on every run. This is a constraint
-worth stating plainly: a migration that silently depends on the hosted
-project's current state now fails in CI, which is the point.
+`supabase db diff` is now available, since it needs the local stack. Migrations
+are still **written by hand**. A diff-generated migration is a build artifact —
+it captures whatever the database happens to contain, including experiments —
+whereas a hand-written one is a reviewable statement of intent, which matters
+most for the file that creates the security policies. `db diff` is useful as a
+check that a hand-written migration produced what was intended.
 
-**Migrations are still applied to production manually, not by CI.** The local
-container proves a migration *runs*; it does not prove it is safe against live
-data, and it holds none. Automating `db push` on merge would apply DDL to
-production and would require CI to hold a privileged access token and the
-database password — on a runner this spec has already noted is persistent and
-root-capable. Phase 2 introduces the test project and this automation together,
-the same rule `CLAUDE.md` already states for branches and hosts.
+### Seed data
 
-`lib/supabase/database.types.ts` is generated and committed, and is excluded
-from lint and coverage. Regenerating it after a schema change is part of the
-migration step, not a separate chore.
+`supabase/seed.sql`, applied automatically by `supabase db reset`. It creates a
+handful of `auth.users` rows and assigns roles, so that a developer starting
+work has a normal user and an admin to log in as without clicking through
+signup.
+
+Two hard rules:
+
+- **Seed data is local-only.** `supabase db push` does not apply `seed.sql`,
+  and nothing in this project should ever make it do so. It exists to make an
+  empty database useful, not to bootstrap production.
+- **No plausible-looking customer data.** Seed users are obviously synthetic
+  (`admin@example.test`), and no seeded row imitates a real person, order, or
+  graded card. A seed file that looks like production data eventually gets
+  mistaken for it.
+
+The M3+ modules extend this file as their tables land; it grows with the schema
+rather than being rewritten.
+
+### Applying to the cloud
+
+Migrations reach the hosted project through `supabase db push`, run by a
+developer after the PR merges — **not** by CI. The local stack proves a
+migration *runs* and that policies behave; it holds no real data, so it cannot
+prove a migration is safe against live rows. Automating the push would also
+require CI to hold a privileged access token and the database password on a
+runner this spec has already noted is persistent and root-capable.
+
+`lib/supabase/database.types.ts` is generated and committed, and excluded from
+lint and coverage. Regenerating it is part of writing a migration, not a
+separate chore.
 
 ## Testing
 
@@ -509,9 +564,10 @@ Repo convention throughout: colocated `*.test.ts`, `globals: false`,
 
 ### Database tests — pgTAP
 
-`npm run db:test` → `supabase db start && supabase test db`. Tests live in
-`supabase/tests/`, run alphabetically, and each wraps itself in
-`begin … rollback` so ordering never leaks state.
+`npm run db:reset && npm run db:test`. Tests live in `supabase/tests/`, run
+alphabetically, and each wraps itself in `begin … rollback` so ordering never
+leaks state. The reset first is what guarantees they run against the migrations
+as committed rather than against whatever the developer's database drifted to.
 
 `supabase/tests/000-setup.sql` enables the extension and defines the
 impersonation helpers:
@@ -571,9 +627,12 @@ Two further points specific to this runner:
 - **Use the vendored CLI (`npx supabase`), not `supabase/setup-cli@v1`.** The
   CLI is already a devDependency installed by `npm ci`, so the action adds a
   third-party dependency to a root-capable runner for no benefit.
-- **Stop the database in an `if: always()` step.** The runner is persistent;
-  `supabase db start` leaves a container and a bound port behind, and the next
-  run — or a concurrent one on a different ref — collides with it.
+- **Stop the stack in an `if: always()` step.** The runner is persistent;
+  `supabase start` leaves containers and bound ports behind, and the next run —
+  or a concurrent one on a different ref — collides with them.
+- **CI needs only the database**, so it uses `supabase db start` rather than
+  the full `supabase start`. Developers need the full stack for auth; the
+  pgTAP suite does not.
 
 `/api/health` deliberately does **not** gain a database check. Coolify polls it
 continuously; a query per poll is avoidable load, and it would make an
@@ -603,6 +662,7 @@ lib/supabase/proxy.test.ts
 lib/supabase/env.test.ts
 lib/supabase/admin-import-guard.test.ts
 supabase/config.toml
+supabase/seed.sql
 supabase/migrations/<ts>_auth_foundation.sql
 supabase/tests/000-setup.sql
 supabase/tests/010-rls-profiles.sql
