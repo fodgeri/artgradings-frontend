@@ -31,7 +31,9 @@ screen ships in this work.
   `orders`.
 - **Storage buckets.** Card images go to Cloudflare R2, not Supabase Storage.
   Supabase Storage is not configured, and R2 is a separate M0 line item.
-- **A local Supabase stack.** Explicitly rejected — see *Environment strategy*.
+- **A local Supabase stack for development.** Day-to-day development runs
+  against the hosted project. A local database container exists solely to run
+  the pgTAP suite — see *Environment strategy*.
 - **Automated migration deployment.** Applying DDL to production from CI, with
   no test project to rehearse against, is a worse risk than a manual step. See
   *Migrations*.
@@ -40,16 +42,36 @@ screen ships in this work.
 
 ## Decisions and their rationale
 
-### Environment strategy: cloud-only
+### Environment strategy: hosted for development, local Postgres for tests
 
-A hosted EU project already exists. No local CLI stack (`supabase start`) is
-introduced, so Docker is not a prerequisite for working on the database.
+A hosted EU project already exists and remains the source of truth for
+development and production. Migrations are authored against it and pushed to
+it; there is no second Supabase project to keep in sync.
 
-The cost is named rather than absorbed: **without an ephemeral database there is
-no automated RLS testing.** See *Testing* for what this does and does not
-cover. This is the single largest known gap in the work, and it closes when the
-phase-2 test project lands alongside `develop` — the same pairing
-`docs/deployment/CICD_PIPELINE.md` already requires of a branch and a host.
+Tests are the exception. `supabase db start` brings up **only the database
+container** — not the ten-container full stack — and `supabase test db` runs
+pgTAP against it. Docker is therefore required to run the database test suite,
+but not to develop the application.
+
+An earlier draft of this spec rejected any local stack and accepted, as its
+largest known weakness, that **RLS policy behaviour would have no automated
+test**. That trade was wrong once it became clear how narrow the requirement
+actually is: RLS is the security boundary of this platform — the single
+mechanism standing between one customer and another customer's orders,
+addresses and payment records — and "verified by reading it" is not an adequate
+standard for that. A database-only container is a much smaller commitment than
+the full local stack that was rejected, and it buys the one thing worth having.
+
+Two consequences follow, both improvements:
+
+- **Migrations must run cleanly from empty.** `supabase db reset` replays every
+  migration into a fresh database on each test run, so a migration that only
+  works against the current production state fails in CI rather than in six
+  months.
+- **Policy changes become reviewable by evidence.** A pull request touching a
+  policy shows a passing or failing assertion, not a reviewer's reasoning about
+  `SECURITY DEFINER` semantics — which, on the evidence of this spec's own
+  first draft, is not reliable.
 
 ### Roles: table-resolved, not JWT-resolved
 
@@ -63,10 +85,11 @@ Two mechanisms were considered for getting a user's role into a policy:
 **Chosen: 2.** Three reasons, in order of weight:
 
 - **It is entirely versioned SQL.** The auth hook is enabled through dashboard
-  configuration, not a migration. With cloud-only development and a phase-2
-  test project still to be created, every piece of un-versioned configuration
-  is something that must later be reproduced by hand with no diff to check it
-  against.
+  configuration, not a migration — so it is invisible to `supabase db reset`,
+  meaning the local test database would not have it and the pgTAP suite could
+  not exercise the role mechanism at all. Every piece of un-versioned
+  configuration is also something that must be reproduced by hand when the
+  phase-2 test project is created, with no diff to check it against.
 - **Revocation is immediate.** A JWT-borne role persists until the token
   refreshes. The elevated roles here belong to staff who can finalize grades
   and issue refunds; a revocation that takes effect within the hour, silently,
@@ -437,19 +460,29 @@ are hand-written SQL in `supabase/migrations/`, committed, and applied with
 
 ```
 db:new    supabase migration new <name>
-db:push   supabase db push
+db:push   supabase db push                       -- hosted project
 db:types  supabase gen types typescript --linked > lib/supabase/database.types.ts
+db:test   supabase db start && supabase test db  -- local container
+db:stop   supabase stop --no-backup
 ```
 
-None of these require Docker. `supabase db diff` does, which is why migrations
-are authored rather than diffed — an acceptable trade at this schema size.
+`db:new`, `db:push` and `db:types` talk to the hosted project and need no
+Docker. `db:test` needs it. `supabase db diff` also needs it but is not used —
+migrations are authored by hand, which at this schema size is the simpler
+trade and keeps the file a reviewable artifact rather than a generated one.
 
-**Migrations are applied manually, not by CI.** Automating `db push` on merge
-would apply DDL to production automatically and would require CI to hold a
-privileged access token and the database password. With no test project to
-rehearse against, that trade is bad. Phase 2 introduces the test project and
-this automation together — the same rule `CLAUDE.md` already states for
-branches and hosts.
+Migrations are **written to be replayable from empty**, because `db:test`
+replays all of them into a fresh database on every run. This is a constraint
+worth stating plainly: a migration that silently depends on the hosted
+project's current state now fails in CI, which is the point.
+
+**Migrations are still applied to production manually, not by CI.** The local
+container proves a migration *runs*; it does not prove it is safe against live
+data, and it holds none. Automating `db push` on merge would apply DDL to
+production and would require CI to hold a privileged access token and the
+database password — on a runner this spec has already noted is persistent and
+root-capable. Phase 2 introduces the test project and this automation together,
+the same rule `CLAUDE.md` already states for branches and hosts.
 
 `lib/supabase/database.types.ts` is generated and committed, and is excluded
 from lint and coverage. Regenerating it after a schema change is part of the
@@ -457,52 +490,104 @@ migration step, not a separate chore.
 
 ## Testing
 
-Following repo convention: Vitest, colocated `*.test.ts`, `globals: false`,
-never asserting user-facing copy as a literal.
+Two suites, run by one command each, covering two different things.
 
-**Covered:**
+### Application tests — Vitest
+
+Repo convention throughout: colocated `*.test.ts`, `globals: false`,
+`renderWithIntl` for components, never asserting user-facing copy as a literal.
 
 - **Proxy cookie merge.** Mocked request/response asserting that cookies set by
   the Supabase step survive onto the next-intl response *including when
-  next-intl returns a redirect*. This is the highest-risk code in the change
-  and the failure it guards is intermittent, so it is tested directly rather
-  than by inspection.
+  next-intl returns a redirect*. The failure this guards is intermittent and
+  production-only, so it is tested directly rather than by inspection.
 - **Client factories** throw on missing environment variables rather than
   constructing a client that fails opaquely at first use.
 - **`admin.ts` import guard** — a static assertion that the `service_role`
   client is imported nowhere but server-only paths, in the same shape as the
   existing `components/gold-ink.test.ts` token guard.
 
-**Not covered — RLS policy behaviour.** There is no ephemeral database, so
-pgTAP cannot run. In its place, `supabase/tests/rls-manual.sql` holds
-impersonation snippets (`set local role authenticated;
-set local request.jwt.claims …`) asserting that user A cannot read user B's
-profile, that a non-admin cannot write `user_roles`, and that the reference
-tables reject writes. These are reviewable and repeatable but **run by hand**,
-paired with Supabase's Security Advisor after each push.
+### Database tests — pgTAP
 
-This is stated as a gap rather than a mitigation. The security boundary of this
-platform is not automatically verified until the phase-2 test project exists.
+`npm run db:test` → `supabase db start && supabase test db`. Tests live in
+`supabase/tests/`, run alphabetically, and each wraps itself in
+`begin … rollback` so ordering never leaks state.
 
-**Verified during design, not by the suite.** The RLS *mechanism* above was
-checked against a throwaway `postgres:17-alpine` container rather than reasoned
-about, which is what caught two defects in an earlier draft of this spec:
-`force row level security` silently reducing an admin's visible rows from all
-to their own, and `revoke execute … from authenticated` making every policy
-that calls the helper fail with `permission denied for function`. The probe
-scripts are kept at `supabase/tests/mechanism-probe.sql` with a comment
-explaining that they exercise Postgres semantics on a disposable database, not
-this project's schema, and are run by hand when the policy mechanism changes.
+`supabase/tests/000-setup.sql` enables the extension and defines the
+impersonation helpers:
 
-That container is also the cheapest available route to closing the gap above:
-if automated RLS testing is wanted before the phase-2 project exists, the same
-image plus the migration files and pgTAP would do it. It is out of scope here
-only because it means CI gains a service container and the migrations must be
-proven to run from empty — worth doing deliberately, in its own change.
+```sql
+create extension if not exists pgtap with schema extensions;
+```
+
+Assertions, at minimum:
+
+| What | Asserted |
+|---|---|
+| RLS is on | Every table in `public` has RLS enabled — catches a future table added without it |
+| Isolation | User A cannot see user B's `profiles` row |
+| Elevation | An `admin` **can** see both, via `profiles.read_all` |
+| Write protection | A non-admin cannot insert, update or delete in `user_roles` |
+| Reference tables | `authenticated` can read `roles`/`permissions`/`role_permissions` and cannot write them |
+| Provisioning | Inserting into `auth.users` produces exactly one `profiles` row and one `user` role |
+| Self-service limits | A user can update their own `full_name` and cannot change their `id` |
+| Helper safety | `private.has_permission` called directly by a non-admin returns `false` |
+
+The last row is deliberately a test rather than a comment: it is the property
+that makes granting `execute` to `authenticated` safe, and it was established
+by experiment rather than by reading the documentation.
+
+**Test helpers are written here, not installed.** Supabase's guide recommends
+`basejump-supabase_test_helpers`, installed at test time through the `dbdev`
+package registry. This project writes its own ~40-line equivalent
+(`create_test_user`, `authenticate_as`, `clear_auth`) instead, for the same
+reason `docs/superpowers/specs/2026-08-15-design-system-foundation-design.md`
+rejected Storybook: it is a second dependency tree to maintain against an M8
+budget. The specific aggravating factor here is that CI runs on a **public**
+repository against a **persistent self-hosted runner whose user is in the
+docker group** — pulling a third-party Postgres extension from a remote
+registry into that environment on every run is a supply-chain exposure the
+project does not need to accept for forty lines of SQL. If the helpers grow
+beyond trivial, revisit.
+
+### CI
+
+Database tests run as a **separate job** from `lint-build-typecheck`, because
+they need Docker and a different failure signal, and because the existing job's
+comment is emphatic that it is tuned deliberately.
+
+That new job **must carry the same fork-PR guard verbatim**:
+
+```yaml
+if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+```
+
+Omitting it reintroduces the exact vulnerability the existing comment
+documents — a fork PR reaching a root-capable persistent runner — through a new
+door. This is the single highest-risk line in the CI change.
+
+Two further points specific to this runner:
+
+- **Use the vendored CLI (`npx supabase`), not `supabase/setup-cli@v1`.** The
+  CLI is already a devDependency installed by `npm ci`, so the action adds a
+  third-party dependency to a root-capable runner for no benefit.
+- **Stop the database in an `if: always()` step.** The runner is persistent;
+  `supabase db start` leaves a container and a bound port behind, and the next
+  run — or a concurrent one on a different ref — collides with it.
 
 `/api/health` deliberately does **not** gain a database check. Coolify polls it
 continuously; a query per poll is avoidable load, and it would make an
 unrelated Supabase blip present as "the application is down."
+
+### Verified during design
+
+The RLS *mechanism* was checked against a throwaway `postgres:17-alpine`
+container rather than reasoned about, which is what caught two defects in an
+earlier draft: `force row level security` silently reducing an admin's visible
+rows from all to their own, and `revoke execute … from authenticated` making
+every policy that calls the helper fail with `permission denied for function`.
+Those findings are now encoded as pgTAP assertions above, so they cannot
+regress silently.
 
 ## Files
 
@@ -519,8 +604,10 @@ lib/supabase/env.test.ts
 lib/supabase/admin-import-guard.test.ts
 supabase/config.toml
 supabase/migrations/<ts>_auth_foundation.sql
-supabase/tests/rls-manual.sql
-supabase/tests/mechanism-probe.sql
+supabase/tests/000-setup.sql
+supabase/tests/010-rls-profiles.sql
+supabase/tests/020-rls-user-roles.sql
+supabase/tests/030-provisioning-trigger.sql
 ```
 
 **Modified**
@@ -529,7 +616,7 @@ supabase/tests/mechanism-probe.sql
 proxy.ts                                (compose Supabase + next-intl)
 .env.example                            (key rename)
 Dockerfile                              (ARG/ENV rename)
-.github/workflows/ci.yml                (placeholder rename)
+.github/workflows/ci.yml                (placeholder rename + db-tests job)
 .github/workflows/build-and-push.yml    (build arg rename)
 package.json                            (deps + db scripts)
 CLAUDE.md                               (Supabase section, rules)
