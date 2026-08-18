@@ -262,10 +262,26 @@ speculative.
 
 ## Row Level Security
 
-RLS is `enable`d **and** `force`d on all five tables. `force` closes the
-table-owner path; the `service_role` client continues to bypass policies
-through its `BYPASSRLS` role attribute, which is unaffected and is the intended
-behaviour for `admin.ts`.
+RLS is `enable`d on all five tables. It is **not** `force`d, and the
+`service_role` client used by `admin.ts` bypasses policies through its
+`BYPASSRLS` role attribute.
+
+`force row level security` was in an earlier draft of this spec and was removed
+after testing it against a real Postgres. It is actively harmful here, in two
+ways:
+
+- **It silently disables the admin path.** Inside a `SECURITY DEFINER`
+  function, `current_user` is the function's owner, not the caller. `force`
+  subjects that owner to the table's policies, and every policy here is
+  declared `to authenticated` — so none of them match the owner, default-deny
+  applies, and `private.has_permission` returns `false` for everyone forever.
+  Measured: an admin who should see all rows saw only their own. No error, no
+  log line, no recursion — just an administrator who quietly cannot administer.
+- **It blocks the seed data.** The reference tables deliberately have no write
+  policy, so the migration's own `INSERT`s fail with `new row violates
+  row-level security policy for table "user_roles"`.
+
+Supabase's documentation never mentions `force`. That is not an oversight.
 
 ### The permission helper
 
@@ -288,59 +304,100 @@ as $$
   );
 $$;
 
-revoke execute on function private.has_permission(text)
-  from public, anon, authenticated, service_role;
+grant usage on schema private to authenticated;
+grant execute on function private.has_permission(text) to authenticated;
 ```
 
-Four properties, each of which is required rather than stylistic:
+Four properties, each required rather than stylistic:
 
 - **`security definer` prevents infinite recursion.** The function reads
-  `user_roles`, and `user_roles`' own policy calls the function. Without the
-  RLS bypass this recurses until Postgres raises a stack-depth error — during
-  login, and presenting as nothing resembling a permissions problem.
+  `user_roles`, whose own policy calls the function. The bypass comes from the
+  function running as the tables' owner, and owners are exempt from RLS *unless
+  forced* — which is the second reason `force` is absent above. Without the
+  bypass this recurses during login and surfaces as nothing resembling a
+  permissions problem.
 - **The identity check is inside the body.** `auth.uid()` is read within the
-  function, not passed in by the caller. A `SECURITY DEFINER` function that
-  accepts the user it should act as is an authorization bypass.
-- **It lives in `private`, not `public`.** The `public` schema is exposed
-  through PostgREST; a security-definer function there is callable over the
-  API.
-- **`execute` is revoked from every role**, including `service_role`. Policies
-  invoke it as the definer, so no application role needs the grant.
+  function rather than accepted as an argument. This is the control that makes
+  the function safe to expose: a caller can only ever ask it about themselves.
+  Verified — `authenticated` invoking it directly for a permission they lack
+  receives `false`, not another user's answer.
+- **It lives in `private`, not `public`.** Protection from the Data API comes
+  from `private` not being a PostgREST-exposed schema. A security-definer
+  function in `public` is callable over the API.
+- **`execute` is granted to `authenticated`, together with `usage` on the
+  schema.** This reverses the more commonly published advice, which revokes
+  `execute` from `anon`, `authenticated` and `service_role`. That advice is
+  wrong for a function called from a policy: **policy expressions are evaluated
+  with the privileges of the querying user**, so revoking the grant makes every
+  query against the table fail with `ERROR: permission denied for function
+  has_permission`. Tested directly; the revoke-based version does not work. The
+  pattern appears to work for others only because they never revoke and inherit
+  the default `PUBLIC` grant.
 
 ### Policies
 
-All policies are declared `to authenticated`, so anonymous requests
-short-circuit without evaluating the expression. All function calls are wrapped
-as `(select …)` so they evaluate once per statement as an InitPlan rather than
-once per row.
+Rules that hold for every policy in this work:
 
-Where a table needs both an ownership rule and a permission rule for the same
-command, they are combined into **one policy with `or`** rather than two
-permissive policies. Permissive policies are OR-ed anyway, and a single policy
-evaluates more cheaply.
+- **One policy per operation. Never `for all`.** Postgres does not accept
+  multiple operations in a single `FOR` clause, and per-operation policies make
+  the `using` / `with check` split explicit.
+- **Always `to authenticated`**, so anonymous requests stop at the role check
+  without evaluating the expression.
+- **`using` for `select` and `delete`; `with check` for `insert`; both for
+  `update`.**
+- **Every function call wrapped as `(select …)`**, so it is evaluated once per
+  statement as an InitPlan rather than once per row.
+- **Permissive, never restrictive.** Permissive policies combine with `OR`,
+  which is the intended semantics throughout.
+- **An `update` policy requires a matching `select` policy** or the update
+  silently fails to match rows. Both tables that accept updates have one.
 
-| Table | Command | Rule |
-|---|---|---|
-| `profiles` | select | `id = (select auth.uid())` **or** `has_permission('profiles.read_all')` |
-| `profiles` | update | `id = (select auth.uid())`, both `using` and `with check` |
-| `profiles` | insert / delete | No policy. Rows are created by the trigger and removed by cascade. |
-| `user_roles` | select | `user_id = (select auth.uid())` **or** `has_permission('roles.read_all')` |
-| `user_roles` | insert / update / delete | `has_permission('roles.assign')` |
-| `roles` | select | `true` |
-| `permissions` | select | `true` |
-| `role_permissions` | select | `true` |
-| `roles`, `permissions`, `role_permissions` | write | No policy. Migration-only. |
+Where one operation has both an ownership rule and a permission rule, the two
+are expressed as `or` within a single policy rather than as two permissive
+policies. This is a readability choice, not a performance one — permissive
+policies are OR-ed regardless, and an earlier draft of this spec claimed a
+speed benefit that is not supported by any measurement.
+
+| Table | Operation | Clause | Rule |
+|---|---|---|---|
+| `profiles` | select | using | `id = (select auth.uid())` **or** `(select private.has_permission('profiles.read_all'))` |
+| `profiles` | update | using + with check | `id = (select auth.uid())` |
+| `profiles` | insert, delete | — | No policy. Created by trigger, removed by cascade. |
+| `user_roles` | select | using | `user_id = (select auth.uid())` **or** `(select private.has_permission('roles.read_all'))` |
+| `user_roles` | insert | with check | `(select private.has_permission('roles.assign'))` |
+| `user_roles` | update | using + with check | `(select private.has_permission('roles.assign'))` |
+| `user_roles` | delete | using | `(select private.has_permission('roles.assign'))` |
+| `roles`, `permissions`, `role_permissions` | select | using | `true` |
+| `roles`, `permissions`, `role_permissions` | insert, update, delete | — | No policy. Migration-only. |
+
+Policy names are short descriptive sentences in double quotes, per Supabase
+convention — `"Users can view their own profile"`, not `profiles_select_01`.
 
 The three reference tables are readable by any authenticated user because they
-describe the system's vocabulary, not anybody's data. They have no write
-policy, so with RLS forced they are unwritable except by migration or the
-`service_role` client.
+describe the system's vocabulary rather than anybody's data. Having no write
+policy, they are writable only by the migration (which runs as the tables'
+owner, exempt from RLS because RLS is not forced) and by the `service_role`
+client.
 
 `profiles` has no insert policy by design, so a user cannot create a second
 profile row. Its update policy repeats the ownership test in `with check` as
 well as `using`, which is what prevents a user from moving their own row to
-another `id` — `using` alone would permit the write and only restrict which
-rows are visible to update.
+another `id` — `using` alone governs which rows are visible to update, not what
+they may become.
+
+### Indexing for policies
+
+A column counts as indexed only when it is **first** in a btree index, so
+composite primary keys do not cover their trailing columns. The policy filter
+columns and the helper's join columns are covered as follows:
+
+| Column | Covered by |
+|---|---|
+| `profiles.id` | primary key |
+| `user_roles.user_id` | leading column of the composite primary key |
+| `user_roles.role_key` | dedicated index (trailing in the PK) |
+| `role_permissions.role_key` | leading column of the composite primary key |
+| `role_permissions.permission_key` | dedicated index (trailing in the PK) |
 
 ## Environment variables
 
@@ -427,6 +484,22 @@ paired with Supabase's Security Advisor after each push.
 This is stated as a gap rather than a mitigation. The security boundary of this
 platform is not automatically verified until the phase-2 test project exists.
 
+**Verified during design, not by the suite.** The RLS *mechanism* above was
+checked against a throwaway `postgres:17-alpine` container rather than reasoned
+about, which is what caught two defects in an earlier draft of this spec:
+`force row level security` silently reducing an admin's visible rows from all
+to their own, and `revoke execute … from authenticated` making every policy
+that calls the helper fail with `permission denied for function`. The probe
+scripts are kept at `supabase/tests/mechanism-probe.sql` with a comment
+explaining that they exercise Postgres semantics on a disposable database, not
+this project's schema, and are run by hand when the policy mechanism changes.
+
+That container is also the cheapest available route to closing the gap above:
+if automated RLS testing is wanted before the phase-2 project exists, the same
+image plus the migration files and pgTAP would do it. It is out of scope here
+only because it means CI gains a service container and the migrations must be
+proven to run from empty — worth doing deliberately, in its own change.
+
 `/api/health` deliberately does **not** gain a database check. Coolify polls it
 continuously; a query per poll is avoidable load, and it would make an
 unrelated Supabase blip present as "the application is down."
@@ -447,6 +520,7 @@ lib/supabase/admin-import-guard.test.ts
 supabase/config.toml
 supabase/migrations/<ts>_auth_foundation.sql
 supabase/tests/rls-manual.sql
+supabase/tests/mechanism-probe.sql
 ```
 
 **Modified**
