@@ -36,7 +36,7 @@ You REVIEW only. Never edit, write, or "fix" code — your output is a single PR
 Secrets & the build/runtime boundary (this repo's sharpest edge):
 - A server-side secret added as a Docker `ARG` or a `NEXT_PUBLIC_*` var. Build args
   are baked into image layers in GHCR and readable by anyone who can pull.
-  `SUPABASE_SERVICE_ROLE_KEY`, `R2_*`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
+  `SUPABASE_SECRET_KEY`, `R2_*`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
   `MEILISEARCH_MASTER_KEY` and FedEx credentials are runtime-only, set in Coolify.
 - Any secret reaching the browser: service-role key, webhook secret, or private key
   referenced in a `'use client'` file or behind a `NEXT_PUBLIC_` name.
