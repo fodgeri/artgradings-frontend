@@ -67,3 +67,46 @@ jobs:
         run: npx tsc --noEmit
         env:
           NODE_OPTIONS: --max-old-space-size=6144
+
+  db-tests:
+    # SECURITY — do not remove. Identical to the guard on lint-build-typecheck
+    # and required for the same reason: this repo is public and the runner is
+    # self-hosted, persistent, and its user is in the docker group (root on the
+    # host). A fork PR runs its OWN package.json, and `npm ci` executes
+    # lifecycle scripts. Omitting this line reopens that hole through a new
+    # door.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Installs the Supabase CLI as a devDependency. Deliberately not
+      # `supabase/setup-cli@v1`: the CLI is already vendored, and a
+      # third-party action on a root-capable runner buys nothing.
+      - name: Install dependencies
+        run: npm ci
+
+      # Only the database, not the ten-service `supabase start`. pgTAP needs
+      # Postgres; it does not need GoTrue, Storage or Studio.
+      - name: Start the local database
+        run: npx supabase db start
+
+      # Replays every migration into an empty database, then the seed. A
+      # migration that only works against the dev project's current state
+      # fails here.
+      - name: Apply migrations from empty
+        run: npx supabase db reset
+
+      - name: Run database tests
+        run: npx supabase test db
+
+      # The runner is persistent: without this, containers and bound ports
+      # survive the job and the next run collides with them.
+      - name: Stop the local database
+        if: always()
+        run: npx supabase stop --no-backup
