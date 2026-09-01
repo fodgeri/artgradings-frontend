@@ -5,11 +5,6 @@ export function SurfaceSection() {
   return (
     <div>
       <h2 className="font-serif text-h2 text-ink">Surfaces</h2>
-      <p className="mt-2 max-w-prose text-lead text-muted">
-        The glass utilities resolve per theme: frosted white on paper, full liquid glass
-        on black. Radii are themed too — cards grow from 13px to 18px in dark, because
-        blur reads softer.
-      </p>
       <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
         <Card className="p-6">
           <div className="font-mono text-meta text-muted">Card · solid</div>

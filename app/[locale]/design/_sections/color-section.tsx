@@ -18,12 +18,6 @@ export function ColorSection() {
   return (
     <div>
       <h2 className="font-serif text-h2 text-ink">Colour</h2>
-      <p className="mt-2 max-w-prose text-lead text-muted">
-        Every swatch is a role, not a value. <code className="font-mono">gold</code> is
-        for fills and borders; <code className="font-mono">gold-ink</code> is the only
-        gold permitted as text — the decorative one measures 3.13:1 on paper and fails
-        WCAG AA.
-      </p>
       <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {ROLE_TOKENS.map((token) => (
           <div key={token} className="rounded-card border border-hairline p-3">
