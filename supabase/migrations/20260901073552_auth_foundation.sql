@@ -148,3 +148,86 @@ $$;
 create trigger profiles_set_updated_at
 before update on public.profiles
 for each row execute function private.set_updated_at();
+
+-- ── Row Level Security ──────────────────────────────────────────────────
+--
+-- ENABLE only, never FORCE. FORCE subjects the table owner to policies, and
+-- since SECURITY DEFINER runs as the owner while every policy below is
+-- `to authenticated`, none would match: has_permission would return false for
+-- everyone, silently, and this migration's own inserts would be refused.
+
+alter table public.profiles         enable row level security;
+alter table public.roles            enable row level security;
+alter table public.permissions      enable row level security;
+alter table public.user_roles       enable row level security;
+alter table public.role_permissions enable row level security;
+
+-- Least privilege at the grant layer, beneath the policy layer. `anon` has no
+-- policy on any of these tables, so it is also given no grant.
+revoke all on public.profiles, public.roles, public.permissions,
+              public.user_roles, public.role_permissions
+  from anon;
+
+grant select on public.profiles, public.roles, public.permissions,
+                public.user_roles, public.role_permissions
+  to authenticated;
+grant update on public.profiles to authenticated;
+grant insert, update, delete on public.user_roles to authenticated;
+
+-- profiles ---------------------------------------------------------------
+
+create policy "Users can view their own profile, admins can view all"
+on public.profiles for select to authenticated
+using (
+  id = (select auth.uid())
+  or (select private.has_permission('profiles.read_all'))
+);
+
+-- `with check` repeats the test deliberately. `using` alone decides which rows
+-- are visible to update, not what they may become — without the repeat a user
+-- could move their own row to another id.
+create policy "Users can update their own profile"
+on public.profiles for update to authenticated
+using (id = (select auth.uid()))
+with check (id = (select auth.uid()));
+
+-- No insert policy: rows come from the provisioning trigger, so a user cannot
+-- create a second profile. No delete policy: rows go by cascade from auth.users.
+
+-- user_roles -------------------------------------------------------------
+
+create policy "Users can view their own roles, admins can view all"
+on public.user_roles for select to authenticated
+using (
+  user_id = (select auth.uid())
+  or (select private.has_permission('roles.read_all'))
+);
+
+create policy "Granting a role requires roles.assign"
+on public.user_roles for insert to authenticated
+with check ((select private.has_permission('roles.assign')));
+
+create policy "Changing a role requires roles.assign"
+on public.user_roles for update to authenticated
+using ((select private.has_permission('roles.assign')))
+with check ((select private.has_permission('roles.assign')));
+
+create policy "Revoking a role requires roles.assign"
+on public.user_roles for delete to authenticated
+using ((select private.has_permission('roles.assign')));
+
+-- reference tables -------------------------------------------------------
+--
+-- Readable because they describe the system's vocabulary rather than anybody's
+-- data. No write policy at all, so they are writable only by a migration
+-- (which runs as the owner, exempt because RLS is not forced) or by the
+-- service_role client.
+
+create policy "Signed-in users can read roles"
+on public.roles for select to authenticated using (true);
+
+create policy "Signed-in users can read permissions"
+on public.permissions for select to authenticated using (true);
+
+create policy "Signed-in users can read role permissions"
+on public.role_permissions for select to authenticated using (true);
