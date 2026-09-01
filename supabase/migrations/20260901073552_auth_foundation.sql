@@ -100,3 +100,51 @@ $$;
 -- PostgREST-exposed schema, so it is not reachable over the Data API.
 grant usage on schema private to authenticated;
 grant execute on function private.has_permission(text) to authenticated;
+
+-- ── Provisioning ────────────────────────────────────────────────────────
+--
+-- Every insert is `on conflict do nothing` because this function must be
+-- incapable of raising. If it throws, signup fails with an opaque 500 giving
+-- no indication that the cause was a trigger on a table the application never
+-- writes to directly.
+create or replace function private.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.profiles (id)
+  values (new.id)
+  on conflict (id) do nothing;
+
+  insert into public.user_roles (user_id, role_key)
+  values (new.id, 'user')
+  on conflict (user_id, role_key) do nothing;
+
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function private.handle_new_user();
+
+-- now() is the transaction timestamp deliberately: rows updated together share
+-- a stamp, matching created_at's default. The point of the trigger is that the
+-- value is the server's, not the caller's — a client cannot forge updated_at
+-- through the Data API.
+create or replace function private.set_updated_at()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+create trigger profiles_set_updated_at
+before update on public.profiles
+for each row execute function private.set_updated_at();
