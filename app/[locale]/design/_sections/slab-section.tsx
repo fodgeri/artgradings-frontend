@@ -7,10 +7,6 @@ export function SlabSection() {
   return (
     <div>
       <h2 className="font-serif text-h2 text-ink">Slab</h2>
-      <p className="mt-2 max-w-prose text-lead text-muted">
-        Sample data only. Grades, certificate numbers, and the grading scale itself are
-        client-supplied and must never be rendered on a public page from these fixtures.
-      </p>
       <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {SAMPLE_SLABS.map((slab) => (
           <Slab key={slab.cert} data={slab} />

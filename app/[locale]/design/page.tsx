@@ -29,10 +29,6 @@ export default function DesignPage() {
       <div className="flex flex-col gap-20 py-16">
         <header>
           <h1 className="font-serif text-display text-ink">Design system</h1>
-          <p className="mt-4 max-w-prose text-lead text-muted">
-            Every token and primitive, rendered through the real layout and fonts. Use
-            the theme control in the header to check both themes.
-          </p>
         </header>
         <ColorSection />
         <TypeSection />
