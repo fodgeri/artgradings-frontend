@@ -15,12 +15,12 @@ COPY . .
 
 # Build-time only. Next.js inlines NEXT_PUBLIC_* into the client bundle, so
 # these are baked into the image and are public by definition. Server-side
-# secrets (SUPABASE_SERVICE_ROLE_KEY, R2_*, STRIPE_SECRET_KEY, FedEx creds)
+# secrets (SUPABASE_SECRET_KEY, R2_*, STRIPE_SECRET_KEY, FedEx creds)
 # must NEVER appear here — they are runtime env, set in Coolify.
 # Args for services not yet built are declared now; an unset ARG is an empty
 # string and is harmless.
 ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_SENTRY_DSN
@@ -37,7 +37,7 @@ ARG GIT_SHA
 # mounted for the duration of one RUN and never written to a layer.
 
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY \
     NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY \
     NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
