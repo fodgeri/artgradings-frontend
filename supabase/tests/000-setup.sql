@@ -25,9 +25,18 @@ grant usage on schema tests to authenticated, anon;
 -- Creates a confirmed auth user and returns its id. Inserting into auth.users
 -- is what fires the provisioning trigger, so this is also how that trigger is
 -- exercised.
+--
+-- `security definer` because tests routinely create a user while already
+-- impersonating another one — `authenticate_as(create_user(...))` evaluates
+-- its argument before the role switch lands, and `authenticated` cannot insert
+-- into auth.users. Creating a fixture user is not an action any policy should
+-- govern: in production GoTrue does it as supabase_auth_admin, never as the
+-- end user. Qualifying every name lets search_path be empty.
 create or replace function tests.create_user(email text)
 returns uuid
 language plpgsql
+security definer
+set search_path = ''
 as $$
 declare
   uid uuid := gen_random_uuid();

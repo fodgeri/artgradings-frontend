@@ -67,3 +67,36 @@ insert into public.role_permissions (role_key, permission_key) values
   ('admin', 'profiles.read_all'),
   ('admin', 'roles.read_all'),
   ('admin', 'roles.assign');
+
+-- ── The permission helper ───────────────────────────────────────────────
+--
+-- `security definer` is required, not stylistic. The function reads
+-- user_roles, whose own policy calls the function; the bypass comes from
+-- running as the tables' owner, and owners are exempt from RLS. This is also
+-- why RLS is enabled but never FORCEd below — FORCE removes that exemption,
+-- and the function would silently return false for everyone.
+create or replace function private.has_permission(requested text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.user_roles ur
+    join public.role_permissions rp on rp.role_key = ur.role_key
+    where ur.user_id = (select auth.uid())
+      and rp.permission_key = requested
+  );
+$$;
+
+-- EXECUTE is GRANTED, not revoked. Policy expressions are evaluated with the
+-- privileges of the querying user, so revoking this makes every query against
+-- a protected table fail with `permission denied for function`. Tested.
+--
+-- What keeps the function safe is that auth.uid() is read inside its body, so
+-- a caller can only ask about themselves; and that `private` is not a
+-- PostgREST-exposed schema, so it is not reachable over the Data API.
+grant usage on schema private to authenticated;
+grant execute on function private.has_permission(text) to authenticated;
