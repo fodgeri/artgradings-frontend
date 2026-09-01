@@ -13,7 +13,11 @@ This document is the operational view.
 ```
 push to main
     │
-    ├─▶ CI (ci.yml)              lint → build → typecheck
+    ├─▶ CI (ci.yml)              job: lint-build-typecheck
+    │                            lint → test → build → typecheck
+    │                            job: db-tests
+    │                            replay every migration into an empty
+    │                            database, then run the pgTAP suite
     │
     └─▶ Build and Push (build-and-push.yml)
             │
@@ -59,6 +63,12 @@ in the container's environment.
 An image built with test values **is a test image**. Retagging it for production
 would ship the test Supabase project and test Stripe key to real users, and
 nothing would error — the app would quietly talk to the wrong backend.
+
+This is not hypothetical today. The only Supabase project that exists is a
+**dev** project, so every image currently tagged `prod-<sha>` is built against
+dev Supabase and is a dev image whatever the tag says. Launch means creating
+the production project and **rebuilding** with its build args — never retagging
+an existing image.
 
 ### The one configuration to never build
 
@@ -145,7 +155,7 @@ scripts from the PR's own `package.json`, so no workflow edit is even needed to
 get code execution. If external contributions are wanted later, add a separate
 GitHub-hosted job for them rather than relaxing this guard.
 
-Server-side secrets that must **never** be build args: `SUPABASE_SERVICE_ROLE_KEY`,
+Server-side secrets that must **never** be build args: `SUPABASE_SECRET_KEY`,
 `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `MEILISEARCH_MASTER_KEY`,
 `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, FedEx credentials.
 
