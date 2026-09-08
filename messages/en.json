@@ -42,6 +42,7 @@
   "a11y": {
     "theme": "Colour theme",
     "themeLight": "Light",
-    "themeDark": "Dark"
+    "themeDark": "Dark",
+    "wordmark": "ART"
   }
 }
