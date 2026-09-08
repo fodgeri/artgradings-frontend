@@ -10,7 +10,7 @@ describe("Hero", () => {
   test("renders the title as the page's h1", () => {
     renderWithIntl(<Hero cards={SAMPLE_SLABS} />);
     expect(
-      screen.getByRole("heading", { level: 1, name: messages.home.heroTitle }),
+      screen.getByRole("heading", { level: 1, name: messages.home.title }),
     ).toBeInTheDocument();
   });
 

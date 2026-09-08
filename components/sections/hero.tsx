@@ -25,10 +25,10 @@ export function Hero({ cards }: { cards: SlabData[] }) {
           <Eyebrow>{t("heroEyebrow")}</Eyebrow>
 
           <h1 className="mt-5 max-w-[880px] font-serif text-display text-ink">
-            {t("heroTitle")}
+            {t("title")}
           </h1>
 
-          <p className="mt-6 max-w-[600px] text-lead text-muted">{t("heroLead")}</p>
+          <p className="mt-6 max-w-[600px] text-lead text-muted">{t("subtitle")}</p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <Link href="/submit" className={buttonVariants({ variant: "gold" })}>

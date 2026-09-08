@@ -35,6 +35,13 @@ describe("FaqSection", () => {
     ).toBeInTheDocument();
   });
 
+  test("omits the heading when none is given", () => {
+    // /faq passes none: its page h1 already introduces the accordion, and an
+    // h2 repeating it would print the same words twice.
+    renderWithIntl(<FaqSection items={items} />);
+    expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
+  });
+
   test("renders the trailing link only when one is given", () => {
     const { unmount } = renderWithIntl(
       <FaqSection items={items} heading={messages.faq.title} />,

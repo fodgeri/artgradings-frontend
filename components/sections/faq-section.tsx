@@ -9,9 +9,13 @@ import { Link } from "@/i18n/navigation";
  * full. Thin, but it owns the band padding and the reading measure so neither
  * route repeats them.
  *
- * `heading` arrives as a resolved string and always renders as an `h2`: both
- * routes supply their own `h1`, so this section must never compete for the
- * document's single top-level heading.
+ * `heading` arrives as a resolved string and renders as an `h2` — never an
+ * `h1`, because both routes supply their own and this section must not compete
+ * for the document's single top-level heading.
+ *
+ * It is optional: on `/faq` the page's `h1` already introduces the accordion,
+ * and repeating it as an `h2` immediately below would print the same words
+ * twice. On the landing page the band needs its own heading, so it gets one.
  */
 export function FaqSection({
   items,
@@ -20,7 +24,7 @@ export function FaqSection({
   footerLink,
 }: {
   items: AccordionItem[];
-  heading: string;
+  heading?: string;
   eyebrow?: string;
   footerLink?: { href: string; label: string };
 }) {
@@ -29,9 +33,11 @@ export function FaqSection({
       <Container>
         <div className="mx-auto max-w-[760px]">
           {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-          <h2 className="mt-3 font-serif text-h2 text-ink">{heading}</h2>
+          {heading ? (
+            <h2 className="mt-3 font-serif text-h2 text-ink">{heading}</h2>
+          ) : null}
 
-          <div className="mt-10">
+          <div className={heading || eyebrow ? "mt-10" : ""}>
             <Accordion items={items} />
           </div>
 

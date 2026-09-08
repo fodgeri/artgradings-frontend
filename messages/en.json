@@ -34,8 +34,6 @@
     "trendingTitle": "Trending cards",
     "gradedCount": "{count, plural, =0 {No cards graded yet} one {# card graded} other {# cards graded}}",
     "heroEyebrow": "Authentic. Rated. Trusted",
-    "heroTitle": "Grading and authentication you can trust",
-    "heroLead": "Send us your cards. Our experts authenticate and grade them, and every result becomes part of the public database.",
     "stats": [
       {
         "value": "1.2M+",
@@ -55,6 +53,7 @@
       }
     ],
     "stepsTitle": "How it works",
+    "stepsHeading": "From your mailbox to the public database",
     "stepsLink": "Read the full process",
     "showcaseEyebrow": "Recently graded",
     "showcaseTitle": "Every result enters the public database",
