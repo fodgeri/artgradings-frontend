@@ -32,7 +32,38 @@
     "ctaPrimary": "Start a submission",
     "ctaSecondary": "See how it works",
     "trendingTitle": "Trending cards",
-    "gradedCount": "{count, plural, =0 {No cards graded yet} one {# card graded} other {# cards graded}}"
+    "gradedCount": "{count, plural, =0 {No cards graded yet} one {# card graded} other {# cards graded}}",
+    "heroEyebrow": "Authentic. Rated. Trusted",
+    "heroTitle": "Grading and authentication you can trust",
+    "heroLead": "Send us your cards. Our experts authenticate and grade them, and every result becomes part of the public database.",
+    "stats": [
+      {
+        "value": "1.2M+",
+        "label": "Cards certified"
+      },
+      {
+        "value": "48hr",
+        "label": "Vault express"
+      },
+      {
+        "value": "100%",
+        "label": "Authentication guarantee"
+      },
+      {
+        "value": "4-point",
+        "label": "Sub-grade report"
+      }
+    ],
+    "stepsTitle": "How it works",
+    "stepsLink": "Read the full process",
+    "showcaseEyebrow": "Recently graded",
+    "showcaseTitle": "Every result enters the public database",
+    "filterAll": "All",
+    "gasFill": "Every slab is sealed under inert gas.",
+    "faqTitle": "Common questions",
+    "faqLink": "See all questions",
+    "ctaTitle": "Ready to have your cards graded?",
+    "ctaLead": "Start a submission and track it from the moment it reaches the vault."
   },
   "common": {
     "loading": "Loading…",
@@ -44,5 +75,67 @@
     "themeLight": "Light",
     "themeDark": "Dark",
     "wordmark": "ART"
+  },
+  "howItWorks": {
+    "title": "How it works",
+    "lead": "Four steps from your mailbox to the public database.",
+    "steps": [
+      {
+        "number": "01",
+        "title": "Submit your cards",
+        "body": "Tell us what you are sending — name, set, set number and release year for each card. Add a photo if you have one."
+      },
+      {
+        "number": "02",
+        "title": "Ship to the vault",
+        "body": "Pack your cards and send them with the shipping label we generate. Every arrival is logged and photographed."
+      },
+      {
+        "number": "03",
+        "title": "Authenticate and grade",
+        "body": "Our experts confirm the card is genuine, then score its condition against the published grading scale."
+      },
+      {
+        "number": "04",
+        "title": "Seal and return",
+        "body": "The card is sealed in a tamper-evident slab and shipped back to you. The result joins the public database."
+      }
+    ]
+  },
+  "faq": {
+    "title": "Frequently asked questions",
+    "lead": "Everything we are asked most often. If your question is not here, contact us.",
+    "items": [
+      {
+        "id": "turnaround",
+        "question": "How long does grading take?",
+        "answer": "Turnaround depends on the service level you choose at submission. You can track your order's status from your account at every stage."
+      },
+      {
+        "id": "scale",
+        "question": "What grading scale do you use?",
+        "answer": "Cards are scored on a numeric scale covering centering, corners, edges and surface, and the sub-grades are shown on the label alongside the overall grade."
+      },
+      {
+        "id": "authentication",
+        "question": "What is the difference between grading and authentication?",
+        "answer": "Authentication confirms a card is genuine. Grading scores the physical condition of a card we have authenticated. You can order either or both."
+      },
+      {
+        "id": "insurance",
+        "question": "Are my cards insured while you have them?",
+        "answer": "Cards are insured from the moment they are logged at the vault until they are handed back to the carrier for return shipping."
+      },
+      {
+        "id": "damage",
+        "question": "What happens if a card is damaged in your care?",
+        "answer": "If we damage a card while it is in our care, we refund the grading fee and the card's declared value."
+      },
+      {
+        "id": "public",
+        "question": "Will my cards appear in the public database?",
+        "answer": "Yes. Every card we grade or authenticate enters the public Pop Report once the result is finalised, so collectors can see how many examples exist at each grade."
+      }
+    ]
   }
 }
