@@ -14,16 +14,20 @@ import "../globals.css";
 // All three faces ship a variable version, so `weight` is omitted on purpose:
 // that loads the full axis range in one file instead of one file per weight.
 //
-// Playfair carries three axes — opsz, wdth and wght. `wdth` is requested
-// because the brand manual sets display type SemiCondensed, which is that
-// axis at its 87.5 minimum rather than a separate family; `font-stretch`
-// selects it where the design calls for it. Note this is Playfair, not
-// Playfair Display.
+// Playfair, not Playfair Display. It carries three axes — opsz, wdth and
+// wght — and only wght is loaded.
+//
+// The manual's type page is a specimen sheet: Regular, SemiCondensed Bold,
+// Italic. It shows SemiCondensed is available in the family, not that any
+// particular element uses it, and it names no element at all. Requesting
+// `wdth` without a `font-stretch` anywhere would ship axis data that changes
+// nothing, and applying it across every heading would invent a rule the
+// manual does not state. If a display treatment turns out to want it, add
+// `axes: ["wdth"]` back together with the `font-stretch: 87.5%` that uses it.
 const serif = Playfair({
   variable: "--ag-font-serif",
   subsets: ["latin"],
   display: "swap",
-  axes: ["wdth"],
 });
 
 // The manual specifies Source Sans, whose samples embed Source Sans Pro.
