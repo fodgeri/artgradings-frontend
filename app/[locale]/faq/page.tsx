@@ -30,7 +30,9 @@ export default function FaqPage() {
       </Section>
 
       {/* No heading: the page h1 above already introduces the accordion. */}
-      <FaqSection items={items} />
+      {/* pt-0: the heading band above already opened the page, and two
+          stacked section paddings read as a gap rather than a rhythm. */}
+      <FaqSection items={items} className="pt-0" />
 
       <CtaBand />
     </>

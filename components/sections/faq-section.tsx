@@ -22,14 +22,17 @@ export function FaqSection({
   heading,
   eyebrow,
   footerLink,
+  className,
 }: {
   items: AccordionItem[];
   heading?: string;
   eyebrow?: string;
   footerLink?: { href: string; label: string };
+  /** For a route that supplies its own heading band directly above. */
+  className?: string;
 }) {
   return (
-    <Section>
+    <Section className={className}>
       <Container>
         <div className="mx-auto max-w-[760px]">
           {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}

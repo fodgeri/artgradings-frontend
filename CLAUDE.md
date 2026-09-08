@@ -16,7 +16,28 @@ The authoritative scope/estimate document is `docs/01-project-estimation.md` (Hu
 
 Next.js 16.3, React 19.2, TypeScript (strict), Tailwind CSS v4 (PostCSS plugin, no `tailwind.config`), ESLint 9 flat config.
 
-Built so far: the i18n setup, Sentry, the Vitest harness, the M1 design system foundation (tokens, primitives, site shell, `/design` gallery), and the M0 Supabase foundation (schema, roles/permissions, RLS, typed clients, session refresh). Not yet built: every public page, and all auth UI — signup, login and password reset are M2. `app/[locale]/page.tsx` is still a placeholder landing page.
+Built so far: the i18n setup, Sentry, the Vitest harness, the M1 design system
+foundation (tokens, primitives, site shell, `/design` gallery), the brand
+identity from the client's manual, the M0 Supabase foundation (schema,
+roles/permissions, RLS, typed clients, session refresh), and the three M1
+public pages — landing, `/how-it-works` and `/faq`.
+
+Not yet built: all auth UI — signup, login and password reset are M2.
+
+**Three links in the chrome are deliberate 404s**, and must be stated at
+handover rather than papered over with stub pages nobody scoped:
+
+| Route | Why |
+|---|---|
+| `/pricing` | Never scoped in the estimate. The design's tiers, turnarounds and value caps are invented, and pricing is client-supplied. |
+| `/pop-report` | M4. |
+| `/submit` | M3. Linked from the header and two CTAs. |
+
+The public pages ship with **placeholder marketing copy from the approved
+design**, including quantified and contractual claims. Every one is listed in
+`docs/content-requests.md` with what is needed from the client; the refund
+promise and the "1.2M+ cards certified" figure are flagged there as legally
+blocking. Showcase and hero cards are fixtures until M4.
 
 Commands:
 ```bash

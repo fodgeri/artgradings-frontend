@@ -1,7 +1,7 @@
 # Landing page, How it works, FAQ
 
 **Date:** 2026-09-01
-**Status:** Approved, not yet implemented
+**Status:** Implemented on `feat/landing-page`
 **Module:** M1 — Design system & public pages
 
 ## Goal
