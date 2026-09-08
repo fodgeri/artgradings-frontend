@@ -13,12 +13,17 @@ function walk(dir: string): string[] {
 }
 
 /**
- * The single audited exception. WCAG 1.4.3 exempts text that is part of a logo
- * or brand name, and the wordmark's gold full stop is a brand mark carrying no
- * information. Keeping the allowlist to one path is the point — if a second
- * file needs to be added here, that is a design decision, not a formality.
+ * Empty, and it should stay that way.
+ *
+ * This once allowlisted `components/layout/wordmark.tsx` under the WCAG 1.4.3
+ * logotype exemption, because the placeholder wordmark set a gold full stop as
+ * text. The real mark from the brand manual is monochrome vector filled with
+ * `currentColor`, so it needs no exemption and the rule is now absolute.
+ *
+ * If a file needs to be added back, that is a design decision, not a
+ * formality.
  */
-const LOGOTYPE_ALLOWLIST = ["components/layout/wordmark.tsx"];
+const LOGOTYPE_ALLOWLIST: string[] = [];
 
 /**
  * Blanks out comments so prose *about* the rule is not mistaken for a

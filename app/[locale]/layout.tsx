@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Hanken_Grotesk, JetBrains_Mono, Newsreader } from "next/font/google";
+import { JetBrains_Mono, Playfair, Source_Sans_3 } from "next/font/google";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations } from "next-intl/server";
@@ -13,13 +13,27 @@ import "../globals.css";
 
 // All three faces ship a variable version, so `weight` is omitted on purpose:
 // that loads the full axis range in one file instead of one file per weight.
-const serif = Newsreader({
+//
+// Playfair, not Playfair Display. It carries three axes — opsz, wdth and
+// wght — and only wght is loaded.
+//
+// The manual's type page is a specimen sheet: Regular, SemiCondensed Bold,
+// Italic. It shows SemiCondensed is available in the family, not that any
+// particular element uses it, and it names no element at all. Requesting
+// `wdth` without a `font-stretch` anywhere would ship axis data that changes
+// nothing, and applying it across every heading would invent a rule the
+// manual does not state. If a display treatment turns out to want it, add
+// `axes: ["wdth"]` back together with the `font-stretch: 87.5%` that uses it.
+const serif = Playfair({
   variable: "--ag-font-serif",
   subsets: ["latin"],
   display: "swap",
 });
 
-const sans = Hanken_Grotesk({
+// The manual specifies Source Sans, whose samples embed Source Sans Pro.
+// Google retired that in favour of Source Sans 3, its direct successor — the
+// substitution is the intended family, not an approximation.
+const sans = Source_Sans_3({
   variable: "--ag-font-sans",
   subsets: ["latin"],
   display: "swap",

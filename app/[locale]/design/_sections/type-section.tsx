@@ -7,23 +7,23 @@ export function TypeSection() {
       <h2 className="font-serif text-h2 text-ink">Typography</h2>
       <div className="mt-8 flex flex-col gap-8">
         <div>
-          <Kicker>text-display · Newsreader</Kicker>
+          <Kicker>text-display · Playfair</Kicker>
           <p className="mt-2 font-serif text-display text-ink">
             What your cards are worth, made certain.
           </p>
         </div>
         <div>
-          <Kicker>text-h2 · Newsreader</Kicker>
+          <Kicker>text-h2 · Playfair</Kicker>
           <p className="mt-2 font-serif text-h2 text-ink">
             Four steps from mailbox to vaulted.
           </p>
         </div>
         <div>
-          <Kicker>text-h3 · Newsreader</Kicker>
+          <Kicker>text-h3 · Playfair</Kicker>
           <p className="mt-2 font-serif text-h3 text-ink">Seal and return</p>
         </div>
         <div>
-          <Kicker>text-lead · Hanken Grotesk</Kicker>
+          <Kicker>text-lead · Source Sans 3</Kicker>
           <p className="mt-2 max-w-prose text-lead text-muted">
             A documented, insured chain of custody for every card.
           </p>

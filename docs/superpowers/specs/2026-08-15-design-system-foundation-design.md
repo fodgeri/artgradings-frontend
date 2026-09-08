@@ -4,6 +4,13 @@
 **Status:** Implemented on `feat/design-system-foundation`
 **Module:** M1 — Design system & public pages
 
+> **Partly superseded by `2026-09-08-brand-identity-adoption-design.md`.**
+> The architecture below still holds — semantic token indirection, glass,
+> themed radii, the primitives, the shell. The *values* no longer do: the
+> palette, both typefaces and the wordmark were replaced when the client
+> commissioned a brand manual. This document is kept as the record of what
+> was built in M1 and why, not as a description of current values.
+
 ## Goal
 
 Stand up the design token layer, the glass treatment, the component primitives,
