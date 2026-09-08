@@ -39,7 +39,7 @@ Replaces the typographic `Art.` placeholder with the designer's vector mark, and
 - Consumes: nothing.
 - Produces: `<Wordmark className?: string />` — unchanged call signature, so `site-header.tsx:25` and `site-footer.tsx:41` keep working untouched. `<GasShield className?: string />`.
 
-- [ ] **Step 1: Add the accessible-name test that must fail**
+- [x] **Step 1: Add the accessible-name test that must fail**
 
 In `components/layout/site-header.test.tsx`, add inside the existing `describe`:
 
@@ -50,19 +50,19 @@ test("the home link keeps an accessible name", () => {
 });
 ```
 
-- [ ] **Step 2: Run it — it passes today, and that is the point**
+- [x] **Step 2: Run it — it passes today, and that is the point**
 
 Run: `npx vitest run components/layout/site-header.test.tsx`
 Expected: PASS. The placeholder's text node currently supplies the name. This test is the tripwire for Step 4 — it will fail the moment the text is replaced by an SVG without a label, which is the regression being guarded.
 
-- [ ] **Step 3: Commit the tripwire**
+- [x] **Step 3: Commit the tripwire**
 
 ```bash
 git add components/layout/site-header.test.tsx
 git commit -m "test: pin the header home link's accessible name"
 ```
 
-- [ ] **Step 4: Add the mark's path data**
+- [x] **Step 4: Add the mark's path data**
 
 Create `components/layout/art-mark.svg.ts`. Geometry extracted from deck p. 9 with `pdftocairo -svg`, normalised to a tight viewBox — 11 closed polygons, all straight lines:
 
@@ -80,7 +80,7 @@ export const ART_MARK_PATHS = [
 ];
 ```
 
-- [ ] **Step 5: Generate the path data**
+- [x] **Step 5: Generate the path data**
 
 The cleaned asset already exists at `scratchpad/art-mark.svg`. Emit its `d` attributes as the array literal:
 
@@ -95,7 +95,7 @@ PY
 
 Then close the array by hand. Verify the file parses: `npx tsc --noEmit -p tsconfig.json` after the build.
 
-- [ ] **Step 6: Rewrite the wordmark**
+- [x] **Step 6: Rewrite the wordmark**
 
 Replace `components/layout/wordmark.tsx` entirely:
 
@@ -134,11 +134,11 @@ export function Wordmark({ className }: { className?: string }) {
 }
 ```
 
-- [ ] **Step 7: Add the message key**
+- [x] **Step 7: Add the message key**
 
 In `messages/en.json`, add a `brand` object: `{ "markLabel": "ART — Authentic. Rated. Trusted" }`.
 
-- [ ] **Step 8: Empty the gold-ink allowlist**
+- [x] **Step 8: Empty the gold-ink allowlist**
 
 `components/gold-ink.test.ts:20` — the exemption existed only for the placeholder's gold full stop. The real mark is monochrome:
 
@@ -148,7 +148,7 @@ const LOGOTYPE_ALLOWLIST: string[] = [];
 
 Its second test asserts every allowlisted path exists, so this edit is **forced**, not optional — leaving the stale entry fails the suite.
 
-- [ ] **Step 9: Add the gas-fill shield**
+- [x] **Step 9: Add the gas-fill shield**
 
 Create `components/layout/gas-shield.tsx` from `scratchpad/gas-shield.svg` (deck p. 17). Two subpaths with opposite winding, so the check knocks out under the default `nonzero` — verified by rasterising, do not add `fill-rule`:
 
@@ -170,12 +170,12 @@ export function GasShield({ className }: { className?: string }) {
 }
 ```
 
-- [ ] **Step 10: Run the full suite**
+- [x] **Step 10: Run the full suite**
 
 Run: `npm test`
 Expected: PASS, including the Step 1 tripwire — proving the `<title>` supplies the name the text node used to.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add components/layout/ components/gold-ink.test.ts messages/en.json
@@ -193,7 +193,7 @@ git commit -m "feat: adopt the ART logotype from the brand manual"
 - Consumes: nothing.
 - Produces: `--ag-font-sans` → Source Sans 3, `--ag-font-serif` → Playfair. Both consumed by `@theme inline` in `app/globals.css:188-189`; no component changes.
 
-- [ ] **Step 1: Swap the imports and loaders**
+- [x] **Step 1: Swap the imports and loaders**
 
 `app/[locale]/layout.tsx` line 2 becomes:
 
@@ -223,17 +223,17 @@ const sans = Source_Sans_3({
 
 `mono` (JetBrains Mono) is unchanged — the deck names no monospace face.
 
-- [ ] **Step 2: Build**
+- [x] **Step 2: Build**
 
 Run: `npm run build`
 Expected: PASS. A wrong family name or an unsupported axis fails here, not at runtime.
 
-- [ ] **Step 3: Run the suite**
+- [x] **Step 3: Run the suite**
 
 Run: `npm test`
 Expected: PASS — no test asserts a font family.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add app/\[locale\]/layout.tsx
@@ -253,7 +253,7 @@ Brand black replaces neutral black everywhere dark already appears — the dark 
 - Consumes: nothing.
 - Produces: revalued tokens only. No token added or removed, so `@theme inline` and every component are untouched.
 
-- [ ] **Step 1: Revalue the light block**
+- [x] **Step 1: Revalue the light block**
 
 In `:root`:
 
@@ -278,7 +278,7 @@ In `:root`:
 
 `--ag-surface*`, `--ag-on-gold`, `--ag-glow-cool`, radii and `--ag-shadow-card` are unchanged. The light surface stays warm — the deck specifies no light background hex.
 
-- [ ] **Step 2: Revalue the dark block**
+- [x] **Step 2: Revalue the dark block**
 
 In `[data-theme="dark"]`:
 
@@ -299,17 +299,17 @@ In `[data-theme="dark"]`:
 
 Dark `--ag-ink` (`#f2f1ec`) and everything derived from it are unchanged, as is `--ag-invert-surface: transparent`.
 
-- [ ] **Step 3: Run the token test**
+- [x] **Step 3: Run the token test**
 
 Run: `npx vitest run app/globals.token.test.ts`
 Expected: PASS. It parses `globals.css` and asserts both palettes declare the same token set. It is structural, so revaluing cannot break it — a failure means a token was dropped, not revalued.
 
-- [ ] **Step 4: Full suite and build**
+- [x] **Step 4: Full suite and build**
 
 Run: `npm test && npm run build`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/globals.css
@@ -329,7 +329,7 @@ git commit -m "feat: adopt the brand black and Golden Harvest Glow accord"
 - Consumes: `<Wordmark />` from Task 1.
 - Produces: `SlabData` gains `number: string` and `rarity?: string`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `components/slab/slab.test.tsx`:
 
@@ -346,12 +346,12 @@ test("omits the rarity line when the card has no rarity", () => {
 });
 ```
 
-- [ ] **Step 2: Run — expect failure**
+- [x] **Step 2: Run — expect failure**
 
 Run: `npx vitest run components/slab/slab.test.tsx`
 Expected: FAIL — `number` is not on `SlabData` and nothing renders it.
 
-- [ ] **Step 3: Extend the type and fixtures**
+- [x] **Step 3: Extend the type and fixtures**
 
 ```ts
 export type SlabData = {
@@ -374,7 +374,7 @@ export type SlabData = {
 };
 ```
 
-- [ ] **Step 4: Rebuild the label header**
+- [x] **Step 4: Rebuild the label header**
 
 Replace the header row in `components/slab/slab.tsx` with the deck's device (p. 7 at label scale): a hairline rule interrupted at centre by the mark.
 
@@ -388,16 +388,16 @@ Replace the header row in `components/slab/slab.tsx` with the deck's device (p. 
 
 The metadata block below gains the number and the conditional rarity line, both in mono at `text-meta`, uppercase.
 
-- [ ] **Step 5: Run — expect pass**
+- [x] **Step 5: Run — expect pass**
 
 Run: `npx vitest run components/slab/slab.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 6: Full suite and build**
+- [x] **Step 6: Full suite and build**
 
 Run: `npm test && npm run build`
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add components/slab/
@@ -412,20 +412,20 @@ git commit -m "feat: rebuild the slab label to the brand manual spec"
 - Modify: `app/[locale]/design/page.tsx`
 - Modify: `CLAUDE.md`
 
-- [ ] **Step 1: Add the brand row to the gallery**
+- [x] **Step 1: Add the brand row to the gallery**
 
 The gallery is exempt from the no-hardcoded-strings rule. Add a section rendering `<Wordmark />` on paper, on `surface-invert`, and `<GasShield />`, so all three contexts are visible on one page.
 
-- [ ] **Step 2: Update CLAUDE.md**
+- [x] **Step 2: Update CLAUDE.md**
 
 The Design direction section says brand identity and logo design are out of scope, and the design system section describes a typographic wordmark. Both are now false. Record: the brand manual is the source of truth, the mark is real, `--gold`/`--gold-ink` values changed, GAS PROTECT is a feature not a brand.
 
-- [ ] **Step 3: Verify the gallery renders**
+- [x] **Step 3: Verify the gallery renders**
 
 Run: `npm run build`
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add app/\[locale\]/design/ CLAUDE.md
