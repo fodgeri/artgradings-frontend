@@ -10,6 +10,8 @@ const data: SlabData = {
   name: "Charizard",
   year: "1999",
   set: "Base · Holo",
+  number: "#004/102",
+  rarity: "HOLO RARE",
   grade: "10",
   label: "GEM MINT",
 };
@@ -25,6 +27,33 @@ describe("Slab", () => {
     expect(screen.getByText("Charizard")).toBeInTheDocument();
     expect(screen.getByText(/1999/)).toBeInTheDocument();
     expect(screen.getByText(/Base · Holo/)).toBeInTheDocument();
+  });
+
+  test("renders the set number", () => {
+    renderWithIntl(<Slab data={data} />);
+    expect(screen.getByText("#004/102")).toBeInTheDocument();
+  });
+
+  test("renders the rarity when the card has one", () => {
+    renderWithIntl(<Slab data={data} />);
+    expect(screen.getByText("HOLO RARE")).toBeInTheDocument();
+  });
+
+  test("omits the rarity line entirely when the card has none", () => {
+    // Rarity is on the physical label but is NOT among M3's required per-card
+    // fields, so it stays optional until the client decides whether the
+    // submission form collects it. Absent means no line, not a blank one.
+    renderWithIntl(<Slab data={{ ...data, rarity: undefined }} />);
+    expect(screen.queryByText("HOLO RARE")).not.toBeInTheDocument();
+  });
+
+  test("the label's brand mark is decorative", () => {
+    // The mark repeats on every slab in a grid, and the card's own name, cert
+    // and grade already carry the meaning. Announcing "ART" once per slab in
+    // a Pop Report listing is noise, so the label's mark is aria-hidden even
+    // though the header's — which names the home link — is not.
+    renderWithIntl(<Slab data={data} />);
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
   test("renders the grade and its label", () => {

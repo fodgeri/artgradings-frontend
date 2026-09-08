@@ -1,3 +1,4 @@
+import { Wordmark } from "@/components/layout/wordmark";
 import { cn } from "@/lib/cn";
 
 import { GradeBadge } from "./grade-badge";
@@ -8,6 +9,15 @@ export type SlabData = {
   name: string;
   year: string;
   set: string;
+  /** `#004/102`. M3 collects this as the card's "set number". */
+  number: string;
+  /**
+   * On the physical label per the brand manual, but NOT among M3's four
+   * required per-card fields (name, set, set number, release year). Optional
+   * until the client decides whether the submission form collects it; when
+   * absent the line is omitted rather than rendered blank.
+   */
+  rarity?: string;
   grade: string;
   label: string;
   /** Absent until R2 uploads land in M3; the window falls back to the hatch. */
@@ -23,15 +33,13 @@ export type SlabData = {
 export function Slab({ data, className }: { data: SlabData; className?: string }) {
   return (
     <div className={cn("glass-strong rounded-card p-[13px]", className)}>
-      <div className="flex items-center justify-between px-0.5 pb-[11px]">
-        <span className="flex items-center font-mono text-[11px] font-medium tracking-[0.16em] text-ink">
-          <span
-            aria-hidden
-            className="mr-2 inline-block size-1.5 shrink-0 rounded-[1px] bg-gold"
-          />
-          ART
-        </span>
-        <span className="font-mono text-meta text-muted">{data.cert}</span>
+      {/* The brand manual's signature device (p. 7) at label scale: a rule
+          interrupted at centre by the mark. On the physical holder this is
+          the top of the label, above the card window. */}
+      <div className="flex items-center gap-2.5 px-0.5 pb-[11px]">
+        <span aria-hidden className="h-px flex-1 bg-hairline" />
+        <Wordmark decorative className="h-[11px]" />
+        <span aria-hidden className="h-px flex-1 bg-hairline" />
       </div>
 
       <div className="relative flex aspect-[5/7] items-center justify-center overflow-hidden rounded-[9px] border border-hairline-faint bg-[repeating-linear-gradient(135deg,var(--ag-surface-sunken),var(--ag-surface-sunken)_9px,var(--ag-surface)_9px,var(--ag-surface)_18px)]">
@@ -51,16 +59,33 @@ export function Slab({ data, className }: { data: SlabData; className?: string }
         )}
       </div>
 
+      {/* The manual's label splits metadata left, grade right. The left block
+          is name / year + set / number / rarity — which is exactly M3's four
+          required per-card fields plus rarity, the one field the label wants
+          that submission does not yet collect. */}
       <div className="flex items-end justify-between gap-2.5 px-[3px] pb-0.5 pt-[13px]">
-        <div>
-          <div className="font-serif text-[17px] font-medium leading-[1.1] text-ink">
+        <div className="min-w-0">
+          <div className="truncate font-serif text-[17px] font-medium leading-[1.1] text-ink">
             {data.name}
           </div>
-          <div className="mt-[5px] font-mono text-meta text-muted">
+          <div className="mt-[5px] font-mono text-meta uppercase text-muted">
             {data.year} · {data.set}
           </div>
+          <div className="mt-[3px] font-mono text-meta uppercase text-muted">
+            <span>{data.number}</span>
+            {data.rarity ? (
+              <>
+                {" · "}
+                <span>{data.rarity}</span>
+              </>
+            ) : null}
+          </div>
         </div>
-        <GradeBadge grade={data.grade} label={data.label} />
+
+        <div className="flex shrink-0 flex-col items-end gap-[7px]">
+          <GradeBadge grade={data.grade} label={data.label} />
+          <span className="font-mono text-meta text-muted">{data.cert}</span>
+        </div>
       </div>
     </div>
   );
