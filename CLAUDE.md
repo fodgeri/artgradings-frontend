@@ -62,10 +62,23 @@ Roughly **710 hours / ~24 weeks**, single senior full-stack developer. Each mile
 
 ## Design direction
 
-- Premium **black / white / gold** palette reflecting PSA/Beckett prestige.
+- The authoritative brand source is **`docs/ART-Gradings-FullHd-kf_v6.pdf`**
+  (Kiss Ferenc) — logo, colour accord, typefaces, slab label. Adopted in
+  `docs/superpowers/specs/2026-09-08-brand-identity-adoption-design.md`.
+- Premium **black / white / gold** palette reflecting PSA/Beckett prestige. The
+  black is the manual's blue-black `#1A1D29`, not a neutral one; the gold is the
+  "Golden Harvest Glow" accord.
 - Build a real design system (palette, typography, component library) — this is a deliverable, not incidental styling.
 - Fully responsive: mobile / tablet / desktop.
-- Brand identity and logo design are **out of scope**; work from the color guidance.
+- **Light is the dominant surface.** The manual's 60/30/10 guidance makes the
+  black dominant; we deliberately do not follow that. It applies inside dark
+  bands (`surface-invert`, the dark theme) only. Do not re-propose it.
+- **"GAS PROTECT" is a product feature, not a sub-brand** — the slab is filled
+  with inert gas to preserve the card. The shield is a feature icon that belongs
+  beside copy explaining the fill, never a lockup in the header or footer. The
+  claim wording itself is client-supplied.
+- Logo design was out of scope until the client commissioned the manual. It no
+  longer is: `components/layout/wordmark.tsx` renders the real vector mark.
 
 ## Internationalization
 
@@ -115,13 +128,15 @@ Rules:
   `--radius-card: var(--radius-card)` in `@theme inline` is self-referential and
   silently resolves to nothing. The prefix is what keeps the two sides distinct.
 - **`--gold` is fills, borders and decoration. `--gold-ink` is the only gold
-  allowed as a text colour.** The design's `#B0883A` on `#FAFAF8` measures
-  3.13:1 and fails WCAG AA. Inside `surface-invert` the relationship *flips* —
-  the darkened `#836428` drops to 3.51:1 on ink while `#B0883A` passes at
-  5.91:1 — which is why that utility redefines `--gold-ink` too.
-  `components/gold-ink.test.ts` enforces it; never write `text-gold`. The one
-  allowlisted exception is `components/layout/wordmark.tsx` (WCAG 1.4.3 exempts
-  logotypes).
+  allowed as a text colour.** The manual's `#A47E1B` on `#FAFAF8` measures
+  3.60:1 and fails WCAG AA, so `--gold-ink` is the accord's deepest step
+  `#805B10` at 5.87:1. Inside `surface-invert` the relationship *flips* — that
+  deep step drops to 2.73:1 on the brand black while the brighter `#C9A227`
+  passes at 6.94:1 — which is why that utility redefines `--gold-ink` too.
+  Only the deepest step is legible on paper and only the bright steps on black;
+  that is the whole reason the split exists. `components/gold-ink.test.ts`
+  enforces it and its allowlist is now **empty** — never write `text-gold`. The
+  mark needs no exemption because it is monochrome `currentColor` vector.
 - **`cn()` must know every custom scale.** tailwind-merge resolves conflicts by
   parsing class *names* and never reads `globals.css`, so an unknown
   `text-eyebrow` looks like a text colour and gets dropped when a colour is set
@@ -360,6 +375,8 @@ a branch and a host together.
 
 ## Explicitly out of scope
 
-Native mobile apps, brand/logo design, marketing & SEO, long-term support (separate agreement), and legal content (ToS, privacy policy — drafted by a lawyer).
+Native mobile apps, marketing & SEO, long-term support (separate agreement), and legal content (ToS, privacy policy — drafted by a lawyer).
+
+Brand and logo design *were* out of scope and no longer are: the client commissioned a brand manual, which the site now implements. Designing new brand assets is still out of scope — we implement the manual, we do not extend it.
 
 Note: the estimate lists i18n as out of scope. The *infrastructure* is in place (above) so translation stays cheap, but **translating the site into further languages is still separately scoped work** — it means writing and maintaining every message file, not flipping a flag.
