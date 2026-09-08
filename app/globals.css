@@ -60,11 +60,21 @@
      passes AA at 6.94:1, while the deep `--ag-gold-ink` drops to 2.73:1 and
      fails. Hence `--ag-invert-gold-ink` below. */
   --ag-invert-surface: #1a1d29;
+  --ag-invert-surface-sunken: #161822;
   --ag-invert-surface-raised: #222535;
   --ag-invert-ink: #fafaf8;
   --ag-invert-muted: rgb(250 250 248 / 0.58);
   --ag-invert-hairline: rgb(255 255 255 / 0.1);
   --ag-invert-gold-ink: #c9a227;
+
+  /* Glass has to invert too. An inverted band is locally dark, so a panel
+     inside it needs the dark theme's glass — a light tint on a dark ground.
+     Without these, `glass-strong` stays a near-white panel while `--ag-ink`
+     flips to light, and a slab in the showcase renders light-on-light. */
+  --ag-invert-glass-bg: rgb(255 255 255 / 0.065);
+  --ag-invert-glass-bg-strong: rgb(255 255 255 / 0.1);
+  --ag-invert-glass-border: rgb(255 255 255 / 0.18);
+  --ag-invert-glass-highlight: rgb(255 255 255 / 0.14);
 
   --ag-glow-cool: #6c7ca8;
   --ag-glow-opacity: 0.18;
@@ -124,11 +134,19 @@
   --ag-gold-fill: linear-gradient(180deg, var(--ag-gold-bright), var(--ag-gold));
 
   --ag-invert-surface: transparent;
+  --ag-invert-surface-sunken: #161822;
   --ag-invert-surface-raised: #222535;
   --ag-invert-ink: #f2f1ec;
   --ag-invert-muted: rgb(242 241 236 / 0.62);
   --ag-invert-hairline: rgb(255 255 255 / 0.14);
   --ag-invert-gold-ink: #c9a227;
+
+  /* Identical to the dark glass values above: in dark theme `surface-invert`
+     is close to a no-op, which is the behaviour the design shows. */
+  --ag-invert-glass-bg: rgb(255 255 255 / 0.065);
+  --ag-invert-glass-bg-strong: rgb(255 255 255 / 0.1);
+  --ag-invert-glass-border: rgb(255 255 255 / 0.18);
+  --ag-invert-glass-highlight: rgb(255 255 255 / 0.14);
 
   --ag-glow-cool: #6c7ca8;
   --ag-glow-opacity: 0.55;
@@ -253,11 +271,16 @@
  */
 @utility surface-invert {
   --ag-surface: var(--ag-invert-surface);
+  --ag-surface-sunken: var(--ag-invert-surface-sunken);
   --ag-surface-raised: var(--ag-invert-surface-raised);
   --ag-ink: var(--ag-invert-ink);
   --ag-muted: var(--ag-invert-muted);
   --ag-hairline: var(--ag-invert-hairline);
   --ag-gold-ink: var(--ag-invert-gold-ink);
+  --ag-glass-bg: var(--ag-invert-glass-bg);
+  --ag-glass-bg-strong: var(--ag-invert-glass-bg-strong);
+  --ag-glass-border: var(--ag-invert-glass-border);
+  --ag-glass-highlight: var(--ag-invert-glass-highlight);
   background-color: var(--ag-surface);
   color: var(--ag-ink);
 }
