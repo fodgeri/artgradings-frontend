@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { Container } from "@/components/ui/container";
 
+import { BrandSection } from "./_sections/brand-section";
 import { ColorSection } from "./_sections/color-section";
 import { ControlSection } from "./_sections/control-section";
 import { SlabSection } from "./_sections/slab-section";
@@ -30,6 +31,7 @@ export default function DesignPage() {
         <header>
           <h1 className="font-serif text-display text-ink">Design system</h1>
         </header>
+        <BrandSection />
         <ColorSection />
         <TypeSection />
         <SurfaceSection />
