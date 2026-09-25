@@ -1,7 +1,11 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import messages from "@/messages/en.json";
 import { renderWithIntl, screen } from "@/test/i18n";
+
+// AccountLink has its own tests; here it would need a Supabase client and a
+// router context the header does not care about.
+vi.mock("./account-link", () => ({ AccountLink: () => null }));
 
 import { SiteHeader } from "./site-header";
 

@@ -1,5 +1,6 @@
 import { useTranslations } from "next-intl";
 
+import { AccountLink } from "@/components/layout/account-link";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Wordmark } from "@/components/layout/wordmark";
 import { buttonVariants } from "@/components/ui/button";
@@ -49,12 +50,7 @@ export function SiteHeader() {
             <div className="hidden sm:block">
               <ThemeToggle />
             </div>
-            <Link
-              href="/sign-in"
-              className="focus-ring hidden text-sm font-medium text-muted transition-colors duration-150 hover:text-ink sm:block"
-            >
-              {t("signIn")}
-            </Link>
+            <AccountLink className="focus-ring hidden text-sm font-medium text-muted transition-colors duration-150 hover:text-ink sm:block" />
             <Link
               href="/submit"
               className={cn(buttonVariants({ variant: "gold", size: "sm" }))}
