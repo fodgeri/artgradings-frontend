@@ -26,7 +26,8 @@ Supabase dashboard, for the project in question:
 - [ ] **Authentication → Sign In / Providers → Email:** *Confirm email* on.
       *Secure password change* on. Minimum password length **10** (mirrors
       `PASSWORD_MIN_LENGTH` in `lib/auth/password.ts`). No character
-      requirements.
+      requirements. Email OTP expiry **3600 seconds (1 hour)** — the templates
+      promise "expires in one hour".
 - [ ] **Leaked password protection** on — requires the Pro plan. Until the
       project is on Pro, record here that it is off.
 - [ ] **Authentication → Attack Protection:** CAPTCHA on, provider
@@ -45,6 +46,22 @@ Supabase dashboard, for the project in question:
 
 - [ ] **Authentication → Rate Limits:** custom SMTP lifts the built-in email
       limit, so set *emails per hour* deliberately (start at 30 and watch).
+
+      Once the email-per-hour cap is hit, it looks like success to users: sign-up,
+      resend and forgot-password treat `over_email_send_rate_limit` as
+      indistinguishable from the per-address resend window, so the enumeration
+      protection swallows the error and no email goes out. Watch Sentry for
+      `Suppressed Supabase Auth error` warnings with `auth.code =
+      over_email_send_rate_limit` — that is how a cap hit becomes visible.
+- [ ] **Per-IP auth limits key on the app server's IP.** Supabase rate-limits
+      sign-in/sign-up/verify/token-refresh per calling IP, and every call comes
+      from our server, so these limits are effectively site-wide. On hosted
+      projects raise them deliberately (Authentication → Rate Limits). Before
+      production, decide between forwarding the end-user IP (an auth-only
+      server client using the secret key that sends `Sb-Forwarded-For`, with
+      forwarding enabled on the project — never used for data queries, since
+      the secret key bypasses RLS) and documented raised limits. **Launch
+      blocker.**
 - [ ] **Email templates:** `SUPABASE_ACCESS_TOKEN=<personal token> npm run
       auth:templates`. Uses the linked project ref, or `SUPABASE_PROJECT_REF`.
       Rerun whenever a file in `supabase/templates/` changes.
