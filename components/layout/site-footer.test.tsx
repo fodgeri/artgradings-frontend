@@ -7,9 +7,9 @@ import { renderWithIntl, screen } from "@/test/i18n";
 // router context the footer does not care about.
 vi.mock("./account-link", () => ({
   AccountLink: ({ className }: { className?: string }) => (
-    <a data-testid="footer-account-link" href="/sign-in" className={className}>
+    <span role="link" data-testid="footer-account-link" className={className}>
       Sign in
-    </a>
+    </span>
   ),
 }));
 
