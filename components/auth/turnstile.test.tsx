@@ -7,10 +7,12 @@ import { renderWithIntl } from "@/test/i18n";
 import { Turnstile, turnstileSiteKey } from "./turnstile";
 
 const api = {
-  render: vi.fn((_container: HTMLElement, _options: Record<string, unknown>) => "widget-1"),
+  render: vi.fn<(container: HTMLElement, options: Record<string, unknown>) => string>(() => "widget-1"),
   reset: vi.fn(),
   remove: vi.fn(),
 };
+
+const SCRIPT_SELECTOR = 'script[src^="https://challenges.cloudflare.com/turnstile/v0/api.js"]';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -85,6 +87,90 @@ describe("Turnstile", () => {
     expect(api.remove).toHaveBeenCalledWith("widget-1");
   });
 
+});
+
+describe("script loading", () => {
+  // These tests exercise the real `document.createElement("script")` /
+  // onload / onerror path, which every other test above bypasses by
+  // pre-setting `window.turnstile`. The module-level `scriptPromise`
+  // singleton persists across tests in this file, so each test here resets
+  // the module registry and re-imports the component fresh rather than
+  // adding a test-only export to reach into it.
+
+  beforeEach(() => {
+    delete window.turnstile;
+  });
+
+  afterEach(() => {
+    // Belt and braces: a test that fails before reaching its own assertions
+    // must not leave a stray <script> for the next test to trip over.
+    document.querySelectorAll(SCRIPT_SELECTOR).forEach((el) => el.remove());
+  });
+
+  async function freshTurnstile() {
+    vi.resetModules();
+    const fresh = await import("./turnstile");
+    return fresh.Turnstile;
+  }
+
+  function appendedScript(): HTMLScriptElement {
+    const script = document.head.querySelector<HTMLScriptElement>(SCRIPT_SELECTOR);
+    if (!script) throw new Error("script tag not appended yet");
+    return script;
+  }
+
+  test("two concurrent mounts append exactly one script tag", async () => {
+    const FreshTurnstile = await freshTurnstile();
+
+    renderWithIntl(<FreshTurnstile resetKey={0} />);
+    renderWithIntl(<FreshTurnstile resetKey={1} />);
+
+    await waitFor(() => {
+      expect(document.head.querySelectorAll(SCRIPT_SELECTOR)).toHaveLength(1);
+    });
+  });
+
+  test("renders the widget once the script's onload fires with window.turnstile defined", async () => {
+    const FreshTurnstile = await freshTurnstile();
+    renderWithIntl(<FreshTurnstile resetKey={0} />);
+
+    await waitFor(() => appendedScript());
+    const script = appendedScript();
+
+    window.turnstile = api;
+    act(() => {
+      script.onload?.(new Event("load"));
+    });
+
+    await waitFor(() => expect(api.render).toHaveBeenCalledTimes(1));
+  });
+
+  test("drops the failed tag on error, and a later mount retries with a fresh one", async () => {
+    const FreshTurnstile = await freshTurnstile();
+    const first = renderWithIntl(<FreshTurnstile resetKey={0} />);
+
+    await waitFor(() => appendedScript());
+    const failed = appendedScript();
+
+    act(() => {
+      failed.onerror?.(new Event("error"));
+    });
+
+    await waitFor(() => {
+      expect(document.head.querySelector(SCRIPT_SELECTOR)).toBeNull();
+    });
+
+    first.unmount();
+
+    // Same module instance as the failed mount (no further resetModules): a
+    // fresh mount retries and appends a brand-new tag rather than reusing a
+    // rejected, now-cleared `scriptPromise`.
+    renderWithIntl(<FreshTurnstile resetKey={1} />);
+
+    await waitFor(() => {
+      expect(document.head.querySelectorAll(SCRIPT_SELECTOR)).toHaveLength(1);
+    });
+  });
 });
 
 describe("turnstileSiteKey", () => {

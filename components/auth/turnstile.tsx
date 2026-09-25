@@ -33,6 +33,7 @@ function loadTurnstile(): Promise<TurnstileApi> {
       else reject(new Error("Turnstile loaded without defining window.turnstile"));
     };
     script.onerror = () => {
+      script.remove(); // drop the dead tag or every retry appends another
       scriptPromise = null; // let the next mount try again
       reject(new Error("Turnstile script failed to load"));
     };
