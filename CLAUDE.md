@@ -236,9 +236,10 @@ Rules:
 - **`SENTRY_AUTH_TOKEN` is a BuildKit secret, never a build arg.** See the
   Secrets note under Git Workflow & CI/CD; the Dockerfile mounts it for the
   single `npm run build` layer.
-- `includeLocalVariables: true` on the server attaches local variable values to
-  stack frames. Re-review it at M3/M7, when those frames start holding customer
-  data.
+- `includeLocalVariables` is off on the server, because auth action frames
+  hold local variables such as the submitted email address and plaintext
+  password. Do not re-enable it without a `beforeSend` that strips frame
+  variables first.
 
 ## Supabase
 
