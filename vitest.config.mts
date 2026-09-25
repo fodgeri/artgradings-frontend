@@ -23,6 +23,12 @@ export default defineConfig({
     // them, so `node_modules` has to be listed explicitly or every test
     // fixture inside a dependency gets collected.
     exclude: ["**/node_modules/**", "**/.next/**"],
+    // Cloudflare's published always-pass TEST site key. Components read
+    // NEXT_PUBLIC_TURNSTILE_SITE_KEY at render time and throw without it, so
+    // every test that renders an auth form needs it set.
+    env: {
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
