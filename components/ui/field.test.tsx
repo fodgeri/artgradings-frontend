@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { renderWithIntl, screen } from "@/test/i18n";
 
-import { Field, FieldInput, FieldSelect } from "./field";
+import { Field, FieldDescription, FieldInput, FieldSelect } from "./field";
 
 describe("Field", () => {
   test("associates the label with the input", () => {
@@ -50,5 +50,17 @@ describe("Field", () => {
     const select = screen.getByLabelText("Service level");
     await user.selectOptions(select, "exp");
     expect(select).toHaveValue("exp");
+  });
+
+  test("links a description to the input", () => {
+    renderWithIntl(
+      <Field label="Password">
+        <FieldInput type="password" />
+        <FieldDescription>At least ten characters.</FieldDescription>
+      </Field>,
+    );
+    expect(screen.getByLabelText("Password")).toHaveAccessibleDescription(
+      "At least ten characters.",
+    );
   });
 });
