@@ -4,10 +4,14 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import messages from "@/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ captureException: vi.fn() }));
-vi.mock("@sentry/nextjs", () => ({ captureException: mocks.captureException }));
+const mocks = vi.hoisted(() => ({ captureException: vi.fn(), captureMessage: vi.fn() }));
+vi.mock("@sentry/nextjs", () => ({
+  captureException: mocks.captureException,
+  captureMessage: mocks.captureMessage,
+}));
 
-const { AUTH_ERROR_KEYS, authErrorKey, reportAuthError, revealsAccount } = await import("./errors");
+const { AUTH_ERROR_KEYS, authErrorKey, reportAuthError, reportSuppressedAuthError, revealsAccount } =
+  await import("./errors");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -55,6 +59,25 @@ describe("reportAuthError", () => {
     expect(JSON.stringify([String(reported), context])).not.toContain("someone@example.test");
     expect(context).toMatchObject({
       tags: { "auth.flow": "signUp", "auth.code": "odd_code", "auth.status": "400" },
+    });
+  });
+});
+
+describe("reportSuppressedAuthError", () => {
+  test("sends a warning with the flow and code, never the Supabase message", () => {
+    const error = new AuthError("wait before retrying someone@example.test", 429, "over_email_send_rate_limit");
+    reportSuppressedAuthError(error, "signUp");
+
+    expect(mocks.captureMessage).toHaveBeenCalledTimes(1);
+    const [message, context] = mocks.captureMessage.mock.calls[0];
+    expect(JSON.stringify([message, context])).not.toContain("someone@example.test");
+    expect(context).toMatchObject({
+      level: "warning",
+      tags: {
+        "auth.flow": "signUp",
+        "auth.code": "over_email_send_rate_limit",
+        "auth.status": "429",
+      },
     });
   });
 });

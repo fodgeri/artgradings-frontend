@@ -74,6 +74,28 @@ export function reportAuthError(error: AuthError, flow: AuthFlow): void {
   });
 }
 
+/**
+ * Reports that we suppressed a `revealsAccount()` error to keep enumeration
+ * closed. `over_email_send_rate_limit` fires both for the per-address resend
+ * window AND for Supabase's project-wide hourly email cap — without this,
+ * hitting the cap looks exactly like success (no email sent, nothing in
+ * Sentry), which hides a real outage behind the enumeration protection.
+ *
+ * A message, not an exception: this is not unexpected, and `captureMessage`
+ * makes the two easy to tell apart in Sentry. Never the error object, never
+ * its message, never form data — only the flow and the code/status tags.
+ */
+export function reportSuppressedAuthError(error: AuthError, flow: AuthFlow): void {
+  Sentry.captureMessage(`Suppressed Supabase Auth error in ${flow}`, {
+    level: "warning",
+    tags: {
+      "auth.flow": flow,
+      "auth.code": error.code ?? "none",
+      "auth.status": String(error.status ?? "none"),
+    },
+  });
+}
+
 /** The message key to show for `error`; reports anything unmapped. */
 export function authErrorKey(error: AuthError, flow: AuthFlow): AuthErrorKey {
   // Object.hasOwn, not `in` or a bare lookup: `toString` is on the prototype.

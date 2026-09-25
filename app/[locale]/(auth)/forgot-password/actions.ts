@@ -1,7 +1,7 @@
 "use server";
 
 import { type AuthFormState, readEmail, readField } from "@/lib/auth/action-state";
-import { authErrorKey, revealsAccount } from "@/lib/auth/errors";
+import { authErrorKey, reportSuppressedAuthError, revealsAccount } from "@/lib/auth/errors";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -22,8 +22,11 @@ export async function requestPasswordReset(
     captchaToken: readField(formData, "captchaToken"),
   });
 
-  if (error && !revealsAccount(error)) {
-    return { status: "error", errorKey: authErrorKey(error, "forgotPassword") };
+  if (error) {
+    if (!revealsAccount(error)) {
+      return { status: "error", errorKey: authErrorKey(error, "forgotPassword") };
+    }
+    reportSuppressedAuthError(error, "forgotPassword");
   }
 
   return { status: "sent" };

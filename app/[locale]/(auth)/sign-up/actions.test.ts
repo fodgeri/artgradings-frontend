@@ -8,6 +8,7 @@ import { formData } from "@/test/form-data";
 const mocks = vi.hoisted(() => ({
   signUp: vi.fn(),
   captureException: vi.fn(),
+  captureMessage: vi.fn(),
   redirect: vi.fn((args: unknown) => {
     throw new Error(`NEXT_REDIRECT ${JSON.stringify(args)}`);
   }),
@@ -17,7 +18,10 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({ auth: { signUp: mocks.signUp } }),
 }));
 vi.mock("@/i18n/navigation", () => ({ redirect: mocks.redirect }));
-vi.mock("@sentry/nextjs", () => ({ captureException: mocks.captureException }));
+vi.mock("@sentry/nextjs", () => ({
+  captureException: mocks.captureException,
+  captureMessage: mocks.captureMessage,
+}));
 
 const { signUp } = await import("./actions");
 
@@ -52,16 +56,17 @@ describe("signUp", () => {
   });
 
   test.each([
-    ["an existing account", null],
-    ["a per-address rate limit", new AuthError("rate limited", 429, "over_email_send_rate_limit")],
-    ["user_already_exists", new AuthError("exists", 422, "user_already_exists")],
-  ])("answers %s exactly like a new address", async (_label, error) => {
+    ["an existing account", null, 0],
+    ["a per-address rate limit", new AuthError("rate limited", 429, "over_email_send_rate_limit"), 1],
+    ["user_already_exists", new AuthError("exists", 422, "user_already_exists"), 1],
+  ])("answers %s exactly like a new address", async (_label, error, suppressedCalls) => {
     // With confirmations on, Supabase returns an obfuscated user for an
     // existing address rather than an error; the per-address rate limit only
     // fires for an address it knows. Neither may leak.
     mocks.signUp.mockResolvedValue({ data: {}, error });
     await expect(signUp("en", initialAuthState, formData(VALID))).rejects.toThrow("NEXT_REDIRECT");
     expect(mocks.redirect).toHaveBeenCalledWith(CHECK_EMAIL);
+    expect(mocks.captureMessage).toHaveBeenCalledTimes(suppressedCalls);
   });
 
   test("rejects a malformed email without calling Supabase", async () => {

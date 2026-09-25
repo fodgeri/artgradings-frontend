@@ -5,12 +5,19 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { initialAuthState } from "@/lib/auth/action-state";
 import { formData } from "@/test/form-data";
 
-const mocks = vi.hoisted(() => ({ resend: vi.fn(), captureException: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  resend: vi.fn(),
+  captureException: vi.fn(),
+  captureMessage: vi.fn(),
+}));
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({ auth: { resend: mocks.resend } }),
 }));
-vi.mock("@sentry/nextjs", () => ({ captureException: mocks.captureException }));
+vi.mock("@sentry/nextjs", () => ({
+  captureException: mocks.captureException,
+  captureMessage: mocks.captureMessage,
+}));
 
 const { resendConfirmation } = await import("./actions");
 
@@ -31,6 +38,7 @@ describe("resendConfirmation", () => {
       email: "new@example.test",
       options: { captchaToken: "token-abc" },
     });
+    expect(mocks.captureMessage).not.toHaveBeenCalled();
   });
 
   test("reports success inside the per-address resend window", async () => {
@@ -41,6 +49,7 @@ describe("resendConfirmation", () => {
     expect(await resendConfirmation("en", initialAuthState, formData(VALID))).toEqual({
       status: "sent",
     });
+    expect(mocks.captureMessage).toHaveBeenCalledTimes(1);
   });
 
   test("returns a new state object every time", async () => {

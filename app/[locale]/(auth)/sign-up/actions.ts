@@ -7,7 +7,7 @@ import {
   readField,
   resolveLocale,
 } from "@/lib/auth/action-state";
-import { authErrorKey, revealsAccount } from "@/lib/auth/errors";
+import { authErrorKey, reportSuppressedAuthError, revealsAccount } from "@/lib/auth/errors";
 import { passwordProblem } from "@/lib/auth/password";
 import { createClient } from "@/lib/supabase/server";
 
@@ -38,8 +38,11 @@ export async function signUp(
     options: { captchaToken: readField(formData, "captchaToken") },
   });
 
-  if (error && !revealsAccount(error)) {
-    return { status: "error", errorKey: authErrorKey(error, "signUp") };
+  if (error) {
+    if (!revealsAccount(error)) {
+      return { status: "error", errorKey: authErrorKey(error, "signUp") };
+    }
+    reportSuppressedAuthError(error, "signUp");
   }
 
   return redirect({ href: "/sign-up/check-email", locale: resolveLocale(locale) });
