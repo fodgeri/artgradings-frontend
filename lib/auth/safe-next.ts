@@ -6,7 +6,6 @@ export const DEFAULT_NEXT = "/account";
  * `/\t/evil.test` becomes `//evil.test`. Any control character, and any
  * backslash (which browsers treat as `/`), rejects the whole value.
  */
-// eslint-disable-next-line no-control-regex -- matching control characters is the point
 const UNSAFE = /[\u0000-\u001f\u007f\\]/;
 
 /**
