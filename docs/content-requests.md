@@ -38,6 +38,17 @@ legal and regulatory exposure, not a copy problem.
 | `home.stats[1]` | `48hr` — "Vault express" | A turnaround claim tied to a service tier that does not exist yet. |
 | `home.stats[3]` | `4-point` — "Sub-grade report" | Depends on the grading scale above. |
 
+## Auth email and bot protection
+
+Blocks hosted email, not development.
+
+| Item | Current placeholder | What is needed |
+|---|---|---|
+| Sending domain | none | The client's domain on Cloudflare DNS, so Cloudflare Email Sending can onboard it (SPF, DKIM, DMARC). Until then only verified test inboxes receive auth email. |
+| Sender address and name | `no-reply@<domain>`, `ART Gradings` | Confirmation of both. |
+| Turnstile | built | **Outside the estimate (≈ 3–4 h), added deliberately.** Needs the client's agreement as a scope addition. |
+| Auth email copy | English, in `supabase/templates/*.html` | Functional copy we wrote. Supabase renders it, so it is **not** in `messages/*.json`: when a second locale is scoped, these three templates need translating and auth email moves to Supabase's Send Email hook (see the spec). |
+
 ## Deferred by decision, not missing
 
 | Item | Status |

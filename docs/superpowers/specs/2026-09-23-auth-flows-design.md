@@ -1,7 +1,7 @@
 # Auth flows — signup, confirmation, sign-in, password reset, auth email
 
 **Date:** 2026-09-23
-**Status:** Approved, not yet implemented
+**Status:** Implemented — see docs/superpowers/plans/2026-09-25-auth-flows.md for deviations
 **Module:** M2 — Accounts & auth
 
 ## Goal
