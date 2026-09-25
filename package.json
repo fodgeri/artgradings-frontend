@@ -20,7 +20,8 @@
     "db:reset": "supabase db reset",
     "db:test": "supabase test db",
     "db:push": "supabase db push",
-    "db:types": "supabase gen types typescript --local > lib/supabase/database.types.ts"
+    "db:types": "supabase gen types typescript --local > lib/supabase/database.types.ts",
+    "auth:templates": "node scripts/push-auth-templates.mjs"
   },
   "dependencies": {
     "@base-ui-components/react": "^1.0.0-rc.0",
