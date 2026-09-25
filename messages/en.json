@@ -11,7 +11,8 @@
     "popReport": "Pop Report",
     "faq": "FAQ",
     "submit": "Submit cards",
-    "signIn": "Sign in"
+    "signIn": "Sign in",
+    "account": "Account"
   },
   "footer": {
     "tagline": "Precision grading and authentication for sports cards and trading card games.",
@@ -136,5 +137,70 @@
         "answer": "Yes. Every card we grade or authenticate enters the public Pop Report once the result is finalised, so collectors can see how many examples exist at each grade."
       }
     ]
+  },
+  "auth": {
+    "fields": {
+      "email": "Email",
+      "password": "Password",
+      "newPassword": "New password",
+      "passwordHint": "At least {min} characters."
+    },
+    "signUp": {
+      "title": "Create your account",
+      "lead": "An account lets you submit cards and follow them through grading.",
+      "submit": "Create account",
+      "haveAccount": "Already have an account? <link>Sign in</link>"
+    },
+    "checkEmail": {
+      "title": "Check your inbox",
+      "lead": "We've sent a confirmation link to the address you signed up with. Open it to activate your account.",
+      "resendLead": "Nothing after a few minutes? Check your spam folder, or enter your address to send the link again.",
+      "submit": "Send the link again",
+      "sent": "If that address has an account waiting for confirmation, a new link is on its way."
+    },
+    "signIn": {
+      "title": "Sign in",
+      "lead": "Welcome back.",
+      "submit": "Sign in",
+      "forgotPassword": "Forgot your password?",
+      "noAccount": "New here? <link>Create an account</link>",
+      "linkExpired": "That link has expired or was already used. Sign in, or ask for a new link."
+    },
+    "forgotPassword": {
+      "title": "Reset your password",
+      "lead": "Enter the address you signed up with and we'll email you a link to choose a new password.",
+      "submit": "Send reset link",
+      "sent": "If an account exists for that address, a reset link is on its way.",
+      "backToSignIn": "<link>Back to sign in</link>"
+    },
+    "confirm": {
+      "emailTitle": "Confirm your email",
+      "recoveryTitle": "Reset your password",
+      "lead": "One more step — continue to finish.",
+      "submit": "Continue"
+    },
+    "resetPassword": {
+      "title": "Choose a new password",
+      "lead": "Saving it signs you out on every other device.",
+      "submit": "Save password"
+    },
+    "account": {
+      "title": "Your account",
+      "signedInAs": "Signed in as {email}",
+      "signOut": "Sign out"
+    },
+    "errors": {
+      "invalidCredentials": "That email and password don't match an account.",
+      "emailNotConfirmed": "Confirm your email address first. <resend>Send the link again</resend>",
+      "weakPassword": "Choose a stronger password: at least {min} characters, and not one known from a data breach.",
+      "passwordTooShort": "Use at least {min} characters.",
+      "passwordTooLong": "That password is too long. Use at most {max} characters — fewer if it has accented letters or emoji.",
+      "invalidEmail": "Enter a valid email address.",
+      "captchaFailed": "We couldn't verify the request. Please try again.",
+      "rateLimited": "Too many attempts. Wait a moment and try again.",
+      "samePassword": "Your new password must be different from the current one.",
+      "reauthenticationNeeded": "For your security, ask for a new reset link and try again.",
+      "generic": "Something went wrong. Please try again."
+    }
   }
 }
