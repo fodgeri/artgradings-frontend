@@ -47,7 +47,7 @@ Blocks hosted email, not development.
 | Sending domain | none | The client's domain on Cloudflare DNS, so Cloudflare Email Sending can onboard it (SPF, DKIM, DMARC). Until then only verified test inboxes receive auth email. |
 | Sender address and name | `no-reply@<domain>`, `ART Gradings` | Confirmation of both. |
 | Turnstile | built | **Outside the estimate (≈ 3–4 h), added deliberately.** Needs the client's agreement as a scope addition. |
-| Auth email copy | English, in `supabase/templates/*.html` | Functional copy we wrote. Supabase renders it, so it is **not** in `messages/*.json`: when a second locale is scoped, these three templates need translating and auth email moves to Supabase's Send Email hook (see the spec). |
+| Auth email copy | English, in `supabase/templates/*.html` | Functional copy we wrote. Supabase renders it, so it is **not** in `messages/*.json`: when a second locale is scoped, all five templates (confirmation, recovery, email change, and the password-changed and email-changed notices) need translating and auth email moves to Supabase's Send Email hook (see the spec). |
 
 ## Accounts and personal data
 
