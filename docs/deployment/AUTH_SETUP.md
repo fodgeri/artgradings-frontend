@@ -2,8 +2,9 @@
 
 Everything here is configuration that **does not travel with migrations**. It
 is applied by hand to the hosted dev project now, and repeated, as a
-checklist, on the production project at launch. Spec:
-`docs/superpowers/specs/2026-09-23-auth-flows-design.md`.
+checklist, on the production project at launch. Specs:
+`docs/superpowers/specs/2026-09-23-auth-flows-design.md` and
+`docs/superpowers/specs/2026-09-28-profile-settings-design.md`.
 
 Local development needs none of it: `supabase/config.toml` configures the local
 stack, Mailpit catches the email, and Cloudflare's Turnstile test keys always
@@ -24,7 +25,8 @@ Supabase dashboard, for the project in question:
 - [ ] **Authentication → URL Configuration:** Site URL is the deployed origin
       (the email links are built from it). Redirect URLs: the same origin.
 - [ ] **Authentication → Sign In / Providers → Email:** *Confirm email* on.
-      *Secure password change* on. Minimum password length **10** (mirrors
+      *Secure password change* on. *Secure email change* on (both addresses
+      must confirm). Minimum password length **10** (mirrors
       `PASSWORD_MIN_LENGTH` in `lib/auth/password.ts`). No character
       requirements. Email OTP expiry **3600 seconds (1 hour)** — the templates
       promise "expires in one hour".
@@ -64,7 +66,13 @@ Supabase dashboard, for the project in question:
       blocker.**
 - [ ] **Email templates:** `SUPABASE_ACCESS_TOKEN=<personal token> npm run
       auth:templates`. Uses the linked project ref, or `SUPABASE_PROJECT_REF`.
-      Rerun whenever a file in `supabase/templates/` changes.
+      Rerun whenever a file in `supabase/templates/` changes. The script now
+      pushes five settings groups, including the email-change template and the
+      email-changed notice.
+- [ ] **Coolify → the app's environment:** `SUPABASE_SECRET_KEY` is set (runtime
+      env, never a build arg). Account deletion calls the Auth admin API with
+      it; without it, deleting an account fails with a generic error and a
+      Sentry event.
 
 ## Cloudflare
 
@@ -83,6 +91,11 @@ configured sender with the branded template → the link lands on `/auth/confirm
 → Continue → `/account`. Then forgot password → email → reset → the
 "password changed" email arrives. Check Sentry for any
 `Unexpected Supabase Auth error` events.
+
+Then, at `/account/settings`: change the name; change the email and click both
+links, then check the old address receives "Your email address was changed";
+change the password and see another browser signed out; delete a throwaway
+account and confirm it can no longer sign in.
 
 ## At launch
 

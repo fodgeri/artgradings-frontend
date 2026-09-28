@@ -49,6 +49,16 @@ Blocks hosted email, not development.
 | Turnstile | built | **Outside the estimate (≈ 3–4 h), added deliberately.** Needs the client's agreement as a scope addition. |
 | Auth email copy | English, in `supabase/templates/*.html` | Functional copy we wrote. Supabase renders it, so it is **not** in `messages/*.json`: when a second locale is scoped, these three templates need translating and auth email moves to Supabase's Send Email hook (see the spec). |
 
+## Accounts and personal data
+
+| Item | Current state | What is needed |
+|---|---|---|
+| Retention after account deletion | Deletion is a hard delete; today only the profile and roles exist | **How long order and payment records must be kept, and which fields**, once M3/M7 create them. A legal question for the client and their lawyer; it decides how M3/M7 scrub a deleted user's orders. Does not block M2. |
+| Data export | Not built | Whether the client wants a self-service GDPR access request, or handles such requests by email. |
+| Deletion wording | Functional copy we wrote (`auth.settings.delete`) | The client may want their lawyer to see it alongside the privacy policy. |
+| Support contact | The "email changed" notice says "contact ART Gradings support" with no address | A support address for account-security notices. |
+| Turnstile | Now also on the password-change and delete forms | Part of the existing Turnstile scope addition; no further cost. |
+
 ## Deferred by decision, not missing
 
 | Item | Status |
