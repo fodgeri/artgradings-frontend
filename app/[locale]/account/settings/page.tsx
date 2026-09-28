@@ -6,8 +6,8 @@ import { Section } from "@/components/ui/section";
 import { Link } from "@/i18n/navigation";
 import { resolveLocale } from "@/lib/auth/action-state";
 import { requireUser } from "@/lib/auth/require-user";
-import { createClient } from "@/lib/supabase/server";
 
+import { loadSettings } from "./load-settings";
 import { SettingsCards } from "./settings-cards";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -15,23 +15,13 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("title") };
 }
 
-/**
- * Profile and settings. The address shown comes from Auth, not the JWT, which
- * lags an email change made on another device by up to an hour.
- */
+/** Profile and settings. `loadSettings` says where each value comes from. */
 export default async function SettingsPage({ params }: PageProps<"/[locale]/account/settings">) {
   const locale = resolveLocale((await params).locale);
   const user = await requireUser({ locale, next: "/account/settings" });
   const t = await getTranslations("auth.settings");
 
-  const supabase = await createClient();
-  const [{ data: profile, error }, { data: auth }] = await Promise.all([
-    supabase.from("profiles").select("first_name, last_name").eq("id", user.id).single(),
-    supabase.auth.getUser(),
-  ]);
-  // Every user has a profile (the provisioning trigger). Failing to read it is
-  // an outage, reported by onRequestError — the message carries no user data.
-  if (error || !profile) throw new Error("Could not load the profile for the settings page");
+  const settings = await loadSettings(locale, user);
 
   return (
     <Section>
@@ -42,9 +32,9 @@ export default async function SettingsPage({ params }: PageProps<"/[locale]/acco
           </Link>
           <h1 className="mt-4 mb-8 font-serif text-h2 text-ink">{t("title")}</h1>
           <SettingsCards
-            firstName={profile.first_name}
-            lastName={profile.last_name}
-            email={auth.user?.email ?? user.email}
+            firstName={settings.firstName}
+            lastName={settings.lastName}
+            email={settings.email}
           />
         </div>
       </Container>
