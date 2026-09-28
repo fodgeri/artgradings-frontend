@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
+import { AccountLink } from "@/components/layout/account-link";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Wordmark } from "@/components/layout/wordmark";
 import { Container } from "@/components/ui/container";
@@ -63,12 +64,14 @@ export function SiteFooter() {
           </div>
 
           <div className="mt-14 flex flex-col gap-3 border-t border-hairline pt-[26px] font-mono text-[11px] tracking-[0.08em] text-muted sm:flex-row sm:items-center sm:justify-between">
-            {/* The header drops the theme control below `sm`, where it does
-                not fit; this is its mobile home. Both instances read the same
+            {/* The header drops the theme control AND the sign-in / account
+                link below `sm`, where the row has no width budget left; this
+                is their mobile home. The theme toggle instances read the same
                 store, so only one is ever mounted visibly and they cannot
                 disagree. */}
-            <div className="mb-2 sm:hidden">
+            <div className="mb-2 flex items-center gap-4 sm:hidden">
               <ThemeToggle />
+              <AccountLink className="focus-ring text-sm text-ink/80 transition-colors duration-150 hover:text-gold-ink" />
             </div>
             <span>{t("copyright", { year: new Date().getFullYear() })}</span>
             <span>{t("legal")}</span>

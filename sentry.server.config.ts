@@ -25,10 +25,10 @@ Sentry.init({
   // Sentry. Omitting it leaves `sendDefaultPii: false`, which is what an EU
   // platform handling names and shipping addresses (M3) wants by default.
 
-  // Attaches local variable values to server stack frames. Very useful for
-  // debugging, and a PII vector once M3/M7 put real customer data in scope —
-  // revisit this line when order and payment code lands.
-  includeLocalVariables: true,
+  // includeLocalVariables defaults to off (the SDK default) and stays off:
+  // auth action frames hold locals like email and plaintext password, and
+  // this would attach them to every server exception event. Do not re-enable
+  // without a `beforeSend` that strips frame vars first.
 
   tracesSampler: ({ name, inheritOrSampleWith }) => {
     // Coolify polls /api/health continuously for zero-downtime deploys.

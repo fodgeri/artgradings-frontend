@@ -62,6 +62,9 @@ jobs:
           NEXT_PUBLIC_APP_URL: http://localhost:3000
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
           NEXT_PUBLIC_SENTRY_DSN: ""
+          # Cloudflare's always-pass test key. Required: the sign-up pages
+          # prerender the Turnstile component, which throws without a key.
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
 
       - name: Type check
         run: npx tsc --noEmit

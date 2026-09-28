@@ -19,10 +19,12 @@ Next.js 16.3, React 19.2, TypeScript (strict), Tailwind CSS v4 (PostCSS plugin, 
 Built so far: the i18n setup, Sentry, the Vitest harness, the M1 design system
 foundation (tokens, primitives, site shell, `/design` gallery), the brand
 identity from the client's manual, the M0 Supabase foundation (schema,
-roles/permissions, RLS, typed clients, session refresh), and the three M1
-public pages — landing, `/how-it-works` and `/faq`.
+roles/permissions, RLS, typed clients, session refresh), the three M1
+public pages — landing, `/how-it-works` and `/faq` — and the M2 auth flows:
+sign-up, confirmation, sign-in, sign-out, password reset, and a landing
+`/account` page.
 
-Not yet built: all auth UI — signup, login and password reset are M2.
+Not yet built: profile and settings (the next M2 spec).
 
 **Three links in the chrome are deliberate 404s**, and must be stated at
 handover rather than papered over with stub pages nobody scoped:
@@ -234,9 +236,10 @@ Rules:
 - **`SENTRY_AUTH_TOKEN` is a BuildKit secret, never a build arg.** See the
   Secrets note under Git Workflow & CI/CD; the Dockerfile mounts it for the
   single `npm run build` layer.
-- `includeLocalVariables: true` on the server attaches local variable values to
-  stack frames. Re-review it at M3/M7, when those frames start holding customer
-  data.
+- `includeLocalVariables` is off on the server, because auth action frames
+  hold local variables such as the submitted email address and plaintext
+  password. Do not re-enable it without a `beforeSend` that strips frame
+  variables first.
 
 ## Supabase
 
@@ -308,6 +311,34 @@ Rules:
 - **pgTAP helpers live in `supabase/tests/000-setup.sql`**, which runs first by
   alphabetical order. Every file there is a test file to pg_prove, so one
   without a TAP plan fails the whole run.
+
+## Auth
+
+Email/password through Supabase Auth. Spec:
+`docs/superpowers/specs/2026-09-23-auth-flows-design.md`; hosted configuration:
+`docs/deployment/AUTH_SETUP.md`.
+
+- **Forms post to Server Actions** (`app/[locale]/(auth)/*/actions.ts`)
+  through `components/auth/auth-form.tsx`. Actions validate, call Supabase,
+  map `error.code` through `lib/auth/errors.ts`, and `return redirect({href,
+  locale})`. Never map by `error.message` — it changes, and it can contain the
+  email address.
+- **Report unexpected auth errors with `reportAuthError()`,** never by
+  capturing the Supabase error object.
+- **Sign-up, resend and forgot-password never reveal whether an account
+  exists.** `revealsAccount()` lists the codes treated as success.
+- **Confirmation links are `token_hash`, verified on a button's POST,** never
+  on the link's GET — mail scanners prefetch links.
+- **Turnstile is verified by Supabase,** not by us. Locally, the always-pass
+  test keys; the real secret lives only in the hosted Auth settings.
+- **`getSession()` appears once, in `AccountLink`,** as a display hint.
+  Everything that decides access uses `getUser()`/`requireUser()` (verified
+  claims). RLS remains the boundary for data.
+- **Auth email templates are in `supabase/templates/`,** applied locally by
+  `config.toml` and to a hosted project by `npm run auth:templates`. They are
+  English-only by construction; see the spec before adding a locale.
+- **Seeded users** (`user@example.test`, `admin@example.test`) sign in locally
+  with `password123!`.
 
 ## Conventions & constraints
 

@@ -1,7 +1,17 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import messages from "@/messages/en.json";
 import { renderWithIntl, screen } from "@/test/i18n";
+
+// AccountLink has its own tests; here it would need a Supabase client and a
+// router context the footer does not care about.
+vi.mock("./account-link", () => ({
+  AccountLink: ({ className }: { className?: string }) => (
+    <span role="link" data-testid="footer-account-link" className={className}>
+      Sign in
+    </span>
+  ),
+}));
 
 import { SiteFooter } from "./site-footer";
 
@@ -36,5 +46,12 @@ describe("SiteFooter", () => {
     expect(
       screen.getByRole("group", { name: messages.a11y.theme }),
     ).toBeInTheDocument();
+  });
+
+  test("carries the sign-in / account link the header drops on mobile", () => {
+    // The header hides AccountLink below `sm` with no width budget to spare;
+    // this is the only path to sign-in or /account a phone gets.
+    renderWithIntl(<SiteFooter />);
+    expect(screen.getByTestId("footer-account-link")).toBeInTheDocument();
   });
 });

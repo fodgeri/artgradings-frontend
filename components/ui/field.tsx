@@ -55,3 +55,13 @@ export function FieldSelect({ className, children, ...props }: ComponentProps<"s
     />
   );
 }
+
+/**
+ * Help text under a control. Base UI's Field wires it to the control's
+ * `aria-describedby`, so screen readers announce it with the input.
+ */
+export function FieldDescription({ children }: { children: ReactNode }) {
+  return (
+    <BaseField.Description className="text-sm text-muted">{children}</BaseField.Description>
+  );
+}
