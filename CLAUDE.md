@@ -354,6 +354,10 @@ Email/password through Supabase Auth. Spec:
   comes from `auth.getUser()`, never the JWT claims, which lag an email change.
 - **Email change never reveals whether an address is taken** —
   `revealsAccount()` codes, the rate limit included, answer "sent".
+- **`/reset-password` admits only a recovery-origin session** —
+  `isRecoverySession()`: an `amr` `otp` entry (every verified email link)
+  stamped within the hour. Any other session goes to `/account/settings`,
+  where the current password is required. Never relax it to "any session".
 
 ## Conventions & constraints
 

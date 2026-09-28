@@ -118,6 +118,30 @@ password is wrong.
 to `/reset-password`, whose user by definition does not know their current
 password.
 
+**`/reset-password` requires a recovery-origin session.** The auth-flows spec
+let any signed-in session use it, which made it a back door around everything
+above: the same unlocked laptop or stolen cookie could set a password there
+with no current password and no Turnstile, evict the owner, and then pass the
+deletion re-verification with the password it had just chosen. The page and
+its action now admit only a session whose `amr` claim holds an `otp` entry
+stamped within the last hour (`isRecoverySession` in
+`lib/auth/recovery-session.ts`). Any other session is sent to
+`/account/settings`; no session still goes to `/forgot-password`.
+
+Observed on the local stack (GoTrue v2.196): a verified recovery link yields
+`amr: [{method: "otp", timestamp}]`, a password sign-in
+`[{method: "password", …}]`, and a refresh keeps the original entry and its
+timestamp — so the window cannot be stretched by refreshing. GoTrue records
+*every* verified email link as `otp` (sign-up confirmation and email change
+too), so the gate admits "a session minted from the account's inbox within the
+hour" rather than strictly "a recovery session". That is the same authority:
+whoever controls the inbox can request a recovery link anyway. The alternative,
+a marker cookie set by `/auth/confirm`, was rejected because the holder of a
+stolen session can set any cookie they like; the `amr` entry is signed by Auth
+and cannot be forged. One hour matches `otp_expiry` and `jwt_expiry`. A user who
+opens the link and leaves the form for longer is sent to settings and must
+request a new link.
+
 ### Email change: enumeration stays closed, so pending state is not shown
 
 `updateUser({email})` to an address another account holds returns

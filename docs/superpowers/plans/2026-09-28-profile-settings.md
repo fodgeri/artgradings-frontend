@@ -50,6 +50,7 @@
 | `AuthForm` unchanged | Gains `resetOnSent`, `doneOnSent`, `submitVariant`, and the `{nameMax}` interpolation | Password fields must clear after a change; the partial email-change confirmation must not offer a second click; the delete button is ghost-styled. |
 | Files list | Adds `app/[locale]/account/settings/settings-cards.tsx` | The page is an async Server Component, which Vitest cannot render. The cards are a synchronous component the page feeds, and that is what gets tested. |
 | `email_changed` notice: "no link — same reasoning as `password_changed`" | Same, and its "not you?" line says to contact support | The old inbox can no longer reset the password — reset mail now goes to the new address. The support contact is a new content request. |
+| Auth-flows spec: `/reset-password` accepts any signed-in session | Page and action require `isRecoverySession()` — an `amr` `otp` entry stamped within the hour; any other session goes to `/account/settings` | Final review: any session could set a password there with no current password and no Turnstile, evict the owner, then pass the deletion re-verification. GoTrue records every verified email link as `otp` (observed), so the gate means "minted from the inbox within the hour" — the authority a recovery link grants anyway. A marker cookie was rejected: a stolen session's holder can set any cookie; `amr` is signed. |
 
 ---
 

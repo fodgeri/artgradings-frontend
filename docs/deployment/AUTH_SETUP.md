@@ -29,7 +29,8 @@ Supabase dashboard, for the project in question:
       must confirm). Minimum password length **10** (mirrors
       `PASSWORD_MIN_LENGTH` in `lib/auth/password.ts`). No character
       requirements. Email OTP expiry **3600 seconds (1 hour)** — the templates
-      promise "expires in one hour".
+      promise "expires in one hour", and `RECOVERY_WINDOW_SECONDS` in
+      `lib/auth/recovery-session.ts` mirrors it.
 - [ ] **Leaked password protection** on — requires the Pro plan. Until the
       project is on Pro, record here that it is off.
 - [ ] **Authentication → Attack Protection:** CAPTCHA on, provider
