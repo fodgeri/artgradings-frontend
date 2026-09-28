@@ -193,3 +193,167 @@ describe("changeEmail", () => {
     expect(mocks.updateUser).not.toHaveBeenCalled();
   });
 });
+
+describe("changePassword", () => {
+  const { changePassword } = actions;
+  const VALID = {
+    currentPassword: "old-password!",
+    password: "new-password-123",
+    captchaToken: "token-abc",
+  };
+
+  beforeEach(() => {
+    mocks.signInWithPassword.mockResolvedValue({ data: {}, error: null });
+    mocks.signOut.mockResolvedValue({ error: null });
+    mocks.updateUser.mockResolvedValue({ data: {}, error: null });
+  });
+
+  test("re-verifies against Auth's address, evicts other sessions, then changes the password", async () => {
+    const result = await changePassword(
+      "en",
+      initialAuthState,
+      formData({ ...VALID, email: "attacker@example.test" }),
+    );
+
+    expect(result).toEqual({ status: "sent" });
+    expect(mocks.signInWithPassword).toHaveBeenCalledWith({
+      email: "current@example.test",
+      password: "old-password!",
+      options: { captchaToken: "token-abc" },
+    });
+    expect(mocks.signOut).toHaveBeenCalledWith({ scope: "others" });
+    expect(mocks.updateUser).toHaveBeenCalledWith({ password: "new-password-123" });
+    expect(mocks.signOut.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.updateUser.mock.invocationCallOrder[0],
+    );
+  });
+
+  test("a wrong current password stops before anything changes", async () => {
+    mocks.signInWithPassword.mockResolvedValue({
+      data: {},
+      error: new AuthError("Invalid login credentials", 400, "invalid_credentials"),
+    });
+    const result = await changePassword("en", initialAuthState, formData(VALID));
+
+    expect(result).toEqual({ status: "error", errorKey: "currentPasswordIncorrect" });
+    expect(mocks.signOut).not.toHaveBeenCalled();
+    expect(mocks.updateUser).not.toHaveBeenCalled();
+  });
+
+  test("an empty current password never reaches Supabase", async () => {
+    const result = await changePassword(
+      "en",
+      initialAuthState,
+      formData({ ...VALID, currentPassword: "" }),
+    );
+    expect(result).toEqual({ status: "error", errorKey: "currentPasswordIncorrect" });
+    expect(mocks.signInWithPassword).not.toHaveBeenCalled();
+  });
+
+  test("applies the password policy before re-verifying", async () => {
+    const result = await changePassword("en", initialAuthState, formData({ ...VALID, password: "short" }));
+    expect(result).toEqual({ status: "error", errorKey: "passwordTooShort" });
+    expect(mocks.signInWithPassword).not.toHaveBeenCalled();
+  });
+
+  test("maps a failed captcha", async () => {
+    mocks.signInWithPassword.mockResolvedValue({
+      data: {},
+      error: new AuthError("x", 400, "captcha_failed"),
+    });
+    const result = await changePassword("en", initialAuthState, formData(VALID));
+    expect(result).toEqual({ status: "error", errorKey: "captchaFailed" });
+  });
+
+  test("a failed eviction leaves the password unchanged, and is reported", async () => {
+    mocks.signOut.mockResolvedValue({ error: new AuthError("fetch failed") });
+    const result = await changePassword("en", initialAuthState, formData(VALID));
+
+    expect(result).toEqual({ status: "error", errorKey: "sessionsNotRevoked" });
+    expect(mocks.updateUser).not.toHaveBeenCalled();
+    expect(mocks.captureException).toHaveBeenCalledTimes(1);
+  });
+
+  test("maps same_password", async () => {
+    mocks.updateUser.mockResolvedValue({ data: {}, error: new AuthError("x", 422, "same_password") });
+    const result = await changePassword("en", initialAuthState, formData(VALID));
+    expect(result).toEqual({ status: "error", errorKey: "samePassword" });
+  });
+
+  test("without a session, sends the user to sign in", async () => {
+    mocks.getClaims.mockResolvedValue({ data: null, error: null });
+    await expect(changePassword("en", initialAuthState, formData(VALID))).rejects.toThrow(
+      "NEXT_REDIRECT",
+    );
+    expect(mocks.redirect).toHaveBeenCalledWith(SIGN_IN);
+    expect(mocks.signInWithPassword).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteAccount", () => {
+  const { deleteAccount } = actions;
+  const VALID = { currentPassword: "old-password!", captchaToken: "token-abc" };
+
+  beforeEach(() => {
+    mocks.signInWithPassword.mockResolvedValue({ data: {}, error: null });
+    mocks.deleteCurrentUser.mockResolvedValue({ error: null });
+    mocks.endLocalSession.mockResolvedValue(undefined);
+  });
+
+  test("re-verifies, deletes, ends the session here, and says goodbye", async () => {
+    await expect(deleteAccount("en", initialAuthState, formData(VALID))).rejects.toThrow(
+      "NEXT_REDIRECT",
+    );
+
+    expect(mocks.signInWithPassword).toHaveBeenCalledWith({
+      email: "current@example.test",
+      password: "old-password!",
+      options: { captchaToken: "token-abc" },
+    });
+    expect(mocks.deleteCurrentUser).toHaveBeenCalledWith();
+    expect(mocks.endLocalSession).toHaveBeenCalledWith(
+      expect.objectContaining({ auth: expect.anything() }),
+      "deleteAccount",
+    );
+    expect(mocks.deleteCurrentUser.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.endLocalSession.mock.invocationCallOrder[0],
+    );
+    expect(mocks.redirect).toHaveBeenCalledWith({ href: "/account-deleted", locale: "en" });
+  });
+
+  test("a wrong current password deletes nothing", async () => {
+    mocks.signInWithPassword.mockResolvedValue({
+      data: {},
+      error: new AuthError("Invalid login credentials", 400, "invalid_credentials"),
+    });
+    const result = await deleteAccount("en", initialAuthState, formData(VALID));
+
+    expect(result).toEqual({ status: "error", errorKey: "currentPasswordIncorrect" });
+    expect(mocks.deleteCurrentUser).not.toHaveBeenCalled();
+    expect(mocks.endLocalSession).not.toHaveBeenCalled();
+  });
+
+  test("a failed deletion keeps the session and reports", async () => {
+    mocks.deleteCurrentUser.mockResolvedValue({
+      error: new AuthError("boom", 500, "unexpected_failure"),
+    });
+    const result = await deleteAccount("en", initialAuthState, formData(VALID));
+
+    expect(result).toEqual({ status: "error", errorKey: "generic" });
+    expect(mocks.endLocalSession).not.toHaveBeenCalled();
+    expect(mocks.redirect).not.toHaveBeenCalled();
+    expect(mocks.captureException).toHaveBeenCalledTimes(1);
+    expect(mocks.captureException.mock.calls[0][1]).toMatchObject({
+      tags: { "auth.flow": "deleteAccount" },
+    });
+  });
+
+  test("without a session, sends the user to sign in and deletes nothing", async () => {
+    mocks.getClaims.mockResolvedValue({ data: null, error: null });
+    await expect(deleteAccount("en", initialAuthState, formData(VALID))).rejects.toThrow(
+      "NEXT_REDIRECT",
+    );
+    expect(mocks.redirect).toHaveBeenCalledWith(SIGN_IN);
+    expect(mocks.deleteCurrentUser).not.toHaveBeenCalled();
+  });
+});
