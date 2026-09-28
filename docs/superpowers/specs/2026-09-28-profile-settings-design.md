@@ -142,13 +142,23 @@ and cannot be forged. One hour matches `otp_expiry` and `jwt_expiry`. A user who
 opens the link and leaves the form for longer is sent to settings and must
 request a new link.
 
-### Email change: enumeration stays closed, so pending state is not shown
+### Email change: the on-screen response is uniform, so pending state is not shown
 
 `updateUser({email})` to an address another account holds returns
 `email_exists`. Showing that tells a signed-in user whether an address is
-registered. As on sign-up, the enumeration rule wins: `email_exists` is treated
-as success — "we've sent a link to both inboxes" — and reported to Sentry as a
-suppressed warning.
+registered. As on sign-up, the enumeration rule wins on screen: `email_exists`
+is treated as success — "we've sent a link to both inboxes" — and reported to
+Sentry as a suppressed warning.
+
+**What this does not close.** With secure email change, GoTrue checks for a
+taken address *before* sending anything. A free address sends a confirmation
+to the requester's own current inbox; a taken one sends nothing. Any signed-in
+user can therefore learn whether an address is registered by watching their own
+inbox, and no application code can hide that. It is an **accepted residual
+risk**, bounded by GoTrue's per-user send frequency (`max_frequency`, 60 s):
+about one probe per minute per account, each costing email quota and each
+taken-address probe leaving a Sentry warning. The guarantee is that the
+*on-screen* response never differs.
 
 That decision has a consequence. The page could show "change to x@… pending",
 read from `new_email` — but `new_email` is set for a real change and not for a

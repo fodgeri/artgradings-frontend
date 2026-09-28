@@ -352,8 +352,13 @@ Email/password through Supabase Auth. Spec:
   `signInWithPassword`, so those forms carry Turnstile; email change relies on
   Supabase's double confirmation instead. The address they verify against
   comes from `auth.getUser()`, never the JWT claims, which lag an email change.
-- **Email change never reveals whether an address is taken** —
-  `revealsAccount()` codes, the rate limit included, answer "sent".
+- **Email change answers "sent" on screen whether or not an address is
+  taken** — `revealsAccount()` codes, the rate limit included. It cannot hide
+  the requester's own inbox: GoTrue mails a confirmation there only for a free
+  address. That side channel is an accepted residual risk, bounded by the
+  per-user send frequency (about one probe a minute, each costing email quota
+  and a taken one leaving a Sentry warning). Do not claim more than on-screen
+  uniformity.
 - **`/reset-password` admits only a recovery-origin session** —
   `isRecoverySession()`: an `amr` `otp` entry (every verified email link)
   stamped within the hour. Any other session goes to `/account/settings`,

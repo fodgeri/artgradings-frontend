@@ -115,10 +115,12 @@ export async function updateName(
  * this does not ask for the password: a stolen session cannot click the link
  * in the old inbox.
  *
- * Never reveals whether another account holds the new address. A taken
- * address (`email_exists`) and a free one resubmitted within the resend window
- * (`over_email_send_rate_limit`) both answer "sent"; were they different,
- * submitting an address twice would test whether it is registered.
+ * Never reveals ON SCREEN whether another account holds the new address. A
+ * taken address (`email_exists`) and a free one resubmitted within the resend
+ * window (`over_email_send_rate_limit`) both answer "sent"; were they
+ * different, submitting an address twice would test whether it is registered.
+ * The requester's own inbox still differs — Supabase mails it only for a free
+ * address — an accepted residual risk described in the profile-settings spec.
  */
 export async function changeEmail(
   locale: string,
