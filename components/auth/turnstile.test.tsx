@@ -87,6 +87,21 @@ describe("Turnstile", () => {
     expect(api.remove).toHaveBeenCalledWith("widget-1");
   });
 
+  test("keeps the token across a re-render with the same resetKey", async () => {
+    // Regression: a hidden input's HTML value mode is "default", so its value
+    // IDL attribute mirrors `defaultValue`. A `defaultValue=""` prop made React
+    // resync the DOM value to "" on every re-render, wiping a token written
+    // imperatively by the Turnstile callback — even with no resetKey change.
+    const { container, rerender } = renderWithIntl(<Turnstile resetKey="idle" />);
+    const options = await renderedOptions();
+    act(() => options.callback("token-abc"));
+    expect(tokenInput(container).value).toBe("token-abc");
+
+    rerender(<Turnstile resetKey="idle" />);
+
+    expect(tokenInput(container).value).toBe("token-abc");
+  });
+
 });
 
 describe("script loading", () => {
