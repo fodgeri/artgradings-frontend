@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 const DESTINATIONS = {
   email: "/account",
   recovery: "/reset-password",
+  email_change: "/account/settings",
 } as const;
 
 type LinkType = keyof typeof DESTINATIONS;
@@ -43,13 +44,18 @@ export async function confirmToken(
   if (!isLinkType(type) || !tokenHash) return redirect(linkExpired);
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+  const { data, error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
 
   if (error) {
     // An expired or reused link is routine. Anything else is ours to look at.
     if (error.code !== "otp_expired") reportAuthError(error, "confirm");
     return redirect(linkExpired);
   }
+
+  // Secure email change needs a click in BOTH inboxes. The first verifies but
+  // completes nothing and signs no one in, so there is nowhere to redirect to;
+  // the page says what is left. The second returns a session.
+  if (type === "email_change" && !data.session) return { status: "sent" };
 
   return redirect({ href: DESTINATIONS[type], locale: target });
 }

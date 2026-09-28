@@ -24,10 +24,19 @@ const FIELDS = {
     subject: "mailer_subjects_recovery",
     content_path: "mailer_templates_recovery_content",
   },
+  "auth.email.template.email_change": {
+    subject: "mailer_subjects_email_change",
+    content_path: "mailer_templates_email_change_content",
+  },
   "auth.email.notification.password_changed": {
     enabled: "mailer_notifications_password_changed_enabled",
     subject: "mailer_subjects_password_changed_notification",
     content_path: "mailer_templates_password_changed_notification_content",
+  },
+  "auth.email.notification.email_changed": {
+    enabled: "mailer_notifications_email_changed_enabled",
+    subject: "mailer_subjects_email_changed_notification",
+    content_path: "mailer_templates_email_changed_notification_content",
   },
 };
 

@@ -176,6 +176,8 @@
     "confirm": {
       "emailTitle": "Confirm your email",
       "recoveryTitle": "Reset your password",
+      "emailChangeTitle": "Confirm your email change",
+      "emailChangePartial": "Confirmed. Now open the link we sent to your other address — the change takes effect once both are confirmed.",
       "lead": "One more step — continue to finish.",
       "submit": "Continue"
     },
