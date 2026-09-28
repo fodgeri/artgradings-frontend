@@ -241,14 +241,17 @@ user id or email is ever read from form data.**
 
 Fields `currentPassword`, `password`, Turnstile. In order:
 
-1. `passwordProblem(password)`.
+1. `passwordProblem(password)`. A new password equal to `currentPassword` →
+   `samePassword` here, before anything else runs: left to Supabase's
+   `same_password` in step 4, it would arrive after step 3 had signed other
+   devices out for a change that never happened.
 2. `signInWithPassword({ email: <from getUser()>, password: currentPassword,
    options: { captchaToken } })`. `invalid_credentials` →
    `currentPasswordIncorrect`, and nothing further runs.
 3. `signOut({ scope: "others" })`. Failure → `sessionsNotRevoked`, password
    unchanged. Eviction precedes the change for the reason documented in
    `/reset-password`: done afterwards, a failure is unrecoverable by retry.
-4. `updateUser({ password })`. `same_password` is already mapped.
+4. `updateUser({ password })`. `same_password` is still mapped, as a backstop.
 
 Supabase sends `password_changed`. The form clears its password fields on
 success.
