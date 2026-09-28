@@ -20,13 +20,18 @@ function walk(dir: string): string[] {
  *
  * Adding a path here is a security decision, not a formality.
  */
-const ADMIN_ALLOWLIST: string[] = [];
+const ADMIN_ALLOWLIST: string[] = [join("lib", "auth", "delete-current-user.ts")];
 
 describe("service_role client containment", () => {
   test("the client this guard protects exists", () => {
     // Without this the guard passes vacuously before admin.ts is written, and
     // would keep passing if the file were ever deleted or renamed.
     expect(walk("lib")).toContain(join("lib", "supabase", "admin.ts"));
+  });
+
+  test("the allowlist is exactly the account-deletion module", () => {
+    // Widening this is a security decision; the test makes it a visible one.
+    expect(ADMIN_ALLOWLIST).toEqual([join("lib", "auth", "delete-current-user.ts")]);
   });
 
   test("nothing outside the allowlist imports the admin client", () => {
