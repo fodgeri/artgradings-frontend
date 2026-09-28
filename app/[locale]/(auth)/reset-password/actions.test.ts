@@ -36,19 +36,27 @@ beforeEach(() => {
 });
 
 describe("resetPassword", () => {
-  test("sets the password, evicts other sessions, and lands on /account", async () => {
+  test("evicts other sessions, then sets the password, and lands on /account", async () => {
     await expect(resetPassword("en", initialAuthState, formData(VALID))).rejects.toThrow("NEXT_REDIRECT");
 
-    expect(mocks.updateUser).toHaveBeenCalledWith({ password: VALID.password });
     expect(mocks.signOut).toHaveBeenCalledWith({ scope: "others" });
+    expect(mocks.updateUser).toHaveBeenCalledWith({ password: VALID.password });
+    expect(mocks.signOut.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.updateUser.mock.invocationCallOrder[0],
+    );
     expect(mocks.redirect).toHaveBeenCalledWith({ href: "/account", locale: "en" });
   });
 
-  test("still lands on /account when evicting other sessions fails", async () => {
-    // The password HAS changed. Telling the user it failed would be false.
+  test("keeps the old password and says so when evicting other sessions fails", async () => {
+    // Whoever the reset is meant to lock out must not keep a session silently.
+    // Nothing has changed yet, so resubmitting retries both steps.
     mocks.signOut.mockResolvedValue({ error: new AuthError("boom", 500, "unexpected_failure") });
-    await expect(resetPassword("en", initialAuthState, formData(VALID))).rejects.toThrow("NEXT_REDIRECT");
-    expect(mocks.redirect).toHaveBeenCalledWith({ href: "/account", locale: "en" });
+    expect(await resetPassword("en", initialAuthState, formData(VALID))).toEqual({
+      status: "error",
+      errorKey: "sessionsNotRevoked",
+    });
+    expect(mocks.updateUser).not.toHaveBeenCalled();
+    expect(mocks.redirect).not.toHaveBeenCalled();
     expect(mocks.captureException).toHaveBeenCalledTimes(1);
   });
 
@@ -77,6 +85,5 @@ describe("resetPassword", () => {
       status: "error",
       errorKey,
     });
-    expect(mocks.signOut).not.toHaveBeenCalled();
   });
 });

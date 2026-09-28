@@ -181,7 +181,7 @@
     },
     "resetPassword": {
       "title": "Choose a new password",
-      "lead": "Saving it signs you out on every other device.",
+      "lead": "Saving it signs you out on every other device within the hour.",
       "submit": "Save password"
     },
     "account": {
@@ -200,6 +200,7 @@
       "rateLimited": "Too many attempts. Wait a moment and try again.",
       "samePassword": "Your new password must be different from the current one.",
       "reauthenticationNeeded": "For your security, ask for a new reset link and try again.",
+      "sessionsNotRevoked": "We couldn't sign out your other devices, so your password has not been changed. Please try again.",
       "generic": "Something went wrong. Please try again."
     }
   }

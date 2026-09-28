@@ -55,6 +55,7 @@ Each is small, deliberate, and should be mentioned when the branch is reviewed.
 | Files list | Adds `lib/auth/action-state.ts`, `components/auth/auth-heading.tsx`, `FieldDescription` in `components/ui/field.tsx`, `test/form-data.ts`, and an `auth:templates` npm script | A `"use server"` file may export only async functions, so the shared state type and helpers need their own module; the rest remove repetition. |
 | — | The error alert uses neutral tokens (`bg-surface-sunken`, `border-hairline`) | The design system has no danger colour. Adding one is a design-system decision, not an auth one. Flag it if red is wanted. |
 | `password_changed.html` has "a 'not you? reset your password' pointer" | The pointer is text, not a link | Supabase does not document `{{ .SiteURL }}` as available in *notification* templates. A link that renders as `/forgot-password` with no host would be worse than none. |
+| `/reset-password`: "`updateUser({password})`, then `signOut({scope: "others"})`" | `signOut({scope: "others"})` first; if it fails, show `sessionsNotRevoked` and leave the password unchanged; then `updateUser` | Raised in PR review. In the spec's order a failed eviction could only be reported, and a retry stopped at `same_password` before reaching it, so the session the reset was meant to end survived silently. Evicting first makes the failure visible and retriable. The page copy now says "within the hour": revocation ends refresh tokens, and an issued access token lives until `jwt_expiry`. |
 
 ---
 
