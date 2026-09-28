@@ -19,13 +19,24 @@ afterEach(() => {
   delete window.turnstile;
 });
 
-function renderForm(props: { captcha?: boolean; sentMessage?: string } = {}) {
+function renderForm(
+  props: {
+    captcha?: boolean;
+    sentMessage?: string;
+    resetOnSent?: boolean;
+    doneOnSent?: boolean;
+    submitVariant?: "gold" | "ink" | "ghost";
+  } = {},
+) {
   return renderWithIntl(
     <AuthForm
       action={action}
       submitLabel={messages.auth.signIn.submit}
       captcha={props.captcha ?? false}
       sentMessage={props.sentMessage}
+      resetOnSent={props.resetOnSent}
+      doneOnSent={props.doneOnSent}
+      submitVariant={props.submitVariant}
     >
       <Field label={messages.auth.fields.email}>
         <FieldInput type="email" name="email" required />
@@ -124,5 +135,70 @@ describe("AuthForm", () => {
 
     await waitFor(() => expect(action).toHaveBeenCalled());
     expect(action.mock.calls[0][2].get("captchaToken")).toBe("token-abc");
+  });
+
+  test("interpolates the name limit into an error", async () => {
+    action.mockResolvedValue({ status: "error", errorKey: "nameTooLong" });
+    const { user } = renderForm();
+    await submit(user);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("100");
+  });
+
+  test("keeps the fields after success by default", async () => {
+    action.mockResolvedValue({ status: "sent" });
+    const { user } = renderForm({ sentMessage: messages.auth.forgotPassword.sent });
+    await submit(user);
+
+    await screen.findByRole("status");
+    expect(screen.getByLabelText(messages.auth.fields.email)).toHaveValue("user@example.test");
+  });
+
+  test("clears the fields after success with resetOnSent", async () => {
+    action.mockResolvedValue({ status: "sent" });
+    const { user } = renderForm({ sentMessage: messages.auth.forgotPassword.sent, resetOnSent: true });
+    await submit(user);
+
+    await screen.findByRole("status");
+    await waitFor(() =>
+      expect(screen.getByLabelText(messages.auth.fields.email)).toHaveValue(""),
+    );
+  });
+
+  test("keeps the fields after an error even with resetOnSent", async () => {
+    action.mockResolvedValue({ status: "error", errorKey: "invalidCredentials" });
+    const { user } = renderForm({ resetOnSent: true });
+    await submit(user);
+
+    await screen.findByRole("alert");
+    expect(screen.getByLabelText(messages.auth.fields.email)).toHaveValue("user@example.test");
+  });
+
+  test("hides the submit button once sent with doneOnSent", async () => {
+    action.mockResolvedValue({ status: "sent" });
+    const { user } = renderForm({ sentMessage: messages.auth.forgotPassword.sent, doneOnSent: true });
+    await submit(user);
+
+    await screen.findByRole("status");
+    expect(
+      screen.queryByRole("button", { name: messages.auth.signIn.submit }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("keeps the submit button after an error with doneOnSent", async () => {
+    action.mockResolvedValue({ status: "error", errorKey: "generic" });
+    const { user } = renderForm({ doneOnSent: true });
+    await submit(user);
+
+    await screen.findByRole("alert");
+    expect(screen.getByRole("button", { name: messages.auth.signIn.submit })).toBeInTheDocument();
+  });
+
+  test("styles the submit button with submitVariant", () => {
+    renderForm({ submitVariant: "ghost" });
+    // `ghost` is the only variant built on the `glass` utility.
+    expect(screen.getByRole("button", { name: messages.auth.signIn.submit }).className).toContain(
+      "glass",
+    );
   });
 });

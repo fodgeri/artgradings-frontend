@@ -6,14 +6,17 @@ import {
   type ReactNode,
   startTransition,
   useActionState,
+  useEffect,
   useMemo,
+  useRef,
 } from "react";
 
 import { Turnstile } from "@/components/auth/turnstile";
-import { Button } from "@/components/ui/button";
+import { Button, type ButtonProps } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { type AuthAction, initialAuthState } from "@/lib/auth/action-state";
 import { PASSWORD_MAX_BYTES, PASSWORD_MIN_LENGTH } from "@/lib/auth/password";
+import { NAME_MAX_LENGTH } from "@/lib/auth/profile-name";
 
 /**
  * The shared shell of every auth form: pending state, the inline error, the
@@ -25,6 +28,10 @@ import { PASSWORD_MAX_BYTES, PASSWORD_MIN_LENGTH } from "@/lib/auth/password";
  * validation (`required`, `type="email"`, `minLength`) still runs, because
  * `submit` only fires once it passes.
  *
+ * `resetOnSent` clears the form after success — for password fields, which
+ * must not linger. `doneOnSent` removes the submit button after success — for
+ * a single-use token, where a second click can only fail.
+ *
  * Needs JavaScript — Turnstile does too. Nothing here pretends otherwise.
  */
 export function AuthForm({
@@ -32,18 +39,29 @@ export function AuthForm({
   submitLabel,
   sentMessage,
   captcha = true,
+  resetOnSent = false,
+  doneOnSent = false,
+  submitVariant,
   children,
 }: {
   action: AuthAction;
   submitLabel: string;
   sentMessage?: string;
   captcha?: boolean;
+  resetOnSent?: boolean;
+  doneOnSent?: boolean;
+  submitVariant?: ButtonProps["variant"];
   children: ReactNode;
 }) {
   const locale = useLocale();
   const t = useTranslations("auth.errors");
   const boundAction = useMemo(() => action.bind(null, locale), [action, locale]);
   const [state, formAction, pending] = useActionState(boundAction, initialAuthState);
+  const form = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (resetOnSent && state.status === "sent") form.current?.reset();
+  }, [state, resetOnSent]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,8 +69,10 @@ export function AuthForm({
     startTransition(() => formAction(formData));
   }
 
+  const done = doneOnSent && state.status === "sent";
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col">
+    <form ref={form} onSubmit={handleSubmit} className="flex flex-col">
       {children}
 
       {captcha && <Turnstile resetKey={state} />}
@@ -65,6 +85,7 @@ export function AuthForm({
           {t.rich(state.errorKey, {
             min: PASSWORD_MIN_LENGTH,
             max: PASSWORD_MAX_BYTES,
+            nameMax: NAME_MAX_LENGTH,
             resend: (chunks) => (
               <Link
                 href="/sign-up/check-email"
@@ -86,9 +107,11 @@ export function AuthForm({
         </p>
       )}
 
-      <Button type="submit" disabled={pending} className="w-full">
-        {submitLabel}
-      </Button>
+      {!done && (
+        <Button type="submit" variant={submitVariant} disabled={pending} className="w-full">
+          {submitLabel}
+        </Button>
+      )}
     </form>
   );
 }
