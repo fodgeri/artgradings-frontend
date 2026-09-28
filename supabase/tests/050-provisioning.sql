@@ -33,7 +33,7 @@ select lives_ok(
 -- Overwriting a caller-supplied value is also the property worth having: it is
 -- what stops a client forging updated_at through the Data API.
 update public.profiles
-   set full_name = 'Fresh', updated_at = 'epoch'
+   set first_name = 'Fresh', updated_at = 'epoch'
  where id = :'fresh_id'::uuid;
 select is(
   (select updated_at from public.profiles where id = :'fresh_id'::uuid),

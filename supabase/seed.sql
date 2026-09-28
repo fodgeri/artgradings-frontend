@@ -53,9 +53,9 @@ values ('00000000-0000-0000-0000-0000000000a2', 'admin')
 on conflict (user_id, role_key) do nothing;
 
 update public.profiles
-set full_name = 'Example User'
+set first_name = 'Example', last_name = 'User'
 where id = '00000000-0000-0000-0000-0000000000a1';
 
 update public.profiles
-set full_name = 'Example Admin'
+set first_name = 'Example', last_name = 'Admin'
 where id = '00000000-0000-0000-0000-0000000000a2';
