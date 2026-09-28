@@ -154,6 +154,9 @@ export async function changeEmail(
  * afterwards, a failed eviction could only be reported, and a retry would stop
  * at `same_password` before reaching it. Supabase sends the password-changed
  * email itself.
+ *
+ * A new password equal to the current one is refused up front, so a no-op
+ * change never evicts anyone.
  */
 export async function changePassword(
   locale: string,
@@ -166,6 +169,11 @@ export async function changePassword(
   const password = readField(formData, "password");
   const problem = passwordProblem(password);
   if (problem) return { status: "error", errorKey: problem };
+  // Caught here, not left to Supabase's `same_password`: that arrives only
+  // after the eviction below, and would sign other devices out for nothing.
+  if (password === readField(formData, "currentPassword")) {
+    return { status: "error", errorKey: "samePassword" };
+  }
 
   const supabase = await createClient();
   const refused = await verifyCurrentPassword(supabase, formData, "changePassword", target);

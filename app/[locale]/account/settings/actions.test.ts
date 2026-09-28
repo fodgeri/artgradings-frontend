@@ -274,6 +274,21 @@ describe("changePassword", () => {
     expect(mocks.captureException).toHaveBeenCalledTimes(1);
   });
 
+  test("a new password equal to the current one changes nothing and signs no one out", async () => {
+    // Supabase would refuse it with same_password — but only after the other
+    // devices had already been signed out for a change that never happened.
+    const result = await changePassword(
+      "en",
+      initialAuthState,
+      formData({ ...VALID, password: VALID.currentPassword }),
+    );
+
+    expect(result).toEqual({ status: "error", errorKey: "samePassword" });
+    expect(mocks.signInWithPassword).not.toHaveBeenCalled();
+    expect(mocks.signOut).not.toHaveBeenCalled();
+    expect(mocks.updateUser).not.toHaveBeenCalled();
+  });
+
   test("maps same_password", async () => {
     mocks.updateUser.mockResolvedValue({ data: {}, error: new AuthError("x", 422, "same_password") });
     const result = await changePassword("en", initialAuthState, formData(VALID));
