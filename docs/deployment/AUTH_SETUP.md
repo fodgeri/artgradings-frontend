@@ -18,6 +18,13 @@ pass.
       `1x00000000000000000000AA`. **Without it the image build fails at
       prerender**, because the sign-up pages render the Turnstile component.
 
+## Before merging the profile-settings branch
+
+- [ ] **Run `npm run db:push` BEFORE merging, not after.** Its migration
+      (`profile_names`) is the first one the app code depends on, and with
+      `AUTO_DEPLOY` the new image goes live on merge. Pushing first is safe:
+      the old image never reads `full_name`.
+
 ## Hosted project settings
 
 Supabase dashboard, for the project in question:
