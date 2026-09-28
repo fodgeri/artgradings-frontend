@@ -201,6 +201,9 @@
       "samePassword": "Your new password must be different from the current one.",
       "reauthenticationNeeded": "For your security, ask for a new reset link and try again.",
       "sessionsNotRevoked": "We couldn't sign out your other devices, so your password has not been changed. Please try again.",
+      "currentPasswordIncorrect": "That isn't your current password.",
+      "nameTooLong": "Keep each name to {nameMax} characters or fewer.",
+      "emailUnchanged": "That's already your email address.",
       "generic": "Something went wrong. Please try again."
     }
   }
