@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, normalize } from "node:path";
 
 import { describe, expect, test } from "vitest";
 
@@ -11,6 +11,63 @@ function walk(dir: string): string[] {
     return /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path) ? [path] : [];
   });
 }
+
+const ADMIN_MODULE = join("lib", "supabase", "admin");
+
+/**
+ * Every module specifier in `source`: static imports and re-exports
+ * (`from "…"`), side-effect imports (`import "…"`), dynamic `import("…")` and
+ * `require("…")`.
+ */
+function specifiers(source: string): string[] {
+  const pattern = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\s*\(\s*)["'`]([^"'`]+)["'`]/g;
+  return Array.from(source.matchAll(pattern), (match) => match[1]);
+}
+
+/**
+ * Whether `file` (a repo-relative path) imports the admin client, by any
+ * spelling: an alias whose path ends in `supabase/admin`, or a relative path
+ * that resolves to lib/supabase/admin from where `file` sits.
+ */
+function importsAdminClient(file: string, source: string): boolean {
+  return specifiers(source).some((specifier) => {
+    const bare = specifier.replace(/\.(?:ts|tsx|js|mjs|cjs)$/, "").replace(/\/$/, "");
+    if (bare.startsWith(".")) return normalize(join(dirname(file), bare)) === ADMIN_MODULE;
+    return /(?:^|\/)supabase\/admin$/.test(bare);
+  });
+}
+
+describe("importsAdminClient", () => {
+  const FILE = join("app", "[locale]", "x", "actions.ts");
+  const SIBLING = join("lib", "supabase", "server.ts");
+  const NEIGHBOUR = join("lib", "auth", "thing.ts");
+
+  test.each([
+    [FILE, 'import { createAdminClient } from "@/lib/supabase/admin";'],
+    [FILE, "import {\n  createAdminClient,\n} from '@/lib/supabase/admin';"],
+    [FILE, 'export { createAdminClient } from "@/lib/supabase/admin";'],
+    [FILE, 'const { createAdminClient } = await import("@/lib/supabase/admin");'],
+    [FILE, "const mod = await import( '@/lib/supabase/admin.ts' );"],
+    [FILE, 'import "@/lib/supabase/admin";'],
+    [FILE, 'const m = require("@/lib/supabase/admin");'],
+    [FILE, 'import { x } from "../../../lib/supabase/admin";'],
+    [SIBLING, 'import { createAdminClient } from "./admin";'],
+    [SIBLING, 'await import("./admin.ts");'],
+    [NEIGHBOUR, 'import { createAdminClient } from "../supabase/admin";'],
+  ])("%s importing via %j is caught", (file, source) => {
+    expect(importsAdminClient(file, source)).toBe(true);
+  });
+
+  test.each([
+    [FILE, 'import { createClient } from "@/lib/supabase/server";'],
+    [FILE, 'import { adminThing } from "./admin";'],
+    [NEIGHBOUR, 'import { x } from "./admin";'],
+    [FILE, 'import { x } from "@/lib/supabase/administrator";'],
+    [FILE, "// the admin client lives in lib/supabase/admin"],
+  ])("%s importing via %j is not", (file, source) => {
+    expect(importsAdminClient(file, source)).toBe(false);
+  });
+});
 
 /**
  * Files permitted to import the service_role client. `server-only` already
@@ -34,6 +91,14 @@ describe("service_role client containment", () => {
     expect(ADMIN_ALLOWLIST).toEqual([join("lib", "auth", "delete-current-user.ts")]);
   });
 
+  test("the matcher recognises the allowlisted module's real import", () => {
+    // Proves the matcher on real source, not only the samples above: were it
+    // to stop matching, the guard below would pass vacuously.
+    for (const allowed of ADMIN_ALLOWLIST) {
+      expect(importsAdminClient(allowed, readFileSync(allowed, "utf8"))).toBe(true);
+    }
+  });
+
   test("nothing outside the allowlist imports the admin client", () => {
     const offenders: string[] = [];
 
@@ -41,10 +106,7 @@ describe("service_role client containment", () => {
       if (ADMIN_ALLOWLIST.includes(file)) continue;
       if (file === join("lib", "supabase", "admin.ts")) continue;
 
-      const source = readFileSync(file, "utf8");
-      if (/from\s+["'](@\/lib\/supabase\/admin|\.\/admin)["']/.test(source)) {
-        offenders.push(file);
-      }
+      if (importsAdminClient(file, readFileSync(file, "utf8"))) offenders.push(file);
     }
 
     expect(offenders).toEqual([]);
