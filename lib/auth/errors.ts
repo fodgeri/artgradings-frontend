@@ -14,7 +14,11 @@ export type AuthFlow =
   | "forgotPassword"
   | "confirm"
   | "resetPassword"
-  | "signOut";
+  | "signOut"
+  | "updateName"
+  | "changeEmail"
+  | "changePassword"
+  | "deleteAccount";
 
 /**
  * Supabase `error.code` → message key. Keyed by the stable code, never by
@@ -93,6 +97,19 @@ export function reportSuppressedAuthError(error: AuthError, flow: AuthFlow): voi
       "auth.code": error.code ?? "none",
       "auth.status": String(error.status ?? "none"),
     },
+  });
+}
+
+/**
+ * Reports a failed profile write. PostgREST errors are not `AuthError`s, so
+ * `reportAuthError` does not take them.
+ *
+ * The Postgres code only — never the message, which for a check-constraint
+ * violation names the column and can echo the value.
+ */
+export function reportProfileError(error: { code?: string; message?: string }, flow: AuthFlow): void {
+  Sentry.captureException(new Error(`Unexpected profile error in ${flow}`), {
+    tags: { "auth.flow": flow, "db.code": error.code ?? "none" },
   });
 }
 

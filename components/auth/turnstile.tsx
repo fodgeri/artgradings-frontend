@@ -118,7 +118,14 @@ export function Turnstile({ resetKey }: { resetKey: unknown }) {
 
   return (
     <>
-      <input ref={input} type="hidden" name="captchaToken" defaultValue="" />
+      {/*
+        No `value`/`defaultValue`: a hidden input's HTML value mode is
+        "default", so its `value` IDL attribute mirrors `defaultValue`. A
+        `defaultValue` prop would make React resync the DOM value to it on
+        every re-render, wiping the token this component writes imperatively
+        in `setToken`. A freshly mounted hidden input already has value "".
+      */}
+      <input ref={input} type="hidden" name="captchaToken" />
       <div ref={container} className="mb-[18px] empty:hidden" />
     </>
   );

@@ -26,7 +26,13 @@ vi.mock("@sentry/nextjs", () => ({ captureException: mocks.captureException }));
 const { resetPassword } = await import("./actions");
 
 const VALID = { password: "a-new-password-1" };
-const SIGNED_IN = { data: { claims: { sub: "user-1", email: "user@example.test" } }, error: null };
+const nowSeconds = () => Math.floor(Date.now() / 1000);
+const claims = (method: string, timestamp = nowSeconds()) => ({
+  data: { claims: { sub: "user-1", email: "user@example.test", amr: [{ method, timestamp }] } },
+  error: null,
+});
+// What a verified recovery link yields: GoTrue records it as `otp`.
+const SIGNED_IN = claims("otp");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -65,6 +71,20 @@ describe("resetPassword", () => {
     await expect(resetPassword("en", initialAuthState, formData(VALID))).rejects.toThrow("NEXT_REDIRECT");
     expect(mocks.updateUser).not.toHaveBeenCalled();
     expect(mocks.redirect).toHaveBeenCalledWith({ href: "/forgot-password", locale: "en" });
+  });
+
+  test.each([
+    ["an ordinary password session", () => claims("password")],
+    ["a recovery session older than the hour", () => claims("otp", nowSeconds() - 60 * 60 - 60)],
+  ])("sends %s to settings and changes nothing", async (_label, session) => {
+    // Without this, anyone holding the owner's session — an unlocked laptop,
+    // a stolen cookie — could set a password with no current password and no
+    // captcha, and evict the owner.
+    mocks.getClaims.mockResolvedValue(session());
+    await expect(resetPassword("en", initialAuthState, formData(VALID))).rejects.toThrow("NEXT_REDIRECT");
+    expect(mocks.signOut).not.toHaveBeenCalled();
+    expect(mocks.updateUser).not.toHaveBeenCalled();
+    expect(mocks.redirect).toHaveBeenCalledWith({ href: "/account/settings", locale: "en" });
   });
 
   test("applies the password policy before calling Supabase", async () => {

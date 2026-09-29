@@ -10,7 +10,7 @@ vi.mock("@sentry/nextjs", () => ({
   captureMessage: mocks.captureMessage,
 }));
 
-const { AUTH_ERROR_KEYS, authErrorKey, reportAuthError, reportSuppressedAuthError, revealsAccount } =
+const { AUTH_ERROR_KEYS, authErrorKey, reportAuthError, reportSuppressedAuthError, reportProfileError, revealsAccount } =
   await import("./errors");
 
 beforeEach(() => {
@@ -99,5 +99,26 @@ describe("revealsAccount", () => {
 
   test("a code-less error does not", () => {
     expect(revealsAccount(new AuthError("fetch failed"))).toBe(false);
+  });
+});
+
+describe("reportProfileError", () => {
+  test("sends the flow and the Postgres code, never the message", () => {
+    // A check-constraint message names the column and can echo the value.
+    reportProfileError(
+      { code: "23514", message: 'new row violates check constraint "x" — value Someone' },
+      "updateName",
+    );
+
+    const [reported, context] = mocks.captureException.mock.calls[0];
+    expect(JSON.stringify([String(reported), context])).not.toContain("Someone");
+    expect(context).toMatchObject({ tags: { "auth.flow": "updateName", "db.code": "23514" } });
+  });
+
+  test("tolerates an error without a code", () => {
+    reportProfileError({}, "updateName");
+    expect(mocks.captureException.mock.calls[0][1]).toMatchObject({
+      tags: { "db.code": "none" },
+    });
   });
 });

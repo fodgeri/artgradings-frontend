@@ -12,8 +12,10 @@ describe("readTemplateSections", () => {
   test("reads subject, path and enabled from the template sections only", () => {
     const sections = readTemplateSections(toml);
     expect(Object.keys(sections).sort()).toEqual([
+      "auth.email.notification.email_changed",
       "auth.email.notification.password_changed",
       "auth.email.template.confirmation",
+      "auth.email.template.email_change",
       "auth.email.template.recovery",
     ]);
     expect(sections["auth.email.notification.password_changed"].enabled).toBe(true);
@@ -29,11 +31,16 @@ describe("buildPayload", () => {
 
   test("sets every Management API field", () => {
     expect(Object.keys(payload).sort()).toEqual([
+      "mailer_notifications_email_changed_enabled",
       "mailer_notifications_password_changed_enabled",
       "mailer_subjects_confirmation",
+      "mailer_subjects_email_change",
+      "mailer_subjects_email_changed_notification",
       "mailer_subjects_password_changed_notification",
       "mailer_subjects_recovery",
       "mailer_templates_confirmation_content",
+      "mailer_templates_email_change_content",
+      "mailer_templates_email_changed_notification_content",
       "mailer_templates_password_changed_notification_content",
       "mailer_templates_recovery_content",
     ]);
@@ -45,6 +52,9 @@ describe("buildPayload", () => {
     );
     expect(payload.mailer_templates_recovery_content).toContain(
       "/auth/confirm?token_hash={{ .TokenHash }}&type=recovery",
+    );
+    expect(payload.mailer_templates_email_change_content).toContain(
+      "/auth/confirm?token_hash={{ .TokenHash }}&type=email_change",
     );
   });
 

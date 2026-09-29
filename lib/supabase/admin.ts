@@ -13,10 +13,9 @@ import { supabaseSecret } from "./env";
  * `import "server-only"` above makes importing this from a Client Component a
  * build error rather than a runtime credential leak.
  *
- * Nothing uses it yet. It exists now, with its guardrail, so that it is not
- * written for the first time under deadline pressure during the M7 webhook
- * work — which is exactly when a service_role client gets reached for, and
- * exactly when a mistake is most expensive.
+ * Its one caller is `lib/auth/delete-current-user.ts` — account deletion needs
+ * `auth.admin.deleteUser`. `admin-import-guard.test.ts` keeps it that way;
+ * the M7 webhooks will be the next deliberate addition.
  */
 export function createAdminClient() {
   const { url, secretKey } = supabaseSecret();

@@ -68,7 +68,7 @@ describe("confirmToken", () => {
     expect(mocks.captureException).toHaveBeenCalledTimes(1);
   });
 
-  test.each(["signup", "magiclink", "invite", "email_change", "toString", "constructor", ""])(
+  test.each(["signup", "magiclink", "invite", "toString", "constructor", ""])(
     "refuses type %j without calling Supabase",
     async (type) => {
       await confirm({ token_hash: "hash-1", type });
@@ -80,6 +80,39 @@ describe("confirmToken", () => {
   test("refuses a missing token without calling Supabase", async () => {
     await confirm({ type: "email" });
     expect(mocks.verifyOtp).not.toHaveBeenCalled();
+    expect(mocks.redirect).toHaveBeenCalledWith(LINK_EXPIRED);
+  });
+
+  test("the second email-change link completes the change and lands on settings", async () => {
+    mocks.verifyOtp.mockResolvedValue({
+      data: { user: { id: "user-1" }, session: { access_token: "t" } },
+      error: null,
+    });
+    await confirm({ token_hash: "hash-1", type: "email_change" });
+    expect(mocks.verifyOtp).toHaveBeenCalledWith({ type: "email_change", token_hash: "hash-1" });
+    expect(mocks.redirect).toHaveBeenCalledWith({ href: "/account/settings", locale: "en" });
+  });
+
+  test("the first email-change link reports the partial step in place", async () => {
+    // With secure email change on, the first of the two links verifies but
+    // completes nothing and signs no one in: auth-js returns no user and no
+    // session.
+    mocks.verifyOtp.mockResolvedValue({ data: { user: null, session: null }, error: null });
+    const result = await confirmToken(
+      "en",
+      initialAuthState,
+      formData({ token_hash: "hash-1", type: "email_change" }),
+    );
+    expect(result).toEqual({ status: "sent" });
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  test("an expired email-change link goes to sign-in quietly", async () => {
+    mocks.verifyOtp.mockResolvedValue({
+      data: { user: null, session: null },
+      error: new AuthError("expired", 403, "otp_expired"),
+    });
+    await confirm({ token_hash: "hash-1", type: "email_change" });
     expect(mocks.redirect).toHaveBeenCalledWith(LINK_EXPIRED);
   });
 });

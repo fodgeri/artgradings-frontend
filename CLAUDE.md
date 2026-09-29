@@ -21,10 +21,11 @@ foundation (tokens, primitives, site shell, `/design` gallery), the brand
 identity from the client's manual, the M0 Supabase foundation (schema,
 roles/permissions, RLS, typed clients, session refresh), the three M1
 public pages — landing, `/how-it-works` and `/faq` — and the M2 auth flows:
-sign-up, confirmation, sign-in, sign-out, password reset, and a landing
-`/account` page.
+sign-up, confirmation, sign-in, sign-out, password reset, a landing `/account`
+page, and `/account/settings` — name, email change, password change, and
+account deletion.
 
-Not yet built: profile and settings (the next M2 spec).
+Not yet built: M3, the grading submission flow.
 
 **Three links in the chrome are deliberate 404s**, and must be stated at
 handover rather than papered over with stub pages nobody scoped:
@@ -299,8 +300,14 @@ Rules:
 - **Migrations are hand-written and must replay from empty**, which CI proves
   on every run. `supabase db diff` is available but is a check, not an author.
 - **`lib/supabase/admin.ts` bypasses every policy.** It is `server-only` and
-  guarded by `admin-import-guard.test.ts`. Adding a path to that allowlist is
-  a security decision.
+  guarded by `admin-import-guard.test.ts`, whose one allowlisted caller is
+  `lib/auth/delete-current-user.ts` — `deleteCurrentUser()` takes no argument.
+  Adding a path to that allowlist is a security decision.
+- **Account deletion is a hard delete, and nothing new may `cascade` from
+  `auth.users`.** Only `profiles` and `user_roles` do. Orders, payments and
+  their logs reference the user `on delete set null` and scrub personal fields;
+  graded cards stay in the Pop Report; deletion is refused while an order is
+  unfinished. See `docs/superpowers/specs/2026-09-28-profile-settings-design.md`.
 - **Nothing may run between `createServerClient` and `getClaims()`** in
   `lib/supabase/proxy.ts`, and the root `proxy.ts` must copy the refreshed
   cookies **and the no-store headers** onto next-intl's response — a redirect
@@ -339,6 +346,23 @@ Email/password through Supabase Auth. Spec:
   English-only by construction; see the spec before adding a locale.
 - **Seeded users** (`user@example.test`, `admin@example.test`) sign in locally
   with `password123!`.
+- **Settings live at `/account/settings`** (spec
+  `docs/superpowers/specs/2026-09-28-profile-settings-design.md`). Password
+  change and deletion re-verify the current password with
+  `signInWithPassword`, so those forms carry Turnstile; email change relies on
+  Supabase's double confirmation instead. The address they verify against
+  comes from `auth.getUser()`, never the JWT claims, which lag an email change.
+- **Email change answers "sent" on screen whether or not an address is
+  taken** — `revealsAccount()` codes, the rate limit included. It cannot hide
+  the requester's own inbox: GoTrue mails a confirmation there only for a free
+  address. That side channel is an accepted residual risk, bounded by the
+  per-user send frequency (about one probe a minute, each costing email quota
+  and a taken one leaving a Sentry warning). Do not claim more than on-screen
+  uniformity.
+- **`/reset-password` admits only a recovery-origin session** —
+  `isRecoverySession()`: an `amr` `otp` entry (every verified email link)
+  stamped within the hour. Any other session goes to `/account/settings`,
+  where the current password is required. Never relax it to "any session".
 
 ## Conventions & constraints
 

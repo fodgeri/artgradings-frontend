@@ -45,18 +45,18 @@ select is(
 
 -- A user may rename themselves.
 select tests.authenticate_as(:'alice_id');
-update public.profiles set full_name = 'Alice A' where id = :'alice_id'::uuid;
+update public.profiles set first_name = 'Alice' where id = :'alice_id'::uuid;
 select is(
-  (select full_name from public.profiles where id = :'alice_id'::uuid),
-  'Alice A',
+  (select first_name from public.profiles where id = :'alice_id'::uuid),
+  'Alice',
   'a user can update their own profile'
 );
 
 -- But not anybody else. The update matches no visible row rather than raising.
-update public.profiles set full_name = 'hacked' where id = :'bob_id'::uuid;
+update public.profiles set first_name = 'hacked' where id = :'bob_id'::uuid;
 select tests.clear_auth();
 select is(
-  (select full_name from public.profiles where id = :'bob_id'::uuid),
+  (select first_name from public.profiles where id = :'bob_id'::uuid),
   null,
   'a user cannot update another user''s profile'
 );

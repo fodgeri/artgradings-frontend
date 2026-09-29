@@ -176,6 +176,8 @@
     "confirm": {
       "emailTitle": "Confirm your email",
       "recoveryTitle": "Reset your password",
+      "emailChangeTitle": "Confirm your email change",
+      "emailChangePartial": "Confirmed. Now open the link we sent to your other address — the change takes effect once both are confirmed.",
       "lead": "One more step — continue to finish.",
       "submit": "Continue"
     },
@@ -187,7 +189,44 @@
     "account": {
       "title": "Your account",
       "signedInAs": "Signed in as {email}",
+      "settings": "Settings",
       "signOut": "Sign out"
+    },
+    "settings": {
+      "title": "Settings",
+      "backToAccount": "Back to your account",
+      "name": {
+        "title": "Name",
+        "lead": "How we address you. Optional here — we'll ask when a submission needs it.",
+        "firstName": "First name",
+        "lastName": "Last name",
+        "submit": "Save name",
+        "saved": "Your name has been saved."
+      },
+      "email": {
+        "title": "Email",
+        "current": "Your address is {email}.",
+        "newEmail": "New email address",
+        "submit": "Change email",
+        "sent": "We've sent a confirmation link to both your current and your new address. The change takes effect once both are confirmed."
+      },
+      "password": {
+        "title": "Password",
+        "lead": "Changing it signs you out on every other device within the hour.",
+        "currentPassword": "Current password",
+        "submit": "Change password",
+        "changed": "Your password has been changed."
+      },
+      "delete": {
+        "title": "Delete account",
+        "lead": "This permanently deletes your account, your name and your sign-in. It cannot be undone.",
+        "submit": "Delete my account"
+      }
+    },
+    "accountDeleted": {
+      "title": "Your account has been deleted",
+      "lead": "Your account and everything stored with it are gone.",
+      "home": "Back to the home page"
     },
     "errors": {
       "invalidCredentials": "That email and password don't match an account.",
@@ -201,6 +240,9 @@
       "samePassword": "Your new password must be different from the current one.",
       "reauthenticationNeeded": "For your security, ask for a new reset link and try again.",
       "sessionsNotRevoked": "We couldn't sign out your other devices, so your password has not been changed. Please try again.",
+      "currentPasswordIncorrect": "That isn't your current password.",
+      "nameTooLong": "Keep each name to {nameMax} characters or fewer.",
+      "emailUnchanged": "That's already your email address.",
       "generic": "Something went wrong. Please try again."
     }
   }

@@ -15,14 +15,25 @@ export default async function ConfirmPage({ searchParams }: PageProps<"/[locale]
   const { token_hash: tokenHash, type } = await searchParams;
   const t = await getTranslations("auth.confirm");
 
+  const title =
+    type === "recovery"
+      ? t("recoveryTitle")
+      : type === "email_change"
+        ? t("emailChangeTitle")
+        : t("emailTitle");
+
   return (
     <>
-      <AuthHeading
-        title={type === "recovery" ? t("recoveryTitle") : t("emailTitle")}
-        lead={t("lead")}
-      />
-      {/* No captcha: the token is the proof, and it is single-use. */}
-      <AuthForm action={confirmToken} submitLabel={t("submit")} captcha={false}>
+      <AuthHeading title={title} lead={t("lead")} />
+      {/* No captcha: the token is the proof, and it is single-use — which is
+          also why the button goes once the first email-change link succeeds. */}
+      <AuthForm
+        action={confirmToken}
+        submitLabel={t("submit")}
+        sentMessage={t("emailChangePartial")}
+        doneOnSent
+        captcha={false}
+      >
         <input type="hidden" name="token_hash" value={typeof tokenHash === "string" ? tokenHash : ""} />
         <input type="hidden" name="type" value={typeof type === "string" ? type : ""} />
       </AuthForm>
