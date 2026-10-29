@@ -3,6 +3,7 @@ import { NAME_MAX_LENGTH } from "@/lib/auth/profile-name";
 import type { Catalog, DraftShipping } from "./types";
 
 export const NAME_MAX = NAME_MAX_LENGTH;
+export const PHONE_MAX = 30;
 export const PHONE_PATTERN = /^\+?[0-9 ()-]{6,30}$/;
 export const POSTCODE_MAX = 20;
 export const CITY_MAX = 100;

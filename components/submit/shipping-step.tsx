@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { saveShipping } from "@/app/[locale]/submit/actions";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   ADDRESS_LINE_MAX,
   CITY_MAX,
   NAME_MAX,
+  PHONE_MAX,
   POSTCODE_MAX,
   shippingProblems,
   type ShippingProblem,
@@ -76,6 +77,10 @@ export function ShippingStep({
   const [touched, setTouched] = useState<ReadonlySet<FieldName>>(new Set());
   const [leaving, setLeaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  const latestShipping = useRef(shipping);
+  useEffect(() => {
+    latestShipping.current = shipping;
+  });
   const storedKey = useRef(JSON.stringify(draft.shipping));
 
   const { status, errorKey, flush } = useAutosave(shipping, async (v) => {
@@ -135,9 +140,12 @@ export function ShippingStep({
     try {
       ok = await flush();
       // An untouched prefill was never saved; Next is the moment it must be.
-      if (ok && JSON.stringify(shipping) !== storedKey.current) {
-        const result = await saveShipping(locale, shipping);
-        if (result.ok) storedKey.current = JSON.stringify(shipping);
+      // The form is locked while leaving, so this is still the value flushed;
+      // the ref guarantees the newest one is never replaced by a stale closure.
+      const current = latestShipping.current;
+      if (ok && JSON.stringify(current) !== storedKey.current) {
+        const result = await saveShipping(locale, current);
+        if (result.ok) storedKey.current = JSON.stringify(current);
         else ok = false;
       }
     } catch {
@@ -155,6 +163,7 @@ export function ShippingStep({
     <div className="grid gap-8 pb-28 lg:grid-cols-[minmax(0,1fr)_340px] lg:pb-0">
       <div className="flex flex-col gap-4">
         <Card className="p-5 sm:p-6">
+          <fieldset disabled={leaving} className="m-0 min-w-0 border-0 p-0">
           <div className="mb-6 flex flex-col gap-2">
             <span className="font-mono text-label uppercase text-muted">{t("shipping.method.label")}</span>
             <SegmentedControl
@@ -172,7 +181,7 @@ export function ShippingStep({
           <div className="grid gap-x-4 sm:grid-cols-2">
             {text("firstName", NAME_MAX, t("shipping.fields.firstName"), { autoComplete: "given-name" })}
             {text("lastName", NAME_MAX, t("shipping.fields.lastName"), { autoComplete: "family-name" })}
-            {text("phone", 30, t("shipping.fields.phone"), { type: "tel", autoComplete: "tel" })}
+            {text("phone", PHONE_MAX, t("shipping.fields.phone"), { type: "tel", autoComplete: "tel" })}
           </div>
 
           {postal && (
@@ -203,6 +212,7 @@ export function ShippingStep({
               </div>
               <Checkbox
                 checked={shipping.inboundInsuranceConfirmed}
+                disabled={leaving}
                 onCheckedChange={(inboundInsuranceConfirmed) => update({ inboundInsuranceConfirmed })}
                 label={t("shipping.insurance.label")}
                 description={t("shipping.insurance.description")}
@@ -216,6 +226,8 @@ export function ShippingStep({
               <p className="text-muted">{t("shipping.inPerson.body")}</p>
             </div>
           )}
+
+          </fieldset>
 
           <p role="status" className="mt-3 min-h-5 text-sm text-muted">
             {status === "saving" && t("autosave.saving")}

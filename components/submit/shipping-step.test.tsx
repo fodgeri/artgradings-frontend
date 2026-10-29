@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { act } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { CATALOG, REFERENCE_DRAFT } from "@/lib/orders/fixtures";
 import { quoteDraft } from "@/lib/orders/pricing";
@@ -42,6 +43,10 @@ const complete: DraftShipping = {
   inboundInsuranceConfirmed: true,
 };
 const draftWith = (shipping: DraftShipping): Draft => ({ ...REFERENCE_DRAFT, shipping });
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -120,6 +125,7 @@ describe("ShippingStep", () => {
 
   test("the prefill fills empty fields and is not saved until edited", async () => {
     const stored: DraftShipping = { ...EMPTY, method: "postal", firstName: "Stored" };
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const { user } = renderWithIntl(
       <ShippingStep
         draft={draftWith(stored)}
@@ -132,13 +138,14 @@ describe("ShippingStep", () => {
     expect(screen.getByLabelText(f.lastName)).toHaveValue("Kovacs");
     expect(screen.getByLabelText(f.city)).toHaveValue("Budapest");
 
-    // Nothing is saved on mount.
-    await new Promise((r) => setTimeout(r, 1000));
+    // Nothing is saved on mount, however long we wait.
+    await act(() => vi.advanceTimersByTimeAsync(5000));
     expect(mocks.saveShipping).not.toHaveBeenCalled();
 
     // The first edit saves the merged values.
     await user.type(screen.getByLabelText(f.postcode), "1");
-    await vi.waitFor(() => expect(mocks.saveShipping).toHaveBeenCalled(), { timeout: 3000 });
+    await act(() => vi.advanceTimersByTimeAsync(2000));
+    expect(mocks.saveShipping).toHaveBeenCalled();
     expect(mocks.saveShipping).toHaveBeenLastCalledWith(
       "en",
       expect.objectContaining({
@@ -162,6 +169,37 @@ describe("ShippingStep", () => {
     await user.click(screen.getByRole("button", { name: s.next }));
     await vi.waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/submit/summary"));
     expect(mocks.saveShipping).toHaveBeenCalledWith("en", expect.objectContaining({ lastName: "Kovacs" }));
+  });
+
+  test("the form is locked while Next saves, so a stale value cannot overwrite an edit", async () => {
+    let release: (v: { ok: true; data: null }) => void = () => {};
+    mocks.saveShipping.mockReturnValue(new Promise((r) => (release = r)));
+    const { user } = renderWithIntl(
+      <ShippingStep draft={draftWith(complete)} catalog={CATALOG} prefill={{}} />,
+    );
+    await user.type(screen.getByLabelText(f.postcode), "2");
+    await user.click(screen.getByRole("button", { name: s.next }));
+
+    // The save is in flight: nothing can be edited now.
+    expect(screen.getByLabelText(f.postcode)).toBeDisabled();
+    expect(screen.getByLabelText(f.city)).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: s.insurance.label })).toHaveAttribute("aria-disabled", "true");
+
+    release({ ok: true, data: null });
+    await vi.waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/submit/summary"));
+    expect(mocks.saveShipping).toHaveBeenCalledTimes(1);
+    expect(mocks.saveShipping).toHaveBeenCalledWith("en", expect.objectContaining({ postcode: "10112" }));
+  });
+
+  test("the form unlocks again when Next fails", async () => {
+    mocks.saveShipping.mockResolvedValue({ ok: false, errorKey: "generic" });
+    const { user } = renderWithIntl(
+      <ShippingStep draft={draftWith(complete)} catalog={CATALOG} prefill={{}} />,
+    );
+    await user.type(screen.getByLabelText(f.postcode), "2");
+    await user.click(screen.getByRole("button", { name: s.next }));
+    await screen.findByRole("alert");
+    expect(screen.getByLabelText(f.postcode)).toBeEnabled();
   });
 
   test("Next does not leave when the save fails", async () => {
