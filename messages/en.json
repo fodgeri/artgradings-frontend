@@ -263,6 +263,25 @@
       "photoLimit": "Each card can have one photo.",
       "termsRequired": "Please accept the terms to continue.",
       "generic": "Something went wrong. Please try again."
+    },
+    "steps": {
+      "label": "Order steps",
+      "cards": "Cards",
+      "shipping": "Shipping",
+      "summary": "Summary"
+    },
+    "total": {
+      "title": "Your order",
+      "cards": "{count, plural, one {# card} other {# cards}}",
+      "estimate": "Estimated total",
+      "turnaround": "Estimated turnaround",
+      "turnaroundDays": "{days, plural, one {# business day} other {# business days}}",
+      "unknown": "—"
+    },
+    "autosave": {
+      "saving": "Saving…",
+      "saved": "Draft saved",
+      "error": "Couldn't save your changes"
     }
   }
 }
