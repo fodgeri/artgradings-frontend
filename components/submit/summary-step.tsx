@@ -1,15 +1,25 @@
 "use client";
 
 import { useFormatter, useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
 import { submitOrder } from "@/app/[locale]/submit/actions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import type { OrderErrorKey } from "@/lib/orders/errors";
 import type { Draft, Quote } from "@/lib/orders/types";
+
+/** Refusals that mean the quote on screen is stale: the server re-checks the steps. */
+const STALE_QUOTE_KEYS: readonly OrderErrorKey[] = [
+  "serviceUnavailable",
+  "tierUnavailable",
+  "addOnUnavailable",
+  "overCap",
+  "countryUnsupported",
+  "incomplete",
+];
 
 /** Step 3: the server's quote, the contact details and the terms. */
 export function SummaryStep({
@@ -25,6 +35,8 @@ export function SummaryStep({
   const catalog = useTranslations("catalog");
   const format = useFormatter();
   const locale = useLocale();
+  const router = useRouter();
+  const [refreshing, startRefresh] = useTransition();
 
   const [accepted, setAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -48,6 +60,9 @@ export function SummaryStep({
       if (result && !result.ok) {
         setErrorKey(result.errorKey);
         setSubmitting(false);
+        // The page re-runs its step checks and the quote, and sends the
+        // customer to the card or field to fix.
+        if (STALE_QUOTE_KEYS.includes(result.errorKey)) startRefresh(() => router.refresh());
       }
     } catch {
       setErrorKey("generic");
@@ -170,7 +185,7 @@ export function SummaryStep({
           <Link href="/submit/shipping" className="text-sm text-muted underline-offset-4 hover:text-ink hover:underline">
             {t("summary.back")}
           </Link>
-          <Button type="button" onClick={submit} disabled={!accepted || submitting}>
+          <Button type="button" onClick={submit} disabled={!accepted || submitting || refreshing}>
             {submitting ? t("summary.submitting") : t("summary.submit")}
           </Button>
         </div>

@@ -5,7 +5,11 @@ import type { Quote } from "@/lib/orders/types";
 import messages from "@/messages/en.json";
 import { renderWithIntl, screen } from "@/test/i18n";
 
-const mocks = vi.hoisted(() => ({ submitOrder: vi.fn() }));
+const mocks = vi.hoisted(() => ({ submitOrder: vi.fn(), refresh: vi.fn() }));
+vi.mock("@/i18n/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/i18n/navigation")>()),
+  useRouter: () => ({ refresh: mocks.refresh }),
+}));
 vi.mock("@/app/[locale]/submit/actions", () => ({ submitOrder: mocks.submitOrder }));
 
 const { SummaryStep } = await import("./summary-step");
@@ -77,6 +81,30 @@ describe("SummaryStep", () => {
     await user.click(screen.getByRole("button", { name: s.submit }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(messages.submit.errors.serviceUnavailable);
+    expect(screen.getByRole("button", { name: s.submit })).toBeEnabled();
+  });
+
+  test("a stale-quote refusal refreshes the page for the server to route the customer", async () => {
+    mocks.submitOrder.mockResolvedValue({ ok: false, errorKey: "serviceUnavailable" });
+    // A refresh that never settles keeps the transition pending.
+    mocks.refresh.mockImplementation(() => new Promise(() => {}));
+    const { user } = renderWithIntl(<SummaryStep draft={REFERENCE_DRAFT} quote={QUOTE} />);
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: s.submit }));
+
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("alert")).toHaveTextContent(messages.submit.errors.serviceUnavailable);
+    expect(screen.getByRole("button", { name: s.submit })).toBeDisabled();
+  });
+
+  test("a generic refusal does not refresh and re-enables", async () => {
+    mocks.submitOrder.mockResolvedValue({ ok: false, errorKey: "generic" });
+    const { user } = renderWithIntl(<SummaryStep draft={REFERENCE_DRAFT} quote={QUOTE} />);
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: s.submit }));
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(mocks.refresh).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: s.submit })).toBeEnabled();
   });
 });
