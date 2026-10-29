@@ -282,6 +282,125 @@
       "saving": "Saving…",
       "saved": "Draft saved",
       "error": "Couldn't save your changes"
+    },
+    "cards": {
+      "title": "Your cards",
+      "lead": "Add each card you are sending and choose how we should handle it.",
+      "metaDescription": "Tell us which cards you are sending and what to do with them.",
+      "addCard": "Add card",
+      "cardLimit": "An order can include at most {max, number} cards.",
+      "next": "Next: shipping",
+      "incomplete": "Complete every card to continue.",
+      "nextFailed": "Your cards could not be saved yet. Please try again.",
+      "cardLabel": "Card {number}",
+      "untitled": "New card",
+      "unknownSummary": "Identified by ART",
+      "needsDetails": "Needs details",
+      "edit": "Edit",
+      "remove": "Remove card",
+      "identification": {
+        "label": "Who identifies this card?",
+        "customer": "I'll enter the details",
+        "art": "ART identifies it (+{fee})",
+        "artHint": "Tell us whatever you know. A photo helps ART most."
+      },
+      "fields": {
+        "optional": "{label} (optional)",
+        "year": "Release year",
+        "brand": "Brand or game",
+        "language": "Language",
+        "languagePlaceholder": "Choose a language",
+        "name": "Card name",
+        "setName": "Set name",
+        "cardNumber": "Card number",
+        "surface": "Surface or finish",
+        "signed": "Signed",
+        "signedHint": "The card carries an autograph.",
+        "numbered": "Numbered",
+        "numberedHint": "The card is part of a numbered print run.",
+        "value": "Declared value ({currency})",
+        "valueHint": "What the card is worth. It sets which options are available."
+      },
+      "service": {
+        "label": "Service",
+        "tier": "Option",
+        "tierPlaceholder": "Choose an option",
+        "tierOption": "{label} · {price} · {turnaround}",
+        "addOns": "Extras",
+        "addOnPrice": "+{price}",
+        "addOnWithDescription": "{description} (+{price})"
+      },
+      "photo": {
+        "label": "Add a photo",
+        "remove": "Remove photo",
+        "hint": "Optional. Available once the card has been saved.",
+        "uploading": "Uploading…"
+      },
+      "problems": {
+        "yearMissing": "Enter the release year.",
+        "yearOutOfRange": "Enter a valid release year.",
+        "brandMissing": "Enter the brand or game.",
+        "languageMissing": "Choose the card's language.",
+        "nameMissing": "Enter the card name.",
+        "setMissing": "Enter the set name.",
+        "cardNumberMissing": "Enter the card number.",
+        "valueMissing": "Enter an amount greater than zero.",
+        "serviceMissing": "Choose a service.",
+        "serviceNeedsSigned": "This service needs a signed card.",
+        "tierMissing": "Choose an option.",
+        "overCap": "The declared value is above the limit for this option. Choose another."
+      }
+    }
+  },
+  "catalog": {
+    "services": {
+      "grading": {
+        "label": "Grading",
+        "description": "Condition grading by our experts."
+      },
+      "autograph": {
+        "label": "Autograph",
+        "description": "Authentication of the signature."
+      },
+      "dual": {
+        "label": "Grading and autograph",
+        "description": "Condition grading plus signature authentication."
+      },
+      "authentication": {
+        "label": "Authentication",
+        "description": "Confirms the card is genuine."
+      }
+    },
+    "tiers": {
+      "grading_standard": {
+        "label": "Standard",
+        "description": "Our regular turnaround."
+      },
+      "grading_express": {
+        "label": "Express",
+        "description": "A faster turnaround."
+      },
+      "autograph_standard": {
+        "label": "Standard",
+        "description": "Our regular turnaround."
+      },
+      "dual_standard": {
+        "label": "Standard",
+        "description": "Our regular turnaround."
+      },
+      "authentication_standard": {
+        "label": "Standard",
+        "description": "Our regular turnaround."
+      }
+    },
+    "addOns": {
+      "digital_grade": {
+        "label": "Digital Grade",
+        "description": "A digital grade report for your card."
+      }
+    },
+    "zones": {
+      "placeholder_eu": "European Union (placeholder)"
     }
   }
 }
