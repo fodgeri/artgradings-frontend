@@ -103,11 +103,13 @@ export async function saveCard(
   const catalog = await loadCatalog(supabase);
   const n = normalizeCard({ ...input, photo: null }, catalog);
 
-  let { data: draft } = await supabase
+  const found = await supabase
     .from("orders")
     .select("id, reference")
     .eq("status", "draft")
     .maybeSingle();
+  if (found.error) return unexpected("saveCard", found.error);
+  let draft = found.data;
 
   if (!draft) {
     // An earlier save landed, yet there is no draft: it was submitted or cancelled.
@@ -115,9 +117,13 @@ export async function saveCard(
     const opened = await supabase.from("orders").insert({}).select("id, reference").single();
     if (opened.error?.code === "23505") {
       // Another tab opened it first.
-      draft = (
-        await supabase.from("orders").select("id, reference").eq("status", "draft").maybeSingle()
-      ).data;
+      const again = await supabase
+        .from("orders")
+        .select("id, reference")
+        .eq("status", "draft")
+        .maybeSingle();
+      if (again.error) return unexpected("saveCard", again.error);
+      draft = again.data;
     } else if (opened.error) {
       return unexpected("saveCard", opened.error);
     } else {
@@ -143,32 +149,51 @@ export async function saveCard(
     tier_key: n.tierKey,
   };
 
-  if (persisted) {
-    // Update only: a card another tab removed must never be re-inserted.
+  // Update only: a card another tab removed must never be re-inserted.
+  const update = async (): Promise<SaveResult<never> | null> => {
     const { data, error } = await supabase
       .from("order_cards")
       .update(columns)
       .eq("id", n.id)
       .select("id");
     if (error) return cardWriteFailure(error);
-    if (!data || data.length === 0) return CARD_GONE;
+    return !data || data.length === 0 ? CARD_GONE : null;
+  };
+
+  if (persisted) {
+    const failed = await update();
+    if (failed) return failed;
   } else {
     const { error } = await supabase
       .from("order_cards")
       .insert({ id: n.id, order_id: draft.id, ...columns });
-    if (error) return cardWriteFailure(error);
+    if (error?.code === "23505") {
+      // The card exists already (a retry, or an earlier autosave still in
+      // flight). RLS matches only the caller's own draft card.
+      const failed = await update();
+      if (failed) return failed;
+    } else if (error) {
+      return cardWriteFailure(error);
+    }
   }
 
+  const addOnKeys = [...new Set(n.addOnKeys)];
   const cleared = await supabase.from("order_card_add_ons").delete().eq("card_id", n.id);
-  if (cleared.error) return cardWriteFailure(cleared.error);
-  if (n.addOnKeys.length > 0) {
+  if (cleared.error) return addOnFailure(cleared.error);
+  if (addOnKeys.length > 0) {
     const linked = await supabase
       .from("order_card_add_ons")
-      .insert(n.addOnKeys.map((add_on_key) => ({ card_id: n.id, add_on_key })));
-    if (linked.error) return cardWriteFailure(linked.error);
+      .insert(addOnKeys.map((add_on_key) => ({ card_id: n.id, add_on_key })));
+    if (linked.error) return addOnFailure(linked.error);
   }
 
   return { ok: true, data: { reference: draft.reference } };
+}
+
+/** Add-on writes never mean the card is gone. */
+function addOnFailure(error: PgError): SaveResult<never> {
+  const key = orderErrorKey(error);
+  return key === "generic" ? unexpected("saveCard", error) : { ok: false, errorKey: key };
 }
 
 /** `23505` and `42501` mean the card's place in the draft is gone; so does `not_draft`. */

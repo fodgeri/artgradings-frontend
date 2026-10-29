@@ -213,11 +213,70 @@ describe("saveCard", () => {
     expect(callsTo("order_cards", "update")[0].payload).not.toHaveProperty("id");
   });
 
-  test.each(["23505", "42501"])("an insert refused with %s returns cardGone", async (code) => {
+  test.each(["42501"])("an insert refused with %s returns cardGone", async (code) => {
     queue("orders.select", { data: DRAFT, error: null });
     queue("order_cards.insert", { data: null, error: { code } });
 
     expect(await actions.saveCard("en", card())).toEqual({ ok: false, errorKey: "cardGone" });
+  });
+
+  test("a failed draft lookup is reported and never drops a persisted card", async () => {
+    queue("orders.select", { data: null, error: { code: "08006" } });
+
+    expect(await actions.saveCard("en", card({ persisted: true }))).toEqual({ ok: false, errorKey: "generic" });
+    expect(mocks.captureException).toHaveBeenCalledTimes(1);
+    expect(callsTo("order_cards", "insert")).toHaveLength(0);
+  });
+
+  test("a failed reselect after a lost race is reported", async () => {
+    queue("orders.select", { data: null, error: null }, { data: null, error: { code: "08006" } });
+    queue("orders.insert", { data: null, error: { code: "23505" } });
+
+    expect(await actions.saveCard("en", card())).toEqual({ ok: false, errorKey: "generic" });
+    expect(mocks.captureException).toHaveBeenCalledTimes(1);
+  });
+
+  test("duplicate add-on keys are written once", async () => {
+    queue("orders.select", { data: DRAFT, error: null });
+
+    const result = await actions.saveCard("en", card({ addOnKeys: ["digital_grade", "digital_grade"] }));
+
+    expect(result.ok).toBe(true);
+    expect(callsTo("order_card_add_ons", "insert")[0].payload).toEqual([
+      { card_id: CARD_ID, add_on_key: "digital_grade" },
+    ]);
+  });
+
+  test("an add-on insert 23505 is reported, not cardGone", async () => {
+    queue("orders.select", { data: DRAFT, error: null });
+    queue("order_card_add_ons.insert", { data: null, error: { code: "23505" } });
+
+    expect(await actions.saveCard("en", card({ addOnKeys: ["digital_grade"] }))).toEqual({
+      ok: false,
+      errorKey: "generic",
+    });
+    expect(mocks.captureException).toHaveBeenCalledTimes(1);
+  });
+
+  test("a card insert 23505 falls back to updating the card", async () => {
+    queue("orders.select", { data: DRAFT, error: null });
+    queue("order_cards.insert", { data: null, error: { code: "23505" } });
+    queue("order_cards.update", { data: [{ id: CARD_ID }], error: null });
+
+    const result = await actions.saveCard("en", card({ addOnKeys: ["digital_grade"] }));
+
+    expect(result).toEqual({ ok: true, data: { reference: DRAFT.reference } });
+    expect(callsTo("order_cards", "update")).toHaveLength(1);
+    expect(callsTo("order_card_add_ons", "insert")).toHaveLength(1);
+  });
+
+  test("a card insert 23505 whose update matches nothing is cardGone", async () => {
+    queue("orders.select", { data: DRAFT, error: null });
+    queue("order_cards.insert", { data: null, error: { code: "23505" } });
+    queue("order_cards.update", { data: [], error: null });
+
+    expect(await actions.saveCard("en", card())).toEqual({ ok: false, errorKey: "cardGone" });
+    expect(callsTo("order_card_add_ons", "insert")).toHaveLength(0);
   });
 
   test("not_draft on a card write is treated as a vanished card", async () => {
