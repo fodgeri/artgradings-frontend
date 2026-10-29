@@ -1,5 +1,5 @@
 begin;
-select plan(35);
+select plan(45);
 
 select tests.create_user('alice-fn@example.test') as alice_id \gset
 select tests.create_user('bob-fn@example.test') as bob_id \gset
@@ -33,6 +33,12 @@ select is((public.quote_order())->>'total_cents', '480', '100+50 + 100+200 ident
 select is((public.quote_order())->>'turnaround_days', '30', 'the longest tier wins');
 select is((public.quote_order())->>'declared_value_total_cents', '130000', 'declared values are summed');
 select is((public.quote_order())->>'subtotal_cents', '450', 'subtotal is the cards');
+
+-- the terms version is validated before anything is written
+select throws_ok('select public.submit_order(null)', 'P0001', 'incomplete', 'a null terms version is refused');
+select throws_ok('select public.submit_order('''')', 'P0001', 'incomplete', 'a blank terms version is refused');
+select throws_ok('select public.submit_order(repeat(''x'', 101))', 'P0001', 'incomplete', 'an over-long terms version is refused');
+select is((select terms_accepted_at from public.orders), null, 'and nothing was stamped');
 
 -- a deactivated tier
 select tests.clear_auth();
@@ -101,6 +107,29 @@ select throws_ok('select public.submit_order(''v1'')', 'P0001', 'not_draft', 'a 
 select is((select count(*)::int from public.order_status_log), 2, 'one log row per transition');
 select results_eq($$select first_name, last_name from public.profiles where id = $$ || quote_literal(:'alice_id'),
   $$values ('Keep'::text, 'Example'::text)$$, 'profile names filled when null, kept when set');
+
+-- children of a non-draft order are refused by the trigger itself, even for
+-- a role that bypasses RLS
+select tests.clear_auth();
+select throws_ok(format($$insert into public.order_cards (order_id, position) values (%L, 9)$$, :'alice_order'),
+  'P0001', 'not_draft', 'a card cannot join a non-draft order, RLS aside');
+select throws_ok($$insert into public.order_card_add_ons (card_id, add_on_key)
+  values ('00000000-0000-0000-0000-00000000000b', 'digital_grade')$$,
+  'P0001', 'not_draft', 'nor an add-on');
+select throws_ok($$insert into public.card_photos (card_id, content_type, byte_size)
+  values ('00000000-0000-0000-0000-00000000000b', 'image/webp', 10)$$,
+  'P0001', 'not_draft', 'nor a photo');
+select throws_ok($$delete from public.order_cards where id = '00000000-0000-0000-0000-00000000000b'$$,
+  'P0001', 'not_draft', 'nor can one be removed');
+
+-- deleting a draft takes its children with it
+insert into public.orders (id, user_id) values ('00000000-0000-0000-0000-0000000000d1', :'bob_id');
+insert into public.order_cards (id, order_id, position) values ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000d1', 0);
+insert into public.order_card_add_ons (card_id, add_on_key) values ('00000000-0000-0000-0000-0000000000d2', 'digital_grade');
+insert into public.card_photos (card_id, content_type, byte_size) values ('00000000-0000-0000-0000-0000000000d2', 'image/webp', 10);
+select lives_ok($$delete from public.orders where id = '00000000-0000-0000-0000-0000000000d1'$$,
+  'deleting a draft with cards, add-ons and photos succeeds');
+select is((select count(*)::int from public.order_cards where id = '00000000-0000-0000-0000-0000000000d2'), 0, 'its cards went with it');
 
 -- bob
 select tests.authenticate_as(:'bob_id');

@@ -207,6 +207,10 @@ declare
   v_addon jsonb;
   v_max_year int := extract(year from now())::int + 1;
 begin
+  if nullif(btrim(p_terms_version), '') is null or char_length(p_terms_version) > 100 then
+    raise exception 'incomplete' using errcode = 'P0001';
+  end if;
+
   select * into o from public.orders
   where user_id = auth.uid() and status = 'draft'
   for update;
@@ -311,3 +315,55 @@ revoke execute on function public.cancel_order(text) from public, anon;
 grant execute on function public.quote_order() to authenticated;
 grant execute on function public.submit_order(text) to authenticated;
 grant execute on function public.cancel_order(text) to authenticated;
+
+-- ── Children follow the parent's status ─────────────────────────────────
+--
+-- The child-table policies prove 'draft' with a non-locking read against the
+-- statement snapshot, so a write racing submit_order could land after the
+-- order was priced. This guard takes a locking read of the parent instead: it
+-- waits for submit's FOR UPDATE, then sees the committed status. FOR NO KEY
+-- UPDATE also serialises concurrent card inserts on one order, which is what
+-- makes enforce_card_limit's count safe.
+--
+-- A missing parent is not an error: deleting an order (a draft, by the
+-- maintenance job or account deletion) cascades into its children after the
+-- parent row is gone.
+create or replace function private.require_draft_order()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_order uuid;
+  v_status text;
+begin
+  if tg_table_name = 'order_cards' then
+    v_order := coalesce(new.order_id, old.order_id);
+  else
+    select c.order_id into v_order from public.order_cards c
+    where c.id = coalesce(new.card_id, old.card_id);
+  end if;
+  if v_order is not null then
+    select status into v_status from public.orders
+    where id = v_order for no key update;
+    if found and v_status <> 'draft' then
+      raise exception 'not_draft' using errcode = 'P0001';
+    end if;
+  end if;
+  return coalesce(new, old);
+end;
+$$;
+revoke execute on function private.require_draft_order() from public;
+
+-- Same-timing triggers fire alphabetically by name. order_cards_00_* sorts
+-- before order_cards_enforce_limit, so the lock is held when it counts.
+create trigger order_cards_00_require_draft
+before insert or update or delete on public.order_cards
+for each row execute function private.require_draft_order();
+create trigger order_card_add_ons_00_require_draft
+before insert or update or delete on public.order_card_add_ons
+for each row execute function private.require_draft_order();
+create trigger card_photos_00_require_draft
+before insert or update or delete on public.card_photos
+for each row execute function private.require_draft_order();
