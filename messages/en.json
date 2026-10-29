@@ -245,5 +245,24 @@
       "emailUnchanged": "That's already your email address.",
       "generic": "Something went wrong. Please try again."
     }
+  },
+  "submit": {
+    "errors": {
+      "notFound": "We couldn't find that order.",
+      "notDraft": "This order has already been submitted.",
+      "incomplete": "Some details are missing. Please complete every card and your shipping details.",
+      "serviceUnavailable": "One of the selected services is no longer available for its card. Please choose another.",
+      "tierUnavailable": "One of the selected options is no longer available. Please choose another.",
+      "addOnUnavailable": "One of the selected extras is no longer available. Please review your cards.",
+      "overCap": "A card's declared value is above the limit for its selected option. Please choose another option.",
+      "countryUnsupported": "We don't ship to that country yet.",
+      "tooManyCards": "An order can include at most {max, number} cards.",
+      "cardGone": "That card was removed in another window. Your list has been refreshed.",
+      "photoTooLarge": "That photo is too large. Please choose a smaller one.",
+      "photoType": "Photos must be JPEG, PNG or WebP.",
+      "photoLimit": "Each card can have one photo.",
+      "termsRequired": "Please accept the terms to continue.",
+      "generic": "Something went wrong. Please try again."
+    }
   }
 }
