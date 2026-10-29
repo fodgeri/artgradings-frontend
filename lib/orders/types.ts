@@ -67,3 +67,6 @@ export type Quote = {
   declaredValueTotalCents: number;
   turnaroundDays: number | null;
 };
+
+/** What the editor sends to `saveCard`: a card without its photo, plus whether an earlier save of it has landed. */
+export type DraftCardInput = Omit<DraftCard, "photo"> & { persisted: boolean };
