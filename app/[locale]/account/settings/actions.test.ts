@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => {
   return {
     query,
     from: vi.fn(() => query),
+    rpc: vi.fn(),
     getClaims: vi.fn(),
     getUser: vi.fn(),
     updateUser: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock("@/lib/supabase/server", () => ({
       signOut: mocks.signOut,
     },
     from: mocks.from,
+    rpc: mocks.rpc,
   }),
 }));
 vi.mock("@/lib/auth/delete-current-user", () => ({ deleteCurrentUser: mocks.deleteCurrentUser }));
@@ -311,6 +313,7 @@ describe("deleteAccount", () => {
 
   beforeEach(() => {
     mocks.signInWithPassword.mockResolvedValue({ data: {}, error: null });
+    mocks.rpc.mockResolvedValue({ data: "ok", error: null });
     mocks.deleteCurrentUser.mockResolvedValue({ error: null });
     mocks.endLocalSession.mockResolvedValue(undefined);
   });
@@ -346,6 +349,62 @@ describe("deleteAccount", () => {
     expect(result).toEqual({ status: "error", errorKey: "currentPasswordIncorrect" });
     expect(mocks.deleteCurrentUser).not.toHaveBeenCalled();
     expect(mocks.endLocalSession).not.toHaveBeenCalled();
+  });
+
+  test("prepares the deletion after the password check and before deleting", async () => {
+    await expect(deleteAccount("en", initialAuthState, formData(VALID))).rejects.toThrow(
+      "NEXT_REDIRECT",
+    );
+
+    expect(mocks.rpc).toHaveBeenCalledWith("prepare_account_deletion");
+    expect(mocks.signInWithPassword.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.rpc.mock.invocationCallOrder[0],
+    );
+    expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.deleteCurrentUser.mock.invocationCallOrder[0],
+    );
+  });
+
+  test("is refused while an order is in progress, and the user is not deleted", async () => {
+    mocks.rpc.mockResolvedValue({ data: "orders_in_progress", error: null });
+    const result = await deleteAccount("en", initialAuthState, formData(VALID));
+
+    expect(result).toEqual({ status: "error", errorKey: "ordersInProgress" });
+    expect(mocks.deleteCurrentUser).not.toHaveBeenCalled();
+    expect(mocks.endLocalSession).not.toHaveBeenCalled();
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  test("a wrong password stops before prepare_account_deletion", async () => {
+    mocks.signInWithPassword.mockResolvedValue({
+      data: {},
+      error: new AuthError("Invalid login credentials", 400, "invalid_credentials"),
+    });
+    await deleteAccount("en", initialAuthState, formData(VALID));
+
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  test("an RPC error reports the code only and deletes nothing", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "42501", message: "secret@example.test" } });
+    const result = await deleteAccount("en", initialAuthState, formData(VALID));
+
+    expect(result).toEqual({ status: "error", errorKey: "generic" });
+    expect(mocks.deleteCurrentUser).not.toHaveBeenCalled();
+    expect(mocks.captureException).toHaveBeenCalledTimes(1);
+    expect(mocks.captureException.mock.calls[0][1]).toMatchObject({
+      tags: { "auth.flow": "deleteAccount", "db.code": "42501" },
+    });
+    expect(JSON.stringify(mocks.captureException.mock.calls)).not.toContain("secret@example.test");
+  });
+
+  test("an unexpected return value is treated as an error and deletes nothing", async () => {
+    mocks.rpc.mockResolvedValue({ data: "something_else", error: null });
+    const result = await deleteAccount("en", initialAuthState, formData(VALID));
+
+    expect(result).toEqual({ status: "error", errorKey: "generic" });
+    expect(mocks.deleteCurrentUser).not.toHaveBeenCalled();
+    expect(mocks.captureException).toHaveBeenCalledTimes(1);
   });
 
   test("a failed deletion keeps the session and reports", async () => {

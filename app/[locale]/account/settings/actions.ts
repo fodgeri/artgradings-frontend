@@ -202,8 +202,10 @@ export async function changePassword(
  * browser's session ended — auth-js tolerates the revoked token a deleted
  * user now holds.
  *
- * M3 adds a check here: deletion is refused while the user has an unfinished
- * order (the deletion contract in the profile-settings spec).
+ * Between the password check and the deletion, `prepare_account_deletion`
+ * runs as the caller: it refuses while an order is unfinished, otherwise
+ * removes drafts and unpaid orders and scrubs personal fields on the rest.
+ * Anything but a clean "ok" stops here and deletes nothing.
  */
 export async function deleteAccount(
   locale: string,
@@ -216,6 +218,19 @@ export async function deleteAccount(
   const supabase = await createClient();
   const refused = await verifyCurrentPassword(supabase, formData, "deleteAccount", target);
   if (refused) return refused;
+
+  const { data: prepared, error: prepareError } = await supabase.rpc("prepare_account_deletion");
+  if (prepareError) {
+    reportProfileError(prepareError, "deleteAccount");
+    return { status: "error", errorKey: "generic" };
+  }
+  if (prepared === "orders_in_progress") {
+    return { status: "error", errorKey: "ordersInProgress" };
+  }
+  if (prepared !== "ok") {
+    reportProfileError({ code: "unexpected_result" }, "deleteAccount");
+    return { status: "error", errorKey: "generic" };
+  }
 
   const { error } = await deleteCurrentUser();
   if (error) {

@@ -243,6 +243,7 @@
       "currentPasswordIncorrect": "That isn't your current password.",
       "nameTooLong": "Keep each name to {nameMax} characters or fewer.",
       "emailUnchanged": "That's already your email address.",
+      "ordersInProgress": "You can't delete your account while an order is in progress. Once your orders are complete or cancelled, you can delete it.",
       "generic": "Something went wrong. Please try again."
     }
   },
