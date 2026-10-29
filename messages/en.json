@@ -474,6 +474,81 @@
     }
   },
   "orders": {
+    "title": "Your orders",
+    "metaDescription": "Track your submissions and see what to do next.",
+    "empty": "You have no orders yet.",
+    "startSubmission": "Submit cards",
+    "status": {
+      "draft": "Draft",
+      "awaiting_payment": "Awaiting payment",
+      "paid": "Paid",
+      "received": "Received",
+      "grading": "In grading",
+      "graded": "Graded",
+      "shipped_back": "Shipped back",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "list": {
+      "heading": "Orders",
+      "cards": "{count, plural, one {# card} other {# cards}}",
+      "placed": "Placed {date}",
+      "started": "Started {date}",
+      "continue": "Continue",
+      "view": "View order",
+      "total": "Total"
+    },
+    "order": {
+      "title": "Order {reference}",
+      "metaDescription": "Status, cards and next steps for your order.",
+      "back": "All orders",
+      "reference": "Order reference",
+      "draftLead": "This order has not been submitted yet.",
+      "continue": "Continue",
+      "cardsHeading": "Cards",
+      "cardLabel": "Card {number}",
+      "unknownCard": "Unknown card — ART identifies it",
+      "serviceLine": "{service} · {tier}",
+      "addOns": "Extras: {names}",
+      "identification": "ART identification",
+      "totalsHeading": "Totals",
+      "subtotal": "Cards and services",
+      "inbound": "Shipping to ART",
+      "return": "Return shipping",
+      "total": "Total",
+      "declaredValue": "Total declared value",
+      "turnaround": "Estimated turnaround",
+      "turnaroundDays": "{days, plural, one {# business day} other {# business days}}",
+      "shippingHeading": "Contact and delivery",
+      "address": "{line}, {postcode} {city}, {country}",
+      "method": {
+        "postal": "Send by post",
+        "in_person": "Bring in person"
+      },
+      "timelineHeading": "Progress",
+      "cancel": "Cancel order",
+      "cancelling": "Cancelling…",
+      "cancelError": "We could not cancel this order. Please try again."
+    },
+    "timeline": {
+      "reached": "Reached {date}",
+      "notReached": "Not reached yet"
+    },
+    "next": {
+      "heading": "What to do next",
+      "pay": "Pay now",
+      "ship": {
+        "title": "Send your cards to ART",
+        "instructions": "[Placeholder packing instructions — client copy to be supplied.] Pack each card as the instructions say, and include the submission form in the parcel.",
+        "label": "Print the parcel label",
+        "form": "Print the submission form"
+      },
+      "bringIn": {
+        "title": "Bring your cards to ART",
+        "instructions": "[Placeholder hand-in instructions — client copy to be supplied.] Bring the printed submission form with your cards.",
+        "form": "Print the submission form"
+      }
+    },
     "pay": {
       "title": "Test payment",
       "metaDescription": "Complete a test payment for your order.",
