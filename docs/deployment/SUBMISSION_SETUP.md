@@ -25,6 +25,18 @@ and the two keys from `npx supabase status -o env`).
 - [ ] Set the runtime variables below in Coolify before the new image starts,
       or the first photo upload fails (`R2_*`) and the printables throw
       (`SITE_URL`).
+- [ ] **Verify the R2 S3 client against the real R2 bucket on the first
+      deploy.** Merging deploys to a host that uses real R2, and only the local
+      Supabase Storage stand-in has been exercised. AWS SDK v3
+      (`@aws-sdk/client-s3`) adds CRC32 checksum headers by default, and
+      Cloudflare's guidance has been to construct the client with
+      `requestChecksumCalculation: "WHEN_REQUIRED"` and
+      `responseChecksumValidation: "WHEN_REQUIRED"`. `lib/storage/r2.ts`
+      sets neither today. On the deployed host: upload a photo, view it,
+      remove it, and run the maintenance task once (it must report
+      `"deletedPhotos"` of at least 1, and the object must be gone from the
+      bucket). Add
+      the two options if any step fails.
 
 ## Cloudflare R2
 
@@ -101,7 +113,8 @@ Failures inside the job are reported to Sentry (`reportOrderError`, flow
 (`/account/orders/<reference>/pay`), whose *Pay* button marks an order paid
 without any money moving. Unset, the page and its actions are 404, and
 *Continue to payment* lands on the order page, which shows the order as
-awaiting payment and offers no *Pay* action. M7 adds Stripe as a real provider behind the same boundary
+awaiting payment and says that online payment is not available yet, with no
+*Pay* action. M7 adds Stripe as a real provider behind the same boundary
 (`lib/payments/provider.ts`).
 
 - On the current dev-backed host it may be `fake`, for demos.
@@ -112,14 +125,9 @@ awaiting payment and offers no *Pay* action. M7 adds Stripe as a real provider b
       `fake`.** With `fake`, any customer can mark their own order paid.
 - [ ] **`SITE_URL` is the production origin before the first real label is
       printed.** A label printed with the wrong origin cannot be recalled.
-- [ ] **Verify the R2 S3 client against a real R2 bucket before launch.** Only
-      the local Supabase Storage stand-in has been exercised. AWS SDK v3
-      (`@aws-sdk/client-s3`) adds CRC32 checksum headers by default, and
-      Cloudflare's guidance has been to construct the client with
-      `requestChecksumCalculation: "WHEN_REQUIRED"` and
-      `responseChecksumValidation: "WHEN_REQUIRED"`. `lib/storage/r2.ts`
-      sets neither today. Upload a photo, view it, remove the card and run the
-      maintenance task; add the two options if any step fails.
+- [ ] **Repeat the R2 check against the production bucket**: upload, view
+      and remove a photo, then run the maintenance task once (see *Before
+      merging*).
 - [ ] The production R2 bucket is its own bucket with its own scoped token —
       never the dev bucket.
 - [ ] `JOBS_SECRET` is a fresh value for production, and the scheduled task

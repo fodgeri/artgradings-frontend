@@ -413,9 +413,12 @@ Rules:
 - **Prices are computed in `private.price_order`, inside `submit_order`.** A
   customer writes their own draft rows, so any price on them would be
   forgeable; none is trusted. `lib/orders/pricing.ts` is a **display mirror**
-  for the running total, kept in step by `lib/orders/fixtures.ts`, which
-  mirrors the catalog seed and the pgTAP reference draft so both suites check
-  the same numbers. Change one side and its tests fail until the other follows.
+  for the running total. It reads catalog data (prices, caps, fees) at
+  runtime, so a price change reaches both sides on its own.
+  `lib/orders/fixtures.ts` mirrors the catalog seed and the pgTAP reference
+  draft, so the Vitest and pgTAP suites assert the same numbers. Nothing ties
+  the two *rules* together: a pricing-rule change in `price_order` must be
+  mirrored by hand in `pricing.ts`, and its tests updated on both sides.
 - **Services, tiers, add-ons and card fees are data, not code.** A new service
   or add-on is a row, a message key under `catalog.*` and a deploy. Copy never
   goes in the database. Every price is integer cents plus a currency; EUR only
