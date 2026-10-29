@@ -392,6 +392,34 @@
         "cityMissing": "Enter the city.",
         "addressMissing": "Enter the address."
       }
+    },
+    "summary": {
+      "title": "Review your order",
+      "lead": "Check everything below. Prices are final and include VAT.",
+      "metaDescription": "Review your cards, services and total before you submit.",
+      "cardsHeading": "Cards",
+      "cardLabel": "Card {number}",
+      "unknownCard": "Unknown card — ART identifies it",
+      "serviceLine": "{service} · {tier}",
+      "addOns": "Extras: {names}",
+      "identification": "ART identification",
+      "cardPrice": "Card price",
+      "totalsHeading": "Totals",
+      "subtotal": "Cards and services",
+      "inbound": "Shipping to ART",
+      "return": "Return shipping",
+      "total": "Total",
+      "vatIncluded": "VAT included",
+      "declaredValue": "Total declared value",
+      "turnaround": "Estimated turnaround",
+      "turnaroundDays": "{days, plural, one {# business day} other {# business days}}",
+      "contactHeading": "Contact and delivery",
+      "address": "{line}, {postcode} {city}, {country}",
+      "edit": "Edit",
+      "terms": "I accept the <link>terms of service</link>.",
+      "submit": "Continue to payment",
+      "submitting": "Submitting…",
+      "back": "Back to shipping"
     }
   },
   "catalog": {

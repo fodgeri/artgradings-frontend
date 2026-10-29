@@ -1,21 +1,28 @@
 import * as Sentry from "@sentry/nextjs";
 
-export type OrderErrorKey =
-  | "notFound"
-  | "notDraft"
-  | "incomplete"
-  | "serviceUnavailable"
-  | "tierUnavailable"
-  | "addOnUnavailable"
-  | "overCap"
-  | "countryUnsupported"
-  | "tooManyCards"
-  | "cardGone"
-  | "photoTooLarge"
-  | "photoType"
-  | "photoLimit"
-  | "termsRequired"
-  | "generic";
+export const ORDER_ERROR_KEYS = [
+  "notFound",
+  "notDraft",
+  "incomplete",
+  "serviceUnavailable",
+  "tierUnavailable",
+  "addOnUnavailable",
+  "overCap",
+  "countryUnsupported",
+  "tooManyCards",
+  "cardGone",
+  "photoTooLarge",
+  "photoType",
+  "photoLimit",
+  "termsRequired",
+  "generic",
+] as const;
+
+export type OrderErrorKey = (typeof ORDER_ERROR_KEYS)[number];
+
+export function isOrderErrorKey(value: unknown): value is OrderErrorKey {
+  return typeof value === "string" && (ORDER_ERROR_KEYS as readonly string[]).includes(value);
+}
 
 export type OrderFlow =
   | "saveCard"

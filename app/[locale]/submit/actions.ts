@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "@/i18n/navigation";
 import { resolveLocale } from "@/lib/auth/action-state";
 import { requireUser } from "@/lib/auth/require-user";
 import {
@@ -13,6 +14,8 @@ import {
   normalizeCard,
 } from "@/lib/orders/card-rules";
 import { loadCatalog } from "@/lib/orders/catalog";
+import { TERMS_VERSION } from "@/lib/orders/terms";
+import { getPaymentProvider } from "@/lib/payments/provider";
 import {
   type OrderFlow,
   type SaveResult,
@@ -319,4 +322,46 @@ export async function removePhoto(locale: string, photoId: string): Promise<Save
     return key === "generic" ? unexpected("removePhoto", error) : { ok: false, errorKey: key };
   }
   return { ok: true, data: null };
+}
+
+/**
+ * Places the order. Prices are never sent: the database prices the draft and
+ * stamps the acknowledgements. Every success and the double-click case end in
+ * a redirect, which is returned outside any try because it throws.
+ */
+export async function submitOrder(
+  locale: string,
+  input: { termsAccepted: boolean },
+): Promise<SaveResult<null>> {
+  const resolved = resolveLocale(locale);
+  const supabase = await session(resolved);
+  if (input?.termsAccepted !== true) return { ok: false, errorKey: "termsRequired" };
+
+  const { data, error } = await supabase.rpc("submit_order", { p_terms_version: TERMS_VERSION });
+  if (error) {
+    const key = orderErrorKey(error);
+    if (key === "notDraft") {
+      // A second click, or a second tab: the order already exists.
+      const existing = await supabase
+        .from("orders")
+        .select("reference")
+        .eq("status", "awaiting_payment")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existing.error) return unexpected("submitOrder", existing.error);
+      if (existing.data) {
+        return redirect({ href: `/account/orders/${existing.data.reference}`, locale: resolved });
+      }
+      return { ok: false, errorKey: "notDraft" };
+    }
+    return key === "generic" ? unexpected("submitOrder", error) : { ok: false, errorKey: key };
+  }
+  if (typeof data !== "string" || data === "") return unexpected("submitOrder", {});
+
+  const provider = getPaymentProvider();
+  if (provider) {
+    return redirect({ href: await provider.startPayment({ reference: data }), locale: resolved });
+  }
+  return redirect({ href: `/account/orders/${data}`, locale: resolved });
 }

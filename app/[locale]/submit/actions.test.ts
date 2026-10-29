@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { CATALOG } from "@/lib/orders/fixtures";
+import { TERMS_VERSION } from "@/lib/orders/terms";
 import type { DraftCardInput } from "@/lib/orders/types";
 import { PHOTO_MAX_BYTES } from "@/lib/photos/limits";
 import { formData } from "@/test/form-data";
@@ -41,6 +42,9 @@ const mocks = vi.hoisted(() => {
     state,
     from: vi.fn((table: string) => builder(table)),
     getClaims: vi.fn(),
+    rpc: vi.fn(),
+    startPayment: vi.fn(),
+    getPaymentProvider: vi.fn(),
     loadCatalog: vi.fn(),
     putObject: vi.fn(),
     captureException: vi.fn(),
@@ -51,10 +55,11 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({ auth: { getClaims: mocks.getClaims }, from: mocks.from }),
+  createClient: async () => ({ auth: { getClaims: mocks.getClaims }, from: mocks.from, rpc: mocks.rpc }),
 }));
 vi.mock("@/lib/orders/catalog", () => ({ loadCatalog: mocks.loadCatalog }));
 vi.mock("@/lib/storage/r2", () => ({ putObject: mocks.putObject }));
+vi.mock("@/lib/payments/provider", () => ({ getPaymentProvider: mocks.getPaymentProvider }));
 vi.mock("@/i18n/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("@sentry/nextjs", () => ({ captureException: mocks.captureException }));
 
@@ -106,6 +111,7 @@ beforeEach(() => {
   mocks.getClaims.mockResolvedValue({ data: { claims: { sub: "user-1", email: "a@example.test" } }, error: null });
   mocks.loadCatalog.mockResolvedValue(CATALOG);
   mocks.putObject.mockResolvedValue(undefined);
+  mocks.getPaymentProvider.mockReturnValue(null);
 });
 
 describe("saveCard", () => {
@@ -494,5 +500,86 @@ describe("authentication", () => {
     mocks.getClaims.mockResolvedValue({ data: null, error: null });
 
     await expect(actions.removeCard("zz", CARD_ID)).rejects.toThrow(/"locale":"en"/);
+  });
+});
+
+describe("submitOrder", () => {
+  const redirected = (args: unknown) => `NEXT_REDIRECT ${JSON.stringify(args)}`;
+
+  test("refuses without the terms box, without calling Supabase", async () => {
+    const result = await actions.submitOrder("en", { termsAccepted: false });
+
+    expect(result).toEqual({ ok: false, errorKey: "termsRequired" });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  test("sends the terms version and no prices", async () => {
+    mocks.rpc.mockResolvedValue({ data: "AG-0123ABCD", error: null });
+
+    await expect(actions.submitOrder("en", { termsAccepted: true })).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mocks.rpc).toHaveBeenCalledWith("submit_order", { p_terms_version: TERMS_VERSION });
+    expect(JSON.stringify(mocks.rpc.mock.calls)).not.toMatch(/cents|price|total|user/i);
+  });
+
+  test("a second submit lands on the existing order instead of failing", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "P0001", message: "not_draft" } });
+    queue("orders.select", { data: { reference: "AG-0123ABCD" }, error: null });
+
+    await expect(actions.submitOrder("en", { termsAccepted: true })).rejects.toThrow(
+      redirected({ href: "/account/orders/AG-0123ABCD", locale: "en" }),
+    );
+    const [lookup] = callsTo("orders", "select");
+    expect(lookup.filters).toContainEqual(["eq", "status", "awaiting_payment"]);
+    expect(mocks.captureException).not.toHaveBeenCalled();
+  });
+
+  test("not_draft with no awaiting order answers notDraft", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "P0001", message: "not_draft" } });
+    queue("orders.select", { data: null, error: null });
+
+    expect(await actions.submitOrder("en", { termsAccepted: true })).toEqual({
+      ok: false,
+      errorKey: "notDraft",
+    });
+  });
+
+  test("a catalog change since the running total surfaces its key", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "P0001", message: "service_unavailable" } });
+
+    expect(await actions.submitOrder("en", { termsAccepted: true })).toEqual({
+      ok: false,
+      errorKey: "serviceUnavailable",
+    });
+  });
+
+  test("an unexpected error is reported by code and answers generic", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "XX000", message: "Anna at 1 Main St" } });
+
+    expect(await actions.submitOrder("en", { termsAccepted: true })).toEqual({
+      ok: false,
+      errorKey: "generic",
+    });
+    expect(JSON.stringify(mocks.captureException.mock.calls)).not.toContain("Anna");
+  });
+
+  test("with no payment provider, submit lands on the order page", async () => {
+    mocks.rpc.mockResolvedValue({ data: "AG-0123ABCD", error: null });
+
+    await expect(actions.submitOrder("en", { termsAccepted: true })).rejects.toThrow(
+      redirected({ href: "/account/orders/AG-0123ABCD", locale: "en" }),
+    );
+  });
+
+  test("with a payment provider, submit redirects to where it sends the customer", async () => {
+    mocks.rpc.mockResolvedValue({ data: "AG-0123ABCD", error: null });
+    mocks.startPayment.mockResolvedValue("/pay/AG-0123ABCD");
+    mocks.getPaymentProvider.mockReturnValue({ id: "fake", startPayment: mocks.startPayment });
+
+    await expect(actions.submitOrder("en", { termsAccepted: true })).rejects.toThrow(
+      redirected({ href: "/pay/AG-0123ABCD", locale: "en" }),
+    );
+    expect(mocks.startPayment).toHaveBeenCalledWith({ reference: "AG-0123ABCD" });
   });
 });

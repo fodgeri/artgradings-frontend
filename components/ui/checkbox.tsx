@@ -1,7 +1,7 @@
 "use client";
 
 import { Checkbox as BaseCheckbox } from "@base-ui-components/react/checkbox";
-import { useId } from "react";
+import { type ReactNode, useId } from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -22,7 +22,7 @@ export function Checkbox({
 }: {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
-  label: string;
+  label: ReactNode;
   description?: string;
   disabled?: boolean;
   className?: string;
