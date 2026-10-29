@@ -77,7 +77,10 @@ describe("importsAdminClient", () => {
  *
  * Adding a path here is a security decision, not a formality.
  */
-const ADMIN_ALLOWLIST: string[] = [join("lib", "auth", "delete-current-user.ts")];
+const ADMIN_ALLOWLIST: string[] = [
+  join("lib", "auth", "delete-current-user.ts"),
+  join("lib", "payments", "record-payment.ts"),
+];
 
 describe("service_role client containment", () => {
   test("the client this guard protects exists", () => {
@@ -86,9 +89,12 @@ describe("service_role client containment", () => {
     expect(walk("lib")).toContain(join("lib", "supabase", "admin.ts"));
   });
 
-  test("the allowlist is exactly the account-deletion module", () => {
+  test("the allowlist is exactly account deletion and the payment handler", () => {
     // Widening this is a security decision; the test makes it a visible one.
-    expect(ADMIN_ALLOWLIST).toEqual([join("lib", "auth", "delete-current-user.ts")]);
+    expect(ADMIN_ALLOWLIST).toEqual([
+      join("lib", "auth", "delete-current-user.ts"),
+      join("lib", "payments", "record-payment.ts"),
+    ]);
   });
 
   test("the matcher recognises the allowlisted module's real import", () => {

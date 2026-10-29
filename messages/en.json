@@ -472,5 +472,19 @@
     "zones": {
       "placeholder_eu": "European Union (placeholder)"
     }
+  },
+  "orders": {
+    "pay": {
+      "title": "Test payment",
+      "metaDescription": "Complete a test payment for your order.",
+      "panelTitle": "Test payment — no money is taken",
+      "lead": "This stands in for the payment provider while it is being set up. Choose how the payment should end.",
+      "total": "Total",
+      "pay": "Pay",
+      "fail": "Fail",
+      "cancel": "Cancel",
+      "working": "Working…",
+      "error": "Something went wrong. Please try again."
+    }
   }
 }
