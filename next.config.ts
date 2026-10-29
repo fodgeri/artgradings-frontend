@@ -7,6 +7,13 @@ const nextConfig: NextConfig = {
   // node_modules it actually needs. This is what the Docker runtime stage
   // copies; without it the image build fails at the COPY step.
   output: "standalone",
+
+  experimental: {
+    // Card photos reach a Server Action as multipart form data. The browser
+    // caps a photo at 2 MiB (PHOTO_MAX_BYTES); 3mb leaves room for the
+    // multipart overhead and the other fields. The default is 1MB.
+    serverActions: { bodySizeLimit: "3mb" },
+  },
 };
 
 // Resolves ./i18n/request.ts by convention.
