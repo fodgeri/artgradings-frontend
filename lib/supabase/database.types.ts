@@ -806,7 +806,34 @@ export type Database = {
     }
     Functions: {
       cancel_order: { Args: { p_reference: string }; Returns: undefined }
+      complete_photo_deletions: {
+        Args: { p_keys: string[] }
+        Returns: undefined
+      }
+      expire_stale_drafts: { Args: never; Returns: number }
+      list_photo_deletions: { Args: { p_limit: number }; Returns: string[] }
+      prepare_account_deletion: { Args: never; Returns: string }
       quote_order: { Args: never; Returns: Json }
+      record_payment_failure: {
+        Args: {
+          p_amount_cents: number
+          p_currency: string
+          p_order_id: string
+          p_provider: string
+          p_provider_reference: string
+        }
+        Returns: undefined
+      }
+      record_payment_success: {
+        Args: {
+          p_amount_cents: number
+          p_currency: string
+          p_order_id: string
+          p_provider: string
+          p_provider_reference: string
+        }
+        Returns: string
+      }
       submit_order: { Args: { p_terms_version: string }; Returns: string }
     }
     Enums: {
