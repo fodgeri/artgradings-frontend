@@ -6,7 +6,7 @@ import { useState } from "react";
 import { removePhoto, uploadPhoto } from "@/app/[locale]/submit/actions";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Field, FieldDescription, FieldInput, FieldSelect } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldInput, FieldSelect } from "@/components/ui/field";
 import { PhotoInput } from "@/components/ui/photo-input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
@@ -56,6 +56,7 @@ export function CardEditor({
   catalog,
   saved,
   onChange,
+  onPhoto,
   onRemove,
   onGone,
 }: {
@@ -63,6 +64,8 @@ export function CardEditor({
   catalog: Catalog;
   saved: boolean;
   onChange: (card: DraftCard) => void;
+  /** Sets only the photo, so edits made during an upload are not overwritten. */
+  onPhoto: (photo: DraftCard["photo"]) => void;
   onRemove: () => void;
   /** The card no longer exists on the server; drop it. */
   onGone: () => void;
@@ -107,7 +110,7 @@ export function CardEditor({
     max: number,
     name: string,
   ) => (
-    <Field label={named(name)}>
+    <Field label={named(name)} invalid={!!errorFor(field)}>
       <FieldInput
         value={card[key] ?? ""}
         maxLength={max}
@@ -115,7 +118,7 @@ export function CardEditor({
         onBlur={() => touch(field)}
         aria-invalid={errorFor(field) ? true : undefined}
       />
-      <FieldError message={errorFor(field)} />
+      <FieldError>{errorFor(field)}</FieldError>
     </Field>
   );
 
@@ -134,7 +137,7 @@ export function CardEditor({
       form.set("cardId", card.id);
       form.set("file", blob, file.name);
       const result = await uploadPhoto(locale, form);
-      if (result.ok) onChange({ ...card, photo: { id: result.data.photoId } });
+      if (result.ok) onPhoto({ id: result.data.photoId });
       else if (result.errorKey === "cardGone") onGone();
       else setPhotoError(result.errorKey);
     } catch (error) {
@@ -156,7 +159,7 @@ export function CardEditor({
     setPhotoBusy(true);
     try {
       const result = await removePhoto(locale, card.photo.id);
-      if (result.ok) onChange({ ...card, photo: null });
+      if (result.ok) onPhoto(null);
       else if (result.errorKey === "cardGone") onGone();
       else setPhotoError(result.errorKey);
     } catch {
@@ -185,7 +188,7 @@ export function CardEditor({
       </div>
 
       <div className="grid gap-x-4 sm:grid-cols-2">
-        <Field label={named(t("cards.fields.year"))}>
+        <Field label={named(t("cards.fields.year"))} invalid={!!errorFor("releaseYear")}>
           <FieldInput
             inputMode="numeric"
             maxLength={4}
@@ -197,10 +200,10 @@ export function CardEditor({
             onBlur={() => touch("releaseYear")}
             aria-invalid={errorFor("releaseYear") ? true : undefined}
           />
-          <FieldError message={errorFor("releaseYear")} />
+          <FieldError>{errorFor("releaseYear")}</FieldError>
         </Field>
         {text("brand", "brand", BRAND_MAX, t("cards.fields.brand"))}
-        <Field label={named(t("cards.fields.language"))}>
+        <Field label={named(t("cards.fields.language"))} invalid={!!errorFor("language")}>
           <FieldSelect
             value={card.language ?? ""}
             onChange={(e) => update({ language: e.target.value === "" ? null : e.target.value })}
@@ -214,7 +217,7 @@ export function CardEditor({
               </option>
             ))}
           </FieldSelect>
-          <FieldError message={errorFor("language")} />
+          <FieldError>{errorFor("language")}</FieldError>
         </Field>
         {text("name", "name", CARD_TEXT_MAX, t("cards.fields.name"))}
         {text("setName", "setName", CARD_TEXT_MAX, t("cards.fields.setName"))}
@@ -243,7 +246,7 @@ export function CardEditor({
         />
       </div>
 
-      <Field label={t("cards.fields.value", { currency: catalog.currency })}>
+      <Field label={t("cards.fields.value", { currency: catalog.currency })} invalid={!!errorFor("value")}>
         <FieldInput
           inputMode="decimal"
           value={valueText}
@@ -261,7 +264,7 @@ export function CardEditor({
           aria-invalid={errorFor("value") ? true : undefined}
         />
         <FieldDescription>{t("cards.fields.valueHint")}</FieldDescription>
-        <FieldError message={errorFor("value")} />
+        <FieldError>{errorFor("value")}</FieldError>
       </Field>
 
       <div className="mb-4 flex flex-col gap-2">
@@ -276,11 +279,15 @@ export function CardEditor({
           options={services.map((s) => ({ value: s.key, label: label(`services.${s.key}.label`) }))}
           className="flex-wrap"
         />
-        <FieldError message={errorFor("service")} />
+        {errorFor("service") && (
+          <p role="alert" className="text-sm font-medium text-ink">
+            {errorFor("service")}
+          </p>
+        )}
       </div>
 
       {card.service !== null && (
-        <Field label={t("cards.service.tier")}>
+        <Field label={t("cards.service.tier")} invalid={!!errorFor("tier")}>
           <FieldSelect
             value={tiers.some((x) => x.key === card.tierKey) ? (card.tierKey ?? "") : ""}
             onChange={(e) => update({ tierKey: e.target.value === "" ? null : e.target.value })}
@@ -298,7 +305,7 @@ export function CardEditor({
               </option>
             ))}
           </FieldSelect>
-          <FieldError message={errorFor("tier")} />
+          <FieldError>{errorFor("tier")}</FieldError>
         </Field>
       )}
 
@@ -361,12 +368,4 @@ export function CardEditor({
       </div>
     </div>
   );
-}
-
-function FieldError({ message }: { message: string | null }) {
-  return message ? (
-    <p role="alert" className="text-sm font-medium text-ink">
-      {message}
-    </p>
-  ) : null;
 }

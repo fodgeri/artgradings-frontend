@@ -55,6 +55,7 @@ function Harness({ initial, saved = true }: { initial: DraftCard; saved?: boolea
       catalog={CATALOG}
       saved={saved}
       onChange={setCard}
+      onPhoto={(photo) => setCard((prev) => ({ ...prev, photo }))}
       onRemove={() => {}}
       onGone={onGone}
     />
@@ -147,6 +148,7 @@ describe("CardEditor", () => {
         catalog={CATALOG}
         saved
         onChange={onChange}
+        onPhoto={() => {}}
         onRemove={() => {}}
         onGone={onGone}
       />,
@@ -218,5 +220,44 @@ describe("CardEditor photo", () => {
     await user.upload(screen.getByLabelText(c.photo.label), new File(["x"], "a.png", { type: "image/png" }));
     expect(await screen.findByText(messages.submit.errors.photoType)).toBeInTheDocument();
     expect(mocks.uploadPhoto).not.toHaveBeenCalled();
+  });
+});
+
+describe("CardEditor review fixes", () => {
+  test("an edit made during an upload survives the upload finishing", async () => {
+    let finish!: (v: unknown) => void;
+    mocks.compressPhoto.mockResolvedValue(new Blob(["x"]));
+    mocks.uploadPhoto.mockReturnValue(new Promise((r) => (finish = r)));
+    const { user } = renderWithIntl(<Harness initial={GRADING} saved />);
+    await user.upload(screen.getByLabelText(c.photo.label), new File(["x"], "a.png", { type: "image/png" }));
+    const name = screen.getByLabelText(c.fields.name);
+    await user.type(name, "X");
+    finish({ ok: true, data: { photoId: "p9" } });
+    expect(await screen.findByRole("button", { name: c.photo.remove })).toBeInTheDocument();
+    expect(screen.getByLabelText(c.fields.name)).toHaveValue(`${GRADING.name}X`);
+  });
+
+  test("a field error is part of the input's accessible description after blur", async () => {
+    const { user } = renderWithIntl(<Harness initial={BLANK} />);
+    const name = screen.getByLabelText(c.fields.name);
+    await user.click(name);
+    await user.tab();
+    expect(name).toHaveAccessibleDescription(c.problems.nameMissing);
+  });
+
+  test("customer to ART to customer keeps every typed field", async () => {
+    const { user } = renderWithIntl(<Harness initial={BLANK} />);
+    await user.type(screen.getByLabelText(c.fields.name), "Pikachu");
+    await user.type(screen.getByLabelText(c.fields.setName), "Jungle");
+    await user.type(screen.getByLabelText(c.fields.year), "1999");
+    await user.click(screen.getByRole("button", { name: /^ART identifies/ }));
+    const opt = (n: string) => c.fields.optional.replace("{label}", n);
+    expect(screen.getByLabelText(opt(c.fields.name))).toHaveValue("Pikachu");
+    expect(screen.getByLabelText(opt(c.fields.setName))).toHaveValue("Jungle");
+    expect(screen.getByLabelText(opt(c.fields.year))).toHaveValue("1999");
+    await user.click(screen.getByRole("button", { name: c.identification.customer }));
+    expect(screen.getByLabelText(c.fields.name)).toHaveValue("Pikachu");
+    expect(screen.getByLabelText(c.fields.setName)).toHaveValue("Jungle");
+    expect(screen.getByLabelText(c.fields.year)).toHaveValue("1999");
   });
 });

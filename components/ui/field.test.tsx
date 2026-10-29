@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { renderWithIntl, screen } from "@/test/i18n";
 
-import { Field, FieldDescription, FieldInput, FieldSelect } from "./field";
+import { Field, FieldDescription, FieldError, FieldInput, FieldSelect } from "./field";
 
 describe("Field", () => {
   test("associates the label with the input", () => {
@@ -62,5 +62,15 @@ describe("Field", () => {
     expect(screen.getByLabelText("Password")).toHaveAccessibleDescription(
       "At least ten characters.",
     );
+  });
+
+  test("links an error to the input", () => {
+    renderWithIntl(
+      <Field label="Email" invalid>
+        <FieldInput />
+        <FieldError>Enter an address.</FieldError>
+      </Field>,
+    );
+    expect(screen.getByLabelText("Email")).toHaveAccessibleDescription("Enter an address.");
   });
 });

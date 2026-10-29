@@ -104,4 +104,38 @@ describe("CardsStep", () => {
     expect(await screen.findByText(c.nextFailed)).toBeInTheDocument();
     expect(mocks.push).not.toHaveBeenCalled();
   });
+
+  test("removing a card during its first save waits for it, then removes it on the server", async () => {
+    let finish!: (v: unknown) => void;
+    mocks.saveCard.mockReturnValue(new Promise((r) => (finish = r)));
+    mocks.removeCard.mockResolvedValue({ ok: true, data: null });
+    const { user } = renderWithIntl(<CardsStep initialDraft={null} catalog={CATALOG} />);
+    await user.type(screen.getByLabelText(c.fields.name), "A");
+    await user.click(screen.getByRole("button", { name: c.remove }));
+    // flush() started the save; the remove must not have run yet.
+    await vi.waitFor(() => expect(mocks.saveCard).toHaveBeenCalled());
+    expect(mocks.removeCard).not.toHaveBeenCalled();
+    finish({ ok: true, data: { reference: "AG-0123ABCD" } });
+    await vi.waitFor(() => expect(mocks.removeCard).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(screen.queryAllByRole("region")).toHaveLength(0));
+  });
+
+  test("a failing removeCard keeps the card and shows the error", async () => {
+    mocks.removeCard.mockResolvedValue({ ok: false, errorKey: "generic" });
+    const { user } = renderWithIntl(<CardsStep initialDraft={complete} catalog={CATALOG} />);
+    await user.click(screen.getByRole("button", { name: c.remove }));
+    expect(await screen.findByText(messages.submit.errors.generic)).toBeInTheDocument();
+    expect(screen.getAllByRole("region")).toHaveLength(1);
+  });
+
+  test("the identification fee reaches the running total", async () => {
+    const { user } = renderWithIntl(<CardsStep initialDraft={null} catalog={CATALOG} />);
+    const fee = new Intl.NumberFormat("en", { style: "currency", currency: "EUR" }).format(
+      CATALOG.identificationCents / 100,
+    );
+    const total = screen.getByRole("complementary");
+    expect(total).not.toHaveTextContent(fee);
+    await user.click(screen.getByRole("button", { name: /^ART identifies/ }));
+    expect(total).toHaveTextContent(fee);
+  });
 });

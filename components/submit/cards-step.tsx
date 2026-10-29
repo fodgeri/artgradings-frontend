@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useRouter } from "@/i18n/navigation";
 import { MAX_CARDS_PER_ORDER, cardProblems } from "@/lib/orders/card-rules";
+import type { OrderErrorKey } from "@/lib/orders/errors";
 import { quoteDraft } from "@/lib/orders/pricing";
 import type { Catalog, Draft, DraftCard, DraftShipping } from "@/lib/orders/types";
 
@@ -70,9 +71,12 @@ export function CardsStep({
     () => new Set(initialDraft?.cards.map((c) => c.id) ?? []),
   );
   const [openId, setOpenId] = useState<string>(() => cards[0].id);
-  const [notice, setNotice] = useState<"cardGone" | "nextFailed" | null>(null);
+  const [notice, setNotice] = useState<OrderErrorKey | "nextFailed" | null>(null);
   const [leaving, setLeaving] = useState(false);
   const flushers = useRef(new Map<string, Flusher>());
+  // Mirrors `persisted` for async code that must not read a stale render.
+  const persistedIds = useRef(new Set(initialDraft?.cards.map((c) => c.id) ?? []));
+  const removing = useRef(new Set<string>());
 
   const quote = useMemo(
     () =>
@@ -110,13 +114,30 @@ export function CardsStep({
   );
 
   const markPersisted = useCallback((id: string) => {
+    persistedIds.current.add(id);
     setPersisted((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
   }, []);
 
-  const remove = (id: string) => {
-    const wasSaved = persisted.has(id);
-    drop(id);
-    if (wasSaved) void removeCard(locale, id);
+  // Waits for the card's in-flight save first: a first save that lands after
+  // a local drop would bring the card back on the server.
+  const remove = async (id: string) => {
+    if (removing.current.has(id)) return;
+    removing.current.add(id);
+    setNotice(null);
+    try {
+      await flushers.current.get(id)?.();
+      if (!persistedIds.current.has(id)) {
+        drop(id);
+        return;
+      }
+      const result = await removeCard(locale, id);
+      if (result.ok || result.errorKey === "cardGone") drop(id);
+      else setNotice(result.errorKey);
+    } catch {
+      setNotice("generic");
+    } finally {
+      removing.current.delete(id);
+    }
   };
 
   const next = async () => {
@@ -151,7 +172,10 @@ export function CardsStep({
                 prev.map((c) => (c.id === next.id ? { ...next, position: c.position } : c)),
               )
             }
-            onRemove={() => remove(card.id)}
+            onPhoto={(photo) =>
+              setCards((prev) => prev.map((c) => (c.id === card.id ? { ...c, photo } : c)))
+            }
+            onRemove={() => void remove(card.id)}
             onGone={() => gone(card.id)}
             onPersisted={() => markPersisted(card.id)}
             register={(flush) => {
@@ -172,7 +196,7 @@ export function CardsStep({
 
         {notice && (
           <p role="alert" className="text-sm font-medium text-ink">
-            {notice === "cardGone" ? t("errors.cardGone") : t("cards.nextFailed")}
+            {notice === "nextFailed" ? t("cards.nextFailed") : t(`errors.${notice}`)}
           </p>
         )}
       </div>
@@ -202,6 +226,7 @@ function CardSlot({
   saved,
   onOpen,
   onChange,
+  onPhoto,
   onRemove,
   onGone,
   onPersisted,
@@ -215,6 +240,7 @@ function CardSlot({
   saved: boolean;
   onOpen: () => void;
   onChange: (card: DraftCard) => void;
+  onPhoto: (photo: DraftCard["photo"]) => void;
   onRemove: () => void;
   onGone: () => void;
   onPersisted: () => void;
@@ -297,6 +323,7 @@ function CardSlot({
             catalog={catalog}
             saved={saved}
             onChange={onChange}
+            onPhoto={onPhoto}
             onRemove={onRemove}
             onGone={onGone}
           />
