@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -82,7 +83,7 @@ describe("useAutosave", () => {
     });
     rerender({ v: 2 });
     let done = false;
-    let flushed!: Promise<void>;
+    let flushed!: Promise<unknown>;
     act(() => {
       flushed = result.current.flush().then(() => {
         done = true;
@@ -120,7 +121,7 @@ describe("useAutosave", () => {
     rerender({ v: 2 });
     await act(() => vi.advanceTimersByTimeAsync(800));
     rerender({ v: 3 });
-    let flushed!: Promise<void>;
+    let flushed!: Promise<unknown>;
     act(() => {
       flushed = result.current.flush();
     });
@@ -183,5 +184,72 @@ describe("useAutosave", () => {
     unmount();
     await act(() => vi.advanceTimersByTimeAsync(2000));
     expect(save).not.toHaveBeenCalled();
+  });
+
+  test("StrictMode does not save on mount, and saves once after a change", async () => {
+    const save = vi.fn().mockResolvedValue(ok);
+    const { rerender } = renderHook(({ v }) => useAutosave(v, save), {
+      initialProps: { v: 1 },
+      wrapper: StrictMode,
+    });
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+    expect(save).not.toHaveBeenCalled();
+    rerender({ v: 2 });
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save).toHaveBeenCalledWith(2);
+  });
+
+  test("enabling with an unchanged value does not save", async () => {
+    const save = vi.fn().mockResolvedValue(ok);
+    const { rerender } = renderHook(
+      ({ enabled }) => useAutosave(1, save, { enabled }),
+      { initialProps: { enabled: false } },
+    );
+    rerender({ enabled: true });
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  test("flush resolves true after a successful save", async () => {
+    const save = vi.fn().mockResolvedValue(ok);
+    const { rerender, result } = renderHook(({ v }) => useAutosave(v, save), {
+      initialProps: { v: 1 },
+    });
+    rerender({ v: 2 });
+    let saved: boolean | undefined;
+    await act(async () => {
+      saved = await result.current.flush();
+    });
+    expect(saved).toBe(true);
+  });
+
+  test("a failed save makes flush resolve false; the next flush retries", async () => {
+    const save = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, errorKey: "generic" })
+      .mockResolvedValue(ok);
+    const { rerender, result } = renderHook(({ v }) => useAutosave(v, save), {
+      initialProps: { v: 1 },
+    });
+    rerender({ v: 2 });
+    let first: boolean | undefined;
+    await act(async () => {
+      first = await result.current.flush();
+    });
+    expect(first).toBe(false);
+    expect(save).toHaveBeenCalledTimes(1);
+    // no retry on its own
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+    expect(save).toHaveBeenCalledTimes(1);
+
+    let second: boolean | undefined;
+    await act(async () => {
+      second = await result.current.flush();
+    });
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save).toHaveBeenLastCalledWith(2);
+    expect(second).toBe(true);
+    expect(result.current.status).toBe("saved");
   });
 });
