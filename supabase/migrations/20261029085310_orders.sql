@@ -51,7 +51,7 @@ create table public.orders (
   user_id uuid default auth.uid() references auth.users (id) on delete set null,
   reference text not null unique default private.new_order_reference(),
   status text not null default 'draft' references public.order_statuses (key),
-  currency char(3) not null default 'EUR',
+  currency char(3) not null default 'EUR' check (currency ~ '^[A-Z]{3}$'),
   shipping_method text check (shipping_method in ('postal', 'in_person')),
   contact_first_name text check (char_length(contact_first_name) <= 100),
   contact_last_name text check (char_length(contact_last_name) <= 100),
@@ -75,6 +75,8 @@ create table public.orders (
   updated_at timestamptz not null default now()
 );
 create index orders_user_id_idx on public.orders (user_id);
+-- status is a foreign key, and the admin queue (M5) filters on it.
+create index orders_status_idx on public.orders (status);
 create unique index orders_one_draft_per_user
   on public.orders (user_id) where status = 'draft';
 
@@ -123,9 +125,11 @@ create table public.card_photos (
   content_type text not null check (content_type in ('image/jpeg', 'image/png', 'image/webp')),
   byte_size int not null check (byte_size between 1 and 2097152),
   object_key text generated always as ('card-photos/' || card_id::text || '/' || id::text) stored,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- One photo per card (MAX_PHOTOS_PER_CARD). The constraint's index also
+  -- covers the foreign key.
+  constraint card_photos_card_id_key unique (card_id)
 );
-create index card_photos_card_id_idx on public.card_photos (card_id);
 
 create table public.order_status_log (
   id bigint generated always as identity primary key,
@@ -138,6 +142,8 @@ create table public.order_status_log (
 );
 create index order_status_log_order_id_idx on public.order_status_log (order_id);
 create index order_status_log_actor_user_id_idx on public.order_status_log (actor_user_id);
+create index order_status_log_from_status_idx on public.order_status_log (from_status);
+create index order_status_log_to_status_idx on public.order_status_log (to_status);
 
 create table public.payment_attempts (
   id uuid primary key default gen_random_uuid(),
@@ -146,7 +152,7 @@ create table public.payment_attempts (
   provider_reference text not null,
   outcome text check (outcome in ('succeeded', 'failed')),
   amount_cents bigint not null,
-  currency char(3) not null,
+  currency char(3) not null check (currency ~ '^[A-Z]{3}$'),
   created_at timestamptz not null default now(),
   unique (provider, provider_reference)
 );

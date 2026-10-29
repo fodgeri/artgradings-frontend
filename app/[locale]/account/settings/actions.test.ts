@@ -313,8 +313,7 @@ describe("deleteAccount", () => {
 
   beforeEach(() => {
     mocks.signInWithPassword.mockResolvedValue({ data: {}, error: null });
-    mocks.rpc.mockResolvedValue({ data: "ok", error: null });
-    mocks.deleteCurrentUser.mockResolvedValue({ error: null });
+    mocks.deleteCurrentUser.mockResolvedValue({ status: "deleted" });
     mocks.endLocalSession.mockResolvedValue(undefined);
   });
 
@@ -329,6 +328,9 @@ describe("deleteAccount", () => {
       options: { captchaToken: "token-abc" },
     });
     expect(mocks.deleteCurrentUser).toHaveBeenCalledWith();
+    expect(mocks.signInWithPassword.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.deleteCurrentUser.mock.invocationCallOrder[0],
+    );
     expect(mocks.endLocalSession).toHaveBeenCalledWith(
       expect.objectContaining({ auth: expect.anything() }),
       "deleteAccount",
@@ -339,7 +341,15 @@ describe("deleteAccount", () => {
     expect(mocks.redirect).toHaveBeenCalledWith({ href: "/account-deleted", locale: "en" });
   });
 
-  test("a wrong current password deletes nothing", async () => {
+  test("never prepares the deletion through the session client", async () => {
+    await expect(deleteAccount("en", initialAuthState, formData(VALID))).rejects.toThrow(
+      "NEXT_REDIRECT",
+    );
+    // prepare_account_deletion is service_role only; deleteCurrentUser runs it.
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  test("a wrong current password deletes and prepares nothing", async () => {
     mocks.signInWithPassword.mockResolvedValue({
       data: {},
       error: new AuthError("Invalid login credentials", 400, "invalid_credentials"),
@@ -351,64 +361,31 @@ describe("deleteAccount", () => {
     expect(mocks.endLocalSession).not.toHaveBeenCalled();
   });
 
-  test("prepares the deletion after the password check and before deleting", async () => {
-    await expect(deleteAccount("en", initialAuthState, formData(VALID))).rejects.toThrow(
-      "NEXT_REDIRECT",
-    );
-
-    expect(mocks.rpc).toHaveBeenCalledWith("prepare_account_deletion");
-    expect(mocks.signInWithPassword.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.rpc.mock.invocationCallOrder[0],
-    );
-    expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.deleteCurrentUser.mock.invocationCallOrder[0],
-    );
-  });
-
-  test("is refused while an order is in progress, and the user is not deleted", async () => {
-    mocks.rpc.mockResolvedValue({ data: "orders_in_progress", error: null });
+  test("is refused while an order is in progress, and the session stays", async () => {
+    mocks.deleteCurrentUser.mockResolvedValue({ status: "ordersInProgress" });
     const result = await deleteAccount("en", initialAuthState, formData(VALID));
 
     expect(result).toEqual({ status: "error", errorKey: "ordersInProgress" });
-    expect(mocks.deleteCurrentUser).not.toHaveBeenCalled();
     expect(mocks.endLocalSession).not.toHaveBeenCalled();
     expect(mocks.redirect).not.toHaveBeenCalled();
+    expect(mocks.captureException).not.toHaveBeenCalled();
   });
 
-  test("a wrong password stops before prepare_account_deletion", async () => {
-    mocks.signInWithPassword.mockResolvedValue({
-      data: {},
-      error: new AuthError("Invalid login credentials", 400, "invalid_credentials"),
-    });
-    await deleteAccount("en", initialAuthState, formData(VALID));
-
-    expect(mocks.rpc).not.toHaveBeenCalled();
-  });
-
-  test("an RPC error reports the code only and deletes nothing", async () => {
-    mocks.rpc.mockResolvedValue({ data: null, error: { code: "42501", message: "secret@example.test" } });
+  test("a failed preparation reports the code only and keeps the session", async () => {
+    mocks.deleteCurrentUser.mockResolvedValue({ status: "prepareFailed", code: "42501" });
     const result = await deleteAccount("en", initialAuthState, formData(VALID));
 
     expect(result).toEqual({ status: "error", errorKey: "generic" });
-    expect(mocks.deleteCurrentUser).not.toHaveBeenCalled();
+    expect(mocks.endLocalSession).not.toHaveBeenCalled();
     expect(mocks.captureException).toHaveBeenCalledTimes(1);
     expect(mocks.captureException.mock.calls[0][1]).toMatchObject({
       tags: { "auth.flow": "deleteAccount", "db.code": "42501" },
     });
-    expect(JSON.stringify(mocks.captureException.mock.calls)).not.toContain("secret@example.test");
-  });
-
-  test("an unexpected return value is treated as an error and deletes nothing", async () => {
-    mocks.rpc.mockResolvedValue({ data: "something_else", error: null });
-    const result = await deleteAccount("en", initialAuthState, formData(VALID));
-
-    expect(result).toEqual({ status: "error", errorKey: "generic" });
-    expect(mocks.deleteCurrentUser).not.toHaveBeenCalled();
-    expect(mocks.captureException).toHaveBeenCalledTimes(1);
   });
 
   test("a failed deletion keeps the session and reports", async () => {
     mocks.deleteCurrentUser.mockResolvedValue({
+      status: "deleteFailed",
       error: new AuthError("boom", 500, "unexpected_failure"),
     });
     const result = await deleteAccount("en", initialAuthState, formData(VALID));

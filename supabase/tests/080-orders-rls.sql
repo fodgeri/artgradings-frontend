@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(18);
 
 select tests.create_user('alice-orders@example.test') as alice_id \gset
 select tests.create_user('bob-orders@example.test') as bob_id \gset
@@ -43,6 +43,16 @@ select is_empty($$with u as (update public.order_cards set name = 'x' returning 
   'a submitted order is immutable to its owner');
 select is((select object_key ~ '^card-photos/[0-9a-f-]{36}/[0-9a-f-]{36}$' from public.card_photos limit 1), true,
   'a photo key is derived from its own ids');
+
+-- schema: foreign-key columns lead an index, currencies are ISO 4217 shaped
+select tests.clear_auth();
+select is((select count(*)::int from pg_indexes where schemaname = 'public' and indexname in
+  ('orders_status_idx', 'order_status_log_from_status_idx', 'order_status_log_to_status_idx',
+   'card_photos_card_id_key')), 4, 'status, log status and photo card columns are indexed');
+select throws_ok($$update public.orders set currency = 'eur' where id = $$ || quote_literal(:'alice_order'),
+  '23514', null, 'an order currency must be three capitals');
+select throws_ok($$insert into public.tier_prices (tier_key, currency, amount_cents) values ('grading_standard', 'E1R', 1)$$,
+  '23514', null, 'and so must a catalog price currency');
 
 select * from finish();
 rollback;

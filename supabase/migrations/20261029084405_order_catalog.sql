@@ -56,7 +56,7 @@ create index tiers_service_idx on public.tiers (service);
 
 create table public.tier_prices (
   tier_key text not null references public.tiers (key),
-  currency char(3) not null,
+  currency char(3) not null check (currency ~ '^[A-Z]{3}$'),
   amount_cents bigint not null check (amount_cents >= 0),
   -- Null means no cap on the declared value for this tier.
   max_declared_value_cents bigint check (max_declared_value_cents > 0),
@@ -79,7 +79,7 @@ create index add_on_services_service_idx on public.add_on_services (service);
 
 create table public.add_on_prices (
   add_on_key text not null references public.add_ons (key),
-  currency char(3) not null,
+  currency char(3) not null check (currency ~ '^[A-Z]{3}$'),
   amount_cents bigint not null check (amount_cents >= 0),
   primary key (add_on_key, currency)
 );
@@ -90,7 +90,7 @@ create table public.card_fees (
 
 create table public.card_fee_prices (
   fee_key text not null references public.card_fees (key),
-  currency char(3) not null,
+  currency char(3) not null check (currency ~ '^[A-Z]{3}$'),
   amount_cents bigint not null check (amount_cents >= 0),
   primary key (fee_key, currency)
 );
@@ -111,7 +111,7 @@ create index shipping_zone_countries_zone_key_idx
 
 create table public.shipping_zone_prices (
   zone_key text not null references public.shipping_zones (key),
-  currency char(3) not null,
+  currency char(3) not null check (currency ~ '^[A-Z]{3}$'),
   inbound_cents bigint not null check (inbound_cents >= 0),
   return_cents bigint not null check (return_cents >= 0),
   primary key (zone_key, currency)

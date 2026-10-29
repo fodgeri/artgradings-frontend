@@ -36,13 +36,13 @@ const ROW = {
       name: "Zard", set_name: null, card_number: null, surface: null, signed: true, numbered: false,
       declared_value_cents: 1000, service: "dual", tier_key: "dual_standard",
       order_card_add_ons: [{ add_on_key: "digital_grade" }],
-      card_photos: [{ id: "p1" }],
+      card_photos: { id: "p1" },
     },
     {
       id: "c2", position: 1, identified_by: "customer", release_year: 1999, brand: "Pokemon",
       language: "en", name: "X", set_name: "S", card_number: "1", surface: "mint", signed: false,
       numbered: true, declared_value_cents: 5, service: null, tier_key: null,
-      order_card_add_ons: [], card_photos: [],
+      order_card_add_ons: [], card_photos: null,
     },
   ],
 };

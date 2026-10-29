@@ -1,5 +1,5 @@
 begin;
-select plan(45);
+select plan(50);
 
 select tests.create_user('alice-fn@example.test') as alice_id \gset
 select tests.create_user('bob-fn@example.test') as bob_id \gset
@@ -24,6 +24,11 @@ values ('00000000-0000-0000-0000-00000000000b', :'alice_order', 1, 'art', 90000,
   'authentication', 'authentication_standard');
 insert into public.order_card_add_ons (card_id, add_on_key)
 values ('00000000-0000-0000-0000-00000000000a', 'digital_grade');
+insert into public.card_photos (id, card_id, content_type, byte_size)
+values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-00000000000a', 'image/webp', 10);
+select throws_ok($$insert into public.card_photos (card_id, content_type, byte_size)
+  values ('00000000-0000-0000-0000-00000000000a', 'image/webp', 10)$$,
+  '23505', null, 'one photo per card');
 
 select is((select count(*)::int from public.order_status_log), 1, 'creation is logged');
 select results_eq($$select from_status, to_status, actor from public.order_status_log$$,
@@ -121,6 +126,8 @@ select throws_ok($$insert into public.card_photos (card_id, content_type, byte_s
   'P0001', 'not_draft', 'nor a photo');
 select throws_ok($$delete from public.order_cards where id = '00000000-0000-0000-0000-00000000000b'$$,
   'P0001', 'not_draft', 'nor can one be removed');
+select throws_ok($$delete from public.card_photos where id = '00000000-0000-0000-0000-0000000000f1'$$,
+  'P0001', 'not_draft', 'nor a photo removed while the order awaits payment');
 
 -- deleting a draft takes its children with it
 insert into public.orders (id, user_id) values ('00000000-0000-0000-0000-0000000000d1', :'bob_id');
@@ -140,6 +147,15 @@ select throws_ok('select public.quote_order()', 'P0001', 'not_found', 'bob has n
 select tests.authenticate_as(:'alice_id');
 select lives_ok(format('select public.cancel_order(%L)', :'alice_ref'), 'the owner cancels');
 select is((select status from public.orders), 'cancelled', 'cancelled');
+select tests.clear_auth();
+select is((select count(*)::int from public.card_photos p join public.order_cards c on c.id = p.card_id
+  where c.order_id = :'alice_order'), 0, 'cancelling deletes the order''s photos');
+select is((select count(*)::int from private.photo_deletions
+  where object_key = 'card-photos/00000000-0000-0000-0000-00000000000a/00000000-0000-0000-0000-0000000000f1'), 1,
+  'and queues their objects for R2');
+select throws_ok($$delete from public.order_cards where id = '00000000-0000-0000-0000-00000000000b'$$,
+  'P0001', 'not_draft', 'a cancelled order''s cards are still refused');
+select tests.authenticate_as(:'alice_id');
 select throws_ok(format('select public.cancel_order(%L)', :'alice_ref'), 'P0001', 'transition_not_allowed',
   'a cancelled order cannot be cancelled again');
 select tests.authenticate_as(:'bob_id');

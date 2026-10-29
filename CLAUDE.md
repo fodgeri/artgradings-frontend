@@ -318,7 +318,10 @@ Rules:
   `auth.users`.** Only `profiles` and `user_roles` do. Orders, payments and
   their logs reference the user `on delete set null` and scrub personal fields;
   graded cards stay in the Pop Report; deletion is refused while an order is
-  unfinished. See `docs/superpowers/specs/2026-09-28-profile-settings-design.md`.
+  unfinished. `prepare_account_deletion(user_id)` does that order work; it is
+  `service_role` only and called by `deleteCurrentUser()` after the password
+  check, never by a session. See
+  `docs/superpowers/specs/2026-09-28-profile-settings-design.md`.
 - **Nothing may run between `createServerClient` and `getClaims()`** in
   `lib/supabase/proxy.ts`, and the root `proxy.ts` must copy the refreshed
   cookies **and the no-store headers** onto next-intl's response — a redirect
@@ -385,7 +388,7 @@ the launch checklist: `docs/deployment/SUBMISSION_SETUP.md`.
 |---|---|
 | `supabase/migrations/*_order_catalog.sql` | Statuses, transitions, services, tiers, add-ons, card fees, shipping zones — and the placeholder prices |
 | `supabase/migrations/*_order_functions.sql` | `transition_order`, `price_order`, `quote_order`, `submit_order`, `cancel_order`, the draft guard |
-| `supabase/migrations/*_order_system_functions.sql` | Payment results, draft expiry, the R2 deletion queue, `prepare_account_deletion` — service role only, bar the last |
+| `supabase/migrations/*_order_system_functions.sql` | Payment results, draft expiry, the R2 deletion queue, `prepare_account_deletion(user_id)` — all service role only |
 | `lib/orders/*` | Rules (card, shipping), the pricing mirror, references, statuses, loaders |
 | `app/[locale]/submit/` | The wizard and its Server Actions |
 | `app/[locale]/account/orders/[reference]/` | Order page, test payment page, label and form |
@@ -404,7 +407,9 @@ Rules:
   says so, and `private.require_draft_order()` triggers on cards, add-ons and
   photos say it again with a `for no key update` lock on the parent, so a write
   racing `submit_order` waits for it and then fails. The lock is also what
-  makes the 50-card limit trigger's count safe.
+  makes the 50-card limit trigger's count safe. One exception: photos may be
+  deleted once the order is `cancelled`, which is how `cancel_order` removes
+  them. M5's per-card writes on paid orders must widen the guard deliberately.
 - **Prices are computed in `private.price_order`, inside `submit_order`.** A
   customer writes their own draft rows, so any price on them would be
   forgeable; none is trusted. `lib/orders/pricing.ts` is a **display mirror**

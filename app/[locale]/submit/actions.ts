@@ -293,6 +293,8 @@ export async function uploadPhoto(
     .select("object_key")
     .single();
   if (error || !row) {
+    // card_photos is unique per card: a concurrent upload won.
+    if (error?.code === "23505") return { ok: false, errorKey: "photoLimit" };
     if (error?.code === "42501" || error?.code === "23503" || orderErrorKey(error) === "notDraft") {
       return CARD_GONE;
     }

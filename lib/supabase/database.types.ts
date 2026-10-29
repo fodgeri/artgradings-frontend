@@ -175,7 +175,7 @@ export type Database = {
           {
             foreignKeyName: "card_photos_card_id_fkey"
             columns: ["card_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "order_cards"
             referencedColumns: ["id"]
           },
@@ -812,7 +812,7 @@ export type Database = {
       }
       expire_stale_drafts: { Args: never; Returns: number }
       list_photo_deletions: { Args: { p_limit: number }; Returns: string[] }
-      prepare_account_deletion: { Args: never; Returns: string }
+      prepare_account_deletion: { Args: { p_user_id: string }; Returns: string }
       quote_order: { Args: never; Returns: Json }
       record_payment_failure: {
         Args: {

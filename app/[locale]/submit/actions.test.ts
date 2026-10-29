@@ -445,6 +445,15 @@ describe("uploadPhoto", () => {
     expect(callsTo("card_photos", "insert")).toHaveLength(0);
   });
 
+  test("a concurrent upload that wins the unique card constraint is photoLimit", async () => {
+    queue("card_photos.select", { data: [], error: null });
+    queue("card_photos.insert", { data: null, error: { code: "23505" } });
+
+    expect(await actions.uploadPhoto("en", upload(JPEG))).toEqual({ ok: false, errorKey: "photoLimit" });
+    expect(mocks.putObject).not.toHaveBeenCalled();
+    expect(mocks.captureException).not.toHaveBeenCalled();
+  });
+
   test("returns cardGone when the row cannot be inserted", async () => {
     queue("card_photos.select", { data: [], error: null });
     queue("card_photos.insert", { data: null, error: { code: "42501" } });

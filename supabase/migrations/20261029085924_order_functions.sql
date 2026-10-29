@@ -306,6 +306,11 @@ begin
     raise exception 'not_found' using errcode = 'P0001';
   end if;
   perform private.transition_order(v_id, 'cancelled', 'customer', auth.uid());
+  -- Cancelling deletes the order's photos (spec, Photos). The queue trigger
+  -- puts each object key on private.photo_deletions for the maintenance job.
+  delete from public.card_photos p
+  using public.order_cards c
+  where c.id = p.card_id and c.order_id = v_id;
 end;
 $$;
 
@@ -328,6 +333,11 @@ grant execute on function public.cancel_order(text) to authenticated;
 -- A missing parent is not an error: deleting an order (a draft, by the
 -- maintenance job or account deletion) cascades into its children after the
 -- parent row is gone.
+--
+-- One exception: a photo may be deleted once its order is cancelled, which is
+-- how cancel_order removes them. Every other write to a non-draft order's
+-- children is refused. M5's per-card writes on paid orders (grades, notes)
+-- will need this guard widened deliberately, operation by operation.
 create or replace function private.require_draft_order()
 returns trigger
 language plpgsql
@@ -347,7 +357,9 @@ begin
   if v_order is not null then
     select status into v_status from public.orders
     where id = v_order for no key update;
-    if found and v_status <> 'draft' then
+    if found and v_status <> 'draft'
+       and not (tg_table_name = 'card_photos' and tg_op = 'DELETE'
+                and v_status = 'cancelled') then
       raise exception 'not_draft' using errcode = 'P0001';
     end if;
   end if;

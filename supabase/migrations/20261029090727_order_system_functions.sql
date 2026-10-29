@@ -1,8 +1,7 @@
 -- System functions: payment results, draft expiry, the R2 deletion queue and
 -- account-deletion preparation.
 --
--- The first five are callable by service_role only. prepare_account_deletion
--- runs as the caller, through auth.uid(), and is granted to authenticated.
+-- Every function here is callable by service_role only.
 
 -- ── Payment ─────────────────────────────────────────────────────────────
 
@@ -118,35 +117,42 @@ $$;
 
 -- ── Account deletion ────────────────────────────────────────────────────
 
--- Run by the signed-in user before the admin client deletes the account.
--- Orders that are unfinished block deletion; the rest are removed, or kept
--- unowned with their personal fields scrubbed (the user_id goes null on the
--- account's deletion).
-create or replace function public.prepare_account_deletion()
+-- Called by lib/auth/delete-current-user.ts on the service-role client, after
+-- the password has been re-verified, and before the account is deleted. The
+-- user id comes from that session's verified claims, never from input. It is
+-- service_role only: granted to authenticated, any session could call it
+-- through the Data API and skip the password check and Turnstile in front of
+-- deletion.
+--
+-- Unfinished orders block deletion. Drafts are deleted, and so are
+-- awaiting_payment and cancelled orders with no succeeded payment attempt.
+-- An order with a succeeded attempt is kept whatever its status: that attempt
+-- is the refund trail (see record_payment_success). Kept orders lose their
+-- contact and address fields, and their user_id goes null when the account is
+-- deleted. Safe to run twice: a retry finds nothing left to delete or scrub.
+create or replace function public.prepare_account_deletion(p_user_id uuid)
 returns text
 language plpgsql
 security definer
 set search_path = ''
 as $$
-declare
-  v_uid uuid := auth.uid();
 begin
-  if v_uid is null then
-    raise exception 'not_authenticated' using errcode = '42501';
+  if p_user_id is null then
+    raise exception 'not_found' using errcode = 'P0001';
   end if;
 
   -- Lock first, so an order cannot become paid between the check and the scrub.
-  perform 1 from public.orders where user_id = v_uid for update;
+  perform 1 from public.orders where user_id = p_user_id for update;
 
-  if exists (select 1 from public.orders where user_id = v_uid
+  if exists (select 1 from public.orders where user_id = p_user_id
              and status in ('paid', 'received', 'grading', 'graded', 'shipped_back')) then
     return 'orders_in_progress';
   end if;
 
   delete from public.orders o
-  where o.user_id = v_uid
-    and (o.status in ('draft', 'awaiting_payment')
-         or (o.status = 'cancelled' and not exists (
+  where o.user_id = p_user_id
+    and (o.status = 'draft'
+         or (o.status in ('awaiting_payment', 'cancelled') and not exists (
                select 1 from public.payment_attempts a
                where a.order_id = o.id and a.outcome = 'succeeded')));
 
@@ -154,7 +160,7 @@ begin
   set contact_first_name = null, contact_last_name = null, contact_phone = null,
       address_country = null, address_postcode = null, address_city = null,
       address_line = null
-  where user_id = v_uid;
+  where user_id = p_user_id;
 
   return 'ok';
 end;
@@ -167,11 +173,11 @@ revoke execute on function public.record_payment_failure(uuid, text, text, bigin
 revoke execute on function public.expire_stale_drafts() from public, anon, authenticated;
 revoke execute on function public.list_photo_deletions(int) from public, anon, authenticated;
 revoke execute on function public.complete_photo_deletions(text[]) from public, anon, authenticated;
-revoke execute on function public.prepare_account_deletion() from public, anon;
+revoke execute on function public.prepare_account_deletion(uuid) from public, anon, authenticated;
 
 grant execute on function public.record_payment_success(uuid, text, text, bigint, text) to service_role;
 grant execute on function public.record_payment_failure(uuid, text, text, bigint, text) to service_role;
 grant execute on function public.expire_stale_drafts() to service_role;
 grant execute on function public.list_photo_deletions(int) to service_role;
 grant execute on function public.complete_photo_deletions(text[]) to service_role;
-grant execute on function public.prepare_account_deletion() to authenticated;
+grant execute on function public.prepare_account_deletion(uuid) to service_role;

@@ -42,7 +42,8 @@ export async function loadDraft(supabase: SupabaseClient<Database>): Promise<Dra
     service: c.service,
     tierKey: c.tier_key,
     addOnKeys: c.order_card_add_ons.map((a) => a.add_on_key),
-    photo: c.card_photos[0] ? { id: c.card_photos[0].id } : null,
+    // card_photos is unique per card, so PostgREST embeds one object or null.
+    photo: c.card_photos ? { id: c.card_photos.id } : null,
   }));
 
   return {
