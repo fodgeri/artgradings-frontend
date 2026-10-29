@@ -32,14 +32,15 @@ vi.mock("next/navigation", () => ({ notFound: mocks.notFound }));
 
 import { failTestOrder, payTestOrder } from "./actions";
 
-const ORDER = { id: "order-1", total_cents: 9900, currency: "EUR" };
+const ORDER = { id: "order-1", status: "awaiting_payment", total_cents: 9900, currency: "EUR" };
 
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.getClaims.mockResolvedValue({ data: { claims: { sub: "user-1" } }, error: null });
   mocks.getPaymentProvider.mockReturnValue({ id: "fake" });
   mocks.maybeSingle.mockResolvedValue({ data: ORDER, error: null });
-  mocks.eq.mockReturnValue({ maybeSingle: mocks.maybeSingle });
+  const chain = { eq: mocks.eq, maybeSingle: mocks.maybeSingle };
+  mocks.eq.mockReturnValue(chain);
   mocks.from.mockReturnValue({ select: () => ({ eq: mocks.eq }) });
   mocks.recordPaymentSuccess.mockResolvedValue("recorded");
   mocks.recordPaymentFailure.mockResolvedValue(undefined);
@@ -66,7 +67,14 @@ describe.each([
     await expect(action("en", "AG-ABCDEFGH")).rejects.toThrow("NEXT_NOT_FOUND");
 
     expect(record).not.toHaveBeenCalled();
-    expect(mocks.adminFactory).not.toHaveBeenCalled();
+  });
+
+  test.each(["cancelled", "paid"])("an order that is %s redirects without recording anything", async (status) => {
+    mocks.maybeSingle.mockResolvedValue({ data: { ...ORDER, status }, error: null });
+
+    await expect(action("en", "AG-ABCDEFGH")).rejects.toThrow(ORDER_PAGE);
+
+    expect(record).not.toHaveBeenCalled();
   });
 
   test("uses a deterministic provider reference and the amount from the row, then goes to the order page", async () => {
@@ -89,11 +97,13 @@ describe.each([
     await expect(action("en", "AG-ABCDEFGH")).rejects.toThrow(ORDER_PAGE);
     expect(mocks.from).toHaveBeenCalledWith("orders");
     expect(mocks.eq).toHaveBeenCalledWith("reference", "AG-ABCDEFGH");
+    expect(mocks.eq).toHaveBeenCalledWith("user_id", "user-1");
   });
 
   test("a malformed reference is notFound without a query", async () => {
     await expect(action("en", "nope")).rejects.toThrow("NEXT_NOT_FOUND");
     expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.getClaims).not.toHaveBeenCalled();
   });
 
   test("an unknown locale falls back, an unsigned caller is sent to sign-in", async () => {

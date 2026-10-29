@@ -27,8 +27,8 @@ export default async function PayPage({
 
   const { locale: rawLocale, reference } = await params;
   const locale = resolveLocale(rawLocale);
-  await requireUser({ locale, next: `/account/orders/${reference}/pay` });
   if (!ORDER_REFERENCE_PATTERN.test(reference)) notFound();
+  const user = await requireUser({ locale, next: `/account/orders/${reference}/pay` });
 
   // The session client: RLS proves the order is the caller's.
   const supabase = await createClient();
@@ -36,6 +36,7 @@ export default async function PayPage({
     .from("orders")
     .select("status, total_cents, currency")
     .eq("reference", reference)
+    .eq("user_id", user.id)
     .maybeSingle();
   if (!order) notFound();
   if (order.status !== "awaiting_payment" || order.total_cents === null) {

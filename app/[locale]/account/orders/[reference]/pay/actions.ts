@@ -20,18 +20,25 @@ import { createClient } from "@/lib/supabase/server";
 async function settle(rawLocale: string, reference: string, outcome: "pay" | "fail"): Promise<never> {
   if (getPaymentProvider()?.id !== "fake") notFound();
 
-  const locale = resolveLocale(rawLocale);
-  await requireUser({ locale, next: `/account/orders/${reference}/pay` });
-
   if (typeof reference !== "string" || !ORDER_REFERENCE_PATTERN.test(reference)) notFound();
+
+  const locale = resolveLocale(rawLocale);
+  const user = await requireUser({ locale, next: `/account/orders/${reference}/pay` });
 
   const supabase = await createClient();
   const { data: order } = await supabase
     .from("orders")
-    .select("id, total_cents, currency")
+    .select("id, status, total_cents, currency")
     .eq("reference", reference)
+    .eq("user_id", user.id)
     .maybeSingle();
   if (!order || order.total_cents === null) notFound();
+
+  // A stale tab: the order was cancelled or already paid elsewhere. Record
+  // nothing — a succeeded attempt on an unpayable order is a phantom charge.
+  if (order.status !== "awaiting_payment") {
+    return redirect({ href: `/account/orders/${reference}`, locale });
+  }
 
   const input = {
     orderId: order.id,
