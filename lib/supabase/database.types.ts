@@ -805,7 +805,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cancel_order: { Args: { p_reference: string }; Returns: undefined }
+      quote_order: { Args: never; Returns: Json }
+      submit_order: { Args: { p_terms_version: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
