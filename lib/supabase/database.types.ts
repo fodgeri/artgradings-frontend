@@ -34,6 +34,166 @@ export type Database = {
   }
   public: {
     Tables: {
+      add_on_prices: {
+        Row: {
+          add_on_key: string
+          amount_cents: number
+          currency: string
+        }
+        Insert: {
+          add_on_key: string
+          amount_cents: number
+          currency: string
+        }
+        Update: {
+          add_on_key?: string
+          amount_cents?: number
+          currency?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "add_on_prices_add_on_key_fkey"
+            columns: ["add_on_key"]
+            isOneToOne: false
+            referencedRelation: "add_ons"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      add_on_services: {
+        Row: {
+          add_on_key: string
+          service: string
+        }
+        Insert: {
+          add_on_key: string
+          service: string
+        }
+        Update: {
+          add_on_key?: string
+          service?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "add_on_services_add_on_key_fkey"
+            columns: ["add_on_key"]
+            isOneToOne: false
+            referencedRelation: "add_ons"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "add_on_services_service_fkey"
+            columns: ["service"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      add_ons: {
+        Row: {
+          active: boolean
+          key: string
+          position: number
+        }
+        Insert: {
+          active?: boolean
+          key: string
+          position: number
+        }
+        Update: {
+          active?: boolean
+          key?: string
+          position?: number
+        }
+        Relationships: []
+      }
+      card_fee_prices: {
+        Row: {
+          amount_cents: number
+          currency: string
+          fee_key: string
+        }
+        Insert: {
+          amount_cents: number
+          currency: string
+          fee_key: string
+        }
+        Update: {
+          amount_cents?: number
+          currency?: string
+          fee_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_fee_prices_fee_key_fkey"
+            columns: ["fee_key"]
+            isOneToOne: false
+            referencedRelation: "card_fees"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      card_fees: {
+        Row: {
+          key: string
+        }
+        Insert: {
+          key: string
+        }
+        Update: {
+          key?: string
+        }
+        Relationships: []
+      }
+      order_statuses: {
+        Row: {
+          key: string
+          position: number
+        }
+        Insert: {
+          key: string
+          position: number
+        }
+        Update: {
+          key?: string
+          position?: number
+        }
+        Relationships: []
+      }
+      order_transitions: {
+        Row: {
+          actor: string
+          from_status: string | null
+          to_status: string
+        }
+        Insert: {
+          actor: string
+          from_status?: string | null
+          to_status: string
+        }
+        Update: {
+          actor?: string
+          from_status?: string | null
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_transitions_from_status_fkey"
+            columns: ["from_status"]
+            isOneToOne: false
+            referencedRelation: "order_statuses"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "order_transitions_to_status_fkey"
+            columns: ["to_status"]
+            isOneToOne: false
+            referencedRelation: "order_statuses"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
       permissions: {
         Row: {
           description: string
@@ -117,6 +277,155 @@ export type Database = {
           label?: string
         }
         Relationships: []
+      }
+      services: {
+        Row: {
+          active: boolean
+          key: string
+          position: number
+          requires_signed: boolean
+        }
+        Insert: {
+          active?: boolean
+          key: string
+          position: number
+          requires_signed?: boolean
+        }
+        Update: {
+          active?: boolean
+          key?: string
+          position?: number
+          requires_signed?: boolean
+        }
+        Relationships: []
+      }
+      shipping_zone_countries: {
+        Row: {
+          country_code: string
+          zone_key: string
+        }
+        Insert: {
+          country_code: string
+          zone_key: string
+        }
+        Update: {
+          country_code?: string
+          zone_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_zone_countries_zone_key_fkey"
+            columns: ["zone_key"]
+            isOneToOne: false
+            referencedRelation: "shipping_zones"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      shipping_zone_prices: {
+        Row: {
+          currency: string
+          inbound_cents: number
+          return_cents: number
+          zone_key: string
+        }
+        Insert: {
+          currency: string
+          inbound_cents: number
+          return_cents: number
+          zone_key: string
+        }
+        Update: {
+          currency?: string
+          inbound_cents?: number
+          return_cents?: number
+          zone_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_zone_prices_zone_key_fkey"
+            columns: ["zone_key"]
+            isOneToOne: false
+            referencedRelation: "shipping_zones"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      shipping_zones: {
+        Row: {
+          key: string
+          position: number
+        }
+        Insert: {
+          key: string
+          position: number
+        }
+        Update: {
+          key?: string
+          position?: number
+        }
+        Relationships: []
+      }
+      tier_prices: {
+        Row: {
+          amount_cents: number
+          currency: string
+          max_declared_value_cents: number | null
+          tier_key: string
+        }
+        Insert: {
+          amount_cents: number
+          currency: string
+          max_declared_value_cents?: number | null
+          tier_key: string
+        }
+        Update: {
+          amount_cents?: number
+          currency?: string
+          max_declared_value_cents?: number | null
+          tier_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tier_prices_tier_key_fkey"
+            columns: ["tier_key"]
+            isOneToOne: false
+            referencedRelation: "tiers"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      tiers: {
+        Row: {
+          active: boolean
+          key: string
+          position: number
+          service: string
+          turnaround_days: number
+        }
+        Insert: {
+          active?: boolean
+          key: string
+          position: number
+          service: string
+          turnaround_days: number
+        }
+        Update: {
+          active?: boolean
+          key?: string
+          position?: number
+          service?: string
+          turnaround_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tiers_service_fkey"
+            columns: ["service"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["key"]
+          },
+        ]
       }
       user_roles: {
         Row: {
