@@ -1,7 +1,7 @@
 # Grading submission flow — cards, services, shipping, order summary
 
 **Date:** 2026-10-22
-**Status:** Approved 2026-10-26 · revised 2026-10-28 after the client call
+**Status:** Approved 2026-10-26 · revised 2026-10-28 after the client call · implemented 2026-10-29 — see `docs/superpowers/plans/2026-10-26-submission-flow.md` for deviations
 **Module:** M3 — Grading submission flow (plus the R2 line of M0)
 
 ## Goal

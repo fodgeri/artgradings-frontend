@@ -23,24 +23,30 @@ roles/permissions, RLS, typed clients, session refresh), the three M1
 public pages — landing, `/how-it-works` and `/faq` — and the M2 auth flows:
 sign-up, confirmation, sign-in, sign-out, password reset, a landing `/account`
 page, and `/account/settings` — name, email change, password change, and
-account deletion.
+account deletion — and the M3 submission flow: the `/submit` wizard (cards and
+services, shipping, summary), server-side drafts, card photos in R2, orders
+with their state machine, a test payment page, order tracking under
+`/account`, and the printable QR parcel label and submission form.
 
-Not yet built: M3, the grading submission flow.
+Not yet built: M4, the Pop Report.
 
-**Three links in the chrome are deliberate 404s**, and must be stated at
-handover rather than papered over with stub pages nobody scoped:
+**Three links are deliberate 404s**, and must be stated at handover rather
+than papered over with stub pages nobody scoped:
 
 | Route | Why |
 |---|---|
 | `/pricing` | Never scoped in the estimate. The design's tiers, turnarounds and value caps are invented, and pricing is client-supplied. |
 | `/pop-report` | M4. |
-| `/submit` | M3. Linked from the header and two CTAs. |
+| `/terms` | Legal content, lawyer-drafted and out of scope. The submit summary's required terms checkbox links to it; it blocks launch. |
 
 The public pages ship with **placeholder marketing copy from the approved
 design**, including quantified and contractual claims. Every one is listed in
 `docs/content-requests.md` with what is needed from the client; the refund
 promise and the "1.2M+ cards certified" figure are flagged there as legally
-blocking. Showcase and hero cards are fixtures until M4.
+blocking. Showcase and hero cards are fixtures until M4. The submission flow
+runs on a **placeholder price list** and placeholder client copy (drop-off,
+insurance wording, packing instructions, ART's receiving address); the same
+file lists them, with the client questions from the M3 spec.
 
 Commands:
 ```bash
@@ -192,8 +198,11 @@ Rules:
 - Base UI is at a release candidate (`1.0.0-rc.0`). It supplies behaviour only —
   keyboard interaction, focus management, ARIA — and every visual is ours. Note
   `ToggleGroup`'s value is an **array** even when single-select, and `Toggle`
-  renders `aria-pressed`, not `aria-checked`. Re-evaluate at M3 when the
-  submission form leans on `field` and `select` hard.
+  renders `aria-pressed`, not `aria-checked`. **Re-evaluated at M3:** the
+  native `<select>` stays in `FieldSelect` (mobile pickers, no listbox to
+  maintain), rendered through `Field.Control`'s `render` prop so Base UI still
+  wires its id and ARIA. Base UI supplies `Checkbox`, and `Field`'s error
+  wiring — `FieldError` plus the `invalid` prop in `components/ui/field.tsx`.
 
 ## Observability
 
@@ -300,9 +309,11 @@ Rules:
 - **Migrations are hand-written and must replay from empty**, which CI proves
   on every run. `supabase db diff` is available but is a check, not an author.
 - **`lib/supabase/admin.ts` bypasses every policy.** It is `server-only` and
-  guarded by `admin-import-guard.test.ts`, whose one allowlisted caller is
-  `lib/auth/delete-current-user.ts` — `deleteCurrentUser()` takes no argument.
-  Adding a path to that allowlist is a security decision.
+  guarded by `admin-import-guard.test.ts`, whose three allowlisted callers
+  are `lib/auth/delete-current-user.ts` (`deleteCurrentUser()` takes no
+  argument), `lib/payments/record-payment.ts` (the payment-success handler)
+  and `lib/jobs/run-maintenance.ts` (the hourly job). Adding a path to that
+  allowlist is a security decision.
 - **Account deletion is a hard delete, and nothing new may `cascade` from
   `auth.users`.** Only `profiles` and `user_roles` do. Orders, payments and
   their logs reference the user `on delete set null` and scrub personal fields;
@@ -363,6 +374,80 @@ Email/password through Supabase Auth. Spec:
   `isRecoverySession()`: an `amr` `otp` entry (every verified email link)
   stamped within the hour. Any other session goes to `/account/settings`,
   where the current password is required. Never relax it to "any session".
+
+## Orders
+
+The M3 submission flow. Spec:
+`docs/superpowers/specs/2026-10-22-submission-flow-design.md`; host setup and
+the launch checklist: `docs/deployment/SUBMISSION_SETUP.md`.
+
+| File | Role |
+|---|---|
+| `supabase/migrations/*_order_catalog.sql` | Statuses, transitions, services, tiers, add-ons, card fees, shipping zones — and the placeholder prices |
+| `supabase/migrations/*_order_functions.sql` | `transition_order`, `price_order`, `quote_order`, `submit_order`, `cancel_order`, the draft guard |
+| `supabase/migrations/*_order_system_functions.sql` | Payment results, draft expiry, the R2 deletion queue, `prepare_account_deletion` — service role only, bar the last |
+| `lib/orders/*` | Rules (card, shipping), the pricing mirror, references, statuses, loaders |
+| `app/[locale]/submit/` | The wizard and its Server Actions |
+| `app/[locale]/account/orders/[reference]/` | Order page, test payment page, label and form |
+| `app/[locale]/o/[reference]/` | The short URL printed in the QR code |
+
+Rules:
+
+- **`private.transition_order` is the only writer of `orders.status`.** It
+  checks the move against `public.order_transitions` (from, to, actor), locks
+  the order and appends to `order_status_log`. No application code writes
+  `orders.status`, and no grant lets a customer: `authenticated` reaches
+  `submit_order` and `cancel_order` only, and the one move to `paid` has actor
+  `system`. A new transition is a row in `order_transitions` plus the function
+  that calls `transition_order` — never an `update orders set status`.
+- **A draft's children are writable only while the order is a draft.** RLS
+  says so, and `private.require_draft_order()` triggers on cards, add-ons and
+  photos say it again with a `for no key update` lock on the parent, so a write
+  racing `submit_order` waits for it and then fails. The lock is also what
+  makes the 50-card limit trigger's count safe.
+- **Prices are computed in `private.price_order`, inside `submit_order`.** A
+  customer writes their own draft rows, so any price on them would be
+  forgeable; none is trusted. `lib/orders/pricing.ts` is a **display mirror**
+  for the running total, kept in step by `lib/orders/fixtures.ts`, which
+  mirrors the catalog seed and the pgTAP reference draft so both suites check
+  the same numbers. Change one side and its tests fail until the other follows.
+- **Services, tiers, add-ons and card fees are data, not code.** A new service
+  or add-on is a row, a message key under `catalog.*` and a deploy. Copy never
+  goes in the database. Every price is integer cents plus a currency; EUR only
+  today. The catalog's values are **placeholders** until the client's price
+  list arrives (`docs/content-requests.md`).
+- **`submit_order` refuses** an incomplete draft (`incomplete`, which also
+  covers a null, blank or over-100-character terms version) and a catalog that
+  changed under the draft (`service_unavailable`, `tier_unavailable`,
+  `add_on_unavailable`, `declared_value_over_cap`, `country_unsupported`). It
+  raises codes, never messages; `lib/orders/errors.ts` maps them.
+- **`/o/<reference>` is printed on paper and must never change.** The QR
+  code on the parcel label and the submission form encodes
+  `<SITE_URL>/o/<reference>`. Today it redirects to the owner's order page; M5
+  routes staff to intake from it. Move anything else, never that.
+- **Runtime settings, never build args:** `PAYMENT_PROVIDER=fake` turns on the
+  test payment page (unset, it and its actions 404) and **must be unset or real
+  in production**; `SITE_URL` is the public origin the QR codes point at;
+  `JOBS_SECRET` guards `POST /api/jobs/maintenance` (unset, 404); `R2_*`
+  configures photo storage (plus `R2_ENDPOINT`/`R2_REGION` for the local
+  Supabase Storage stand-in).
+- **The payment handler is `lib/payments/record-payment.ts`**, on the admin
+  client, and is what M7's webhook will call. `record_payment_success` is
+  idempotent per provider reference: `duplicate` only for an attempt that
+  already succeeded, a failed attempt under the same reference is upgraded,
+  and a charge against an order that cannot be paid (wrong status, amount or
+  currency) is **recorded** as the refund trail and returns `rejected`, which
+  is reported to Sentry as `recordPayment/rejected` for staff to act on.
+- **Photos are served through `GET /api/photos/[id]`**, which reads the photo
+  row with the session client — RLS proves ownership on every request — and
+  streams the object from R2. The bucket is private; nothing hands out R2
+  URLs. Deleting a photo row queues its object key, and the maintenance job
+  drains the queue.
+- **Autosave's `flush()` returns a boolean.** The wizard's Next buttons
+  navigate only when it returns `true`, so a failed save never leaves the step
+  with unsaved edits behind.
+- **Errors caught and returned call `reportOrderError(flow, code)`**, never
+  with names, an address, a phone number or form data.
 
 ## Conventions & constraints
 
@@ -447,6 +532,8 @@ a branch and a host together.
   switch, and the phase-2 migration to `develop` + test env
 - `docs/deployment/ROLLBACK.md` — retag-and-redeploy, the snapshot last resort,
   and why migrations must be backwards-compatible
+- `docs/deployment/SUBMISSION_SETUP.md` — R2, `SITE_URL`, `JOBS_SECRET` and the
+  hourly maintenance task, and the M3 launch checklist (`PAYMENT_PROVIDER`)
 - `docs/superpowers/specs/2026-08-07-docker-cicd-design.md` — design rationale
 
 ## Explicitly out of scope
