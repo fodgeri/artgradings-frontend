@@ -14,9 +14,10 @@ import { supabaseSecret } from "./env";
  * build error rather than a runtime credential leak.
  *
  * Its callers are `lib/auth/delete-current-user.ts` (account deletion needs
- * `auth.admin.deleteUser`) and `lib/payments/record-payment.ts` (only the
- * service role may execute `record_payment_success`). `admin-import-guard.test.ts`
- * keeps it that way; `lib/jobs/run-maintenance.ts` joins in Task 17.
+ * `auth.admin.deleteUser`), `lib/payments/record-payment.ts` (only the
+ * service role may execute `record_payment_success`) and
+ * `lib/jobs/run-maintenance.ts` (draft expiry and the photo-deletion queue are
+ * service_role-only). `admin-import-guard.test.ts` keeps it that way.
  */
 export function createAdminClient() {
   const { url, secretKey } = supabaseSecret();
