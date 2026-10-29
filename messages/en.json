@@ -350,6 +350,48 @@
         "tierMissing": "Choose an option.",
         "overCap": "The declared value is above the limit for this option. Choose another."
       }
+    },
+    "shipping": {
+      "title": "Shipping",
+      "lead": "Tell us how your cards will reach us and who to contact.",
+      "metaDescription": "Choose how to send your cards and where we should return them.",
+      "method": {
+        "label": "How will you send your cards?",
+        "postal": "Send by post",
+        "in_person": "Drop off in person"
+      },
+      "contact": "Contact details",
+      "fields": {
+        "firstName": "First name",
+        "lastName": "Last name",
+        "phone": "Phone number",
+        "country": "Country",
+        "countryPlaceholder": "Choose a country",
+        "postcode": "Postcode",
+        "city": "City",
+        "addressLine": "Address"
+      },
+      "inPerson": {
+        "heading": "Drop-off",
+        "body": "Placeholder: the drop-off address, opening hours and handover process will be supplied by the client."
+      },
+      "insurance": {
+        "label": "I understand how my cards are insured in transit to ART Gradings.",
+        "description": "Placeholder: the insurance wording will be supplied by the client."
+      },
+      "next": "Next: summary",
+      "back": "Back to cards",
+      "incomplete": "Complete your shipping details to continue.",
+      "nextFailed": "Your shipping details could not be saved yet. Please try again.",
+      "problems": {
+        "firstNameMissing": "Enter your first name.",
+        "lastNameMissing": "Enter your last name.",
+        "phoneInvalid": "Enter a valid phone number.",
+        "countryUnsupported": "Choose a country we ship to.",
+        "postcodeMissing": "Enter the postcode.",
+        "cityMissing": "Enter the city.",
+        "addressMissing": "Enter the address."
+      }
     }
   },
   "catalog": {
