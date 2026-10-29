@@ -55,4 +55,19 @@ describe("PhotoInput", () => {
     await user.upload(container.querySelector("input[type=file]")!, file);
     expect(onSelect).toHaveBeenCalledWith(file);
   });
+
+  // jsdom cannot evaluate :focus-visible, so pin the class contract. The
+  // `focus-ring` utility is `&:focus-visible` and would target the label
+  // itself, which is never focused; the hidden input is, so the label must
+  // react through :has().
+  test("the visible label shows a focus ring when the hidden input is focus-visible", () => {
+    const { container } = renderWithIntl(<PhotoInput {...base} />);
+    const label = container.querySelector("input[type=file]")!.closest("label")!;
+    expect(label).toHaveClass(
+      "has-[:focus-visible]:outline-2",
+      "has-[:focus-visible]:outline-offset-2",
+      "has-[:focus-visible]:outline-gold",
+    );
+    expect(label.className).not.toContain("focus-within:focus-ring");
+  });
 });

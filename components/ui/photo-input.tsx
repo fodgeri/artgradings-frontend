@@ -1,7 +1,5 @@
 "use client";
 
-import { useRef } from "react";
-
 import { cn } from "@/lib/cn";
 import { PHOTO_TYPES } from "@/lib/photos/limits";
 
@@ -30,7 +28,6 @@ export function PhotoInput({
   removeLabel: string;
   className?: string;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
   const locked = disabled || busy;
 
   return (
@@ -55,13 +52,12 @@ export function PhotoInput({
       ) : null}
       <label
         className={cn(
-          "focus-within:focus-ring text-sm inline-flex min-h-11 cursor-pointer items-center rounded-full border border-hairline bg-surface px-4 font-medium text-ink",
+          "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-gold text-sm inline-flex min-h-11 cursor-pointer items-center rounded-full border border-hairline bg-surface px-4 font-medium text-ink",
           locked && "cursor-not-allowed opacity-50",
         )}
       >
         {label}
         <input
-          ref={inputRef}
           type="file"
           accept={PHOTO_TYPES.join(",")}
           disabled={locked}
