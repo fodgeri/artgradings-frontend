@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { MAX_CARDS_PER_ORDER } from "@/lib/orders/card-rules";
 import { REFERENCE_DRAFT } from "@/lib/orders/fixtures";
 import type { Quote } from "@/lib/orders/types";
 import messages from "@/messages/en.json";
@@ -45,8 +46,7 @@ describe("SummaryStep", () => {
     renderWithIntl(<SummaryStep draft={REFERENCE_DRAFT} quote={QUOTE} />);
 
     expect(screen.getByText(s.unknownCard)).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(`${s.identification}.*€2\\.00`))).toBeInTheDocument();
-    expect(screen.getAllByText(new RegExp(s.identification))).toHaveLength(1);
+    expect(screen.getAllByText(s.identification.replace("{amount}", "€2.00"))).toHaveLength(1);
   });
 
   test("links the terms to /terms", () => {
@@ -82,6 +82,17 @@ describe("SummaryStep", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(messages.submit.errors.serviceUnavailable);
     expect(screen.getByRole("button", { name: s.submit })).toBeEnabled();
+  });
+
+  test("a tooManyCards refusal names the limit", async () => {
+    mocks.submitOrder.mockResolvedValue({ ok: false, errorKey: "tooManyCards" });
+    const { user } = renderWithIntl(<SummaryStep draft={REFERENCE_DRAFT} quote={QUOTE} />);
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: s.submit }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      messages.submit.errors.tooManyCards.replace("{max, number}", String(MAX_CARDS_PER_ORDER)),
+    );
   });
 
   test("a stale-quote refusal refreshes the page for the server to route the customer", async () => {

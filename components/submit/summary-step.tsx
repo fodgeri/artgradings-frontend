@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link, useRouter } from "@/i18n/navigation";
+import { MAX_CARDS_PER_ORDER } from "@/lib/orders/card-rules";
 import type { OrderErrorKey } from "@/lib/orders/errors";
 import type { Draft, Quote } from "@/lib/orders/types";
 
@@ -79,7 +80,7 @@ export function SummaryStep({
     <div className="flex flex-col gap-4">
       {errorKey && (
         <p role="alert" className="text-sm font-medium text-ink">
-          {t(`errors.${errorKey}`)}
+          {t(`errors.${errorKey}`, { max: MAX_CARDS_PER_ORDER })}
         </p>
       )}
 
@@ -109,7 +110,7 @@ export function SummaryStep({
                   )}
                   {priced && priced.identificationCents > 0 && (
                     <p className="m-0 text-sm text-muted">
-                      {t("summary.identification")}: {money(priced.identificationCents)}
+                      {t("summary.identification", { amount: money(priced.identificationCents) })}
                     </p>
                   )}
                 </div>

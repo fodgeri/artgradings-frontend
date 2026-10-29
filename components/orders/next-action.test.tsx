@@ -22,15 +22,25 @@ describe("NextAction", () => {
     );
   });
 
-  test("bringing in person has the form but no parcel label", () => {
+  test("bringing in person links to the label and the form too", () => {
     renderWithIntl(<NextAction reference="AG-ABCDEFGH" action={{ kind: "bringIn" }} />);
 
     expect(screen.getByText(t.bringIn.instructions)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: t.bringIn.label })).toHaveAttribute(
+      "href",
+      "/account/orders/AG-ABCDEFGH/label",
+    );
     expect(screen.getByRole("link", { name: t.bringIn.form })).toHaveAttribute(
       "href",
       "/account/orders/AG-ABCDEFGH/form",
     );
-    expect(screen.queryByRole("link", { name: t.ship.label })).toBeNull();
+  });
+
+  test("without a payment provider, says online payment is unavailable and offers no link", () => {
+    renderWithIntl(<NextAction reference="AG-ABCDEFGH" action={{ kind: "paymentUnavailable" }} />);
+
+    expect(screen.getByText(t.paymentUnavailable)).toBeInTheDocument();
+    expect(screen.queryByRole("link")).toBeNull();
   });
 
   test("pay links to the payment page, none renders nothing", () => {

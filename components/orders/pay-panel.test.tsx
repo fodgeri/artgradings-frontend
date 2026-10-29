@@ -24,7 +24,10 @@ describe("PayPanel", () => {
     renderWithIntl(
       <PayPanel reference="AG-ABCDEFGH" totalCents={9900} currency="EUR" pay={pay} fail={fail} />,
     );
-    expect(screen.getByText("€99.00")).toBeInTheDocument();
+    expect(screen.getByText("€99.00").tagName).toBe("STRONG");
+    expect(screen.getByText("€99.00").parentElement).toHaveTextContent(
+      t.totalLine.replace(/<\/?strong>/g, "").replace("{amount}", "€99.00"),
+    );
 
     await user.click(screen.getByRole("button", { name: t.pay }));
     await user.click(screen.getByRole("button", { name: t.working }));

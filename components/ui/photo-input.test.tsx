@@ -40,6 +40,12 @@ describe("PhotoInput", () => {
     expect(onRemove).toHaveBeenCalled();
   });
 
+  test("hides the picker once a photo exists: remove it first, then add another", () => {
+    const { container } = renderWithIntl(<PhotoInput {...base} previewUrl="/preview.webp" />);
+    expect(container.querySelector("input[type=file]")).toBeNull();
+    expect(screen.queryByText("Card photo")).toBeNull();
+  });
+
   test("has no preview or remove control without previewUrl", () => {
     renderWithIntl(<PhotoInput {...base} />);
     expect(document.querySelector("img")).toBeNull();

@@ -96,6 +96,15 @@ describe("CardsStep", () => {
     expect(mocks.push).not.toHaveBeenCalled();
   });
 
+  test("a tooManyCards save result names the limit", async () => {
+    mocks.saveCard.mockResolvedValue({ ok: false, errorKey: "tooManyCards" });
+    const { user } = renderWithIntl(<CardsStep initialDraft={complete} catalog={CATALOG} />);
+    await user.type(screen.getByLabelText(c.fields.optional.replace("{label}", c.fields.surface)), "Holo");
+    await user.click(screen.getByRole("button", { name: c.next }));
+    const expected = messages.submit.errors.tooManyCards.replace("{max, number}", String(MAX_CARDS_PER_ORDER));
+    expect(await screen.findByText(expected, { exact: false })).toBeInTheDocument();
+  });
+
   test("Next does not navigate when a save fails", async () => {
     mocks.saveCard.mockResolvedValue({ ok: false, errorKey: "generic" });
     const { user } = renderWithIntl(<CardsStep initialDraft={complete} catalog={CATALOG} />);

@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldInput, FieldSelect } from "@/components/ui/field";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Link, useRouter } from "@/i18n/navigation";
+import { MAX_CARDS_PER_ORDER } from "@/lib/orders/card-rules";
 import { quoteDraft } from "@/lib/orders/pricing";
 import {
   ADDRESS_LINE_MAX,
@@ -235,7 +236,7 @@ export function ShippingStep({
             {status === "error" && (
               <>
                 {t("autosave.error")}
-                {errorKey && errorKey !== "generic" ? ` ${t(`errors.${errorKey}`)}` : ""}
+                {errorKey && errorKey !== "generic" ? ` ${t(`errors.${errorKey}`, { max: MAX_CARDS_PER_ORDER })}` : ""}
               </>
             )}
           </p>

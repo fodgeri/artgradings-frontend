@@ -403,7 +403,7 @@
       "unknownCard": "Unknown card — ART identifies it",
       "serviceLine": "{service} · {tier}",
       "addOns": "Extras: {names}",
-      "identification": "ART identification",
+      "identification": "ART identification: {amount}",
       "cardPrice": "Card price",
       "totalsHeading": "Totals",
       "subtotal": "Cards and services",
@@ -511,7 +511,7 @@
       "unknownCard": "Unknown card — ART identifies it",
       "serviceLine": "{service} · {tier}",
       "addOns": "Extras: {names}",
-      "identification": "ART identification",
+      "identification": "ART identification: {amount}",
       "totalsHeading": "Totals",
       "subtotal": "Cards and services",
       "inbound": "Shipping to ART",
@@ -528,6 +528,9 @@
       },
       "timelineHeading": "Progress",
       "cancel": "Cancel order",
+      "cancelConfirm": "Cancel this order? This can't be undone.",
+      "cancelConfirmYes": "Yes, cancel it",
+      "cancelKeep": "Keep the order",
       "cancelling": "Cancelling…",
       "cancelError": "We could not cancel this order. Please try again."
     },
@@ -538,6 +541,7 @@
     "next": {
       "heading": "What to do next",
       "pay": "Pay now",
+      "paymentUnavailable": "Online payment isn't available yet. Your order is saved and waiting for payment.",
       "ship": {
         "title": "Send your cards to ART",
         "instructions": "[Placeholder packing instructions — client copy to be supplied.] Pack each card as the instructions say, and include the submission form in the parcel.",
@@ -547,6 +551,7 @@
       "bringIn": {
         "title": "Bring your cards to ART",
         "instructions": "[Placeholder hand-in instructions — client copy to be supplied.] Bring the printed submission form with your cards.",
+        "label": "Print the parcel label",
         "form": "Print the submission form"
       }
     },
@@ -555,7 +560,7 @@
       "metaDescription": "Complete a test payment for your order.",
       "panelTitle": "Test payment — no money is taken",
       "lead": "This stands in for the payment provider while it is being set up. Choose how the payment should end.",
-      "total": "Total",
+      "totalLine": "Total: <strong>{amount}</strong>",
       "pay": "Pay",
       "fail": "Fail",
       "cancel": "Cancel",

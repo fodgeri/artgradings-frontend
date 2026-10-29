@@ -42,6 +42,15 @@ describe("SubmissionForm", () => {
     expect(screen.getByText(p.cardCount.replace("{count, plural, one {# card} other {# cards}}", "2 cards"))).toBeInTheDocument();
   });
 
+  test("prints the address for a postal order only", () => {
+    const { unmount } = renderWithIntl(<SubmissionForm order={ORDER} qrSvg="<svg/>" />);
+    expect(screen.getByText(/Fo utca 1/)).toBeInTheDocument();
+    unmount();
+
+    renderWithIntl(<SubmissionForm order={{ ...ORDER, shippingMethod: "in_person" }} qrSvg="<svg/>" />);
+    expect(screen.queryByText(/Fo utca 1/)).toBeNull();
+  });
+
   test("renders add-ons in a deterministic order", () => {
     renderWithIntl(<SubmissionForm order={ORDER} qrSvg="<svg/>" />);
     expect(screen.getByText("alpha, zeta")).toBeInTheDocument();

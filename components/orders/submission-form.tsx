@@ -53,7 +53,7 @@ export function SubmissionForm({ order, qrSvg }: { order: OrderDetail; qrSvg: st
         <p className="m-0">{names}</p>
         {order.contact.phone && <p className="m-0">{order.contact.phone}</p>}
         {order.shippingMethod && <p className="m-0">{method(order.shippingMethod)}</p>}
-        {order.address.line && (
+        {order.shippingMethod === "postal" && order.address.line && (
           <p className="m-0">
             {[order.address.line, `${order.address.postcode ?? ""} ${order.address.city ?? ""}`.trim(), country]
               .filter(Boolean)

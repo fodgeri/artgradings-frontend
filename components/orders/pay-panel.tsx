@@ -51,8 +51,10 @@ export function PayPanel({
       <h1 className="font-serif text-h2 text-ink">{t("panelTitle")}</h1>
       <p className="mt-3 text-muted">{t("lead")}</p>
       <p className="mt-6 text-ink">
-        {t("total")}:{" "}
-        <strong>{format.number(totalCents / 100, { style: "currency", currency })}</strong>
+        {t.rich("totalLine", {
+          amount: format.number(totalCents / 100, { style: "currency", currency }),
+          strong: (chunks) => <strong>{chunks}</strong>,
+        })}
       </p>
       {failed && (
         <p role="alert" className="mt-4 text-sm font-medium text-ink">

@@ -33,6 +33,7 @@ describe("OrderDetails", () => {
     expect(screen.getByText(messages.catalog.services.dual.label, { exact: false })).toBeInTheDocument();
     expect(screen.getByText("Extras: unknown_extra")).toBeInTheDocument();
     expect(screen.getByTestId("order-total")).toHaveTextContent("€99.00");
+    expect(screen.getByText(t.identification.replace("{amount}", "€5.00"))).toBeInTheDocument();
     expect(screen.getByText("€10.00")).toBeInTheDocument();
     expect(screen.getByText(t.method.postal)).toBeInTheDocument();
     expect(screen.getByText(/1011 Budapest, Hungary/)).toBeInTheDocument();

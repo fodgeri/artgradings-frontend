@@ -196,7 +196,7 @@ export function CardsStep({
 
         {notice && (
           <p role="alert" className="text-sm font-medium text-ink">
-            {notice === "nextFailed" ? t("cards.nextFailed") : t(`errors.${notice}`)}
+            {notice === "nextFailed" ? t("cards.nextFailed") : t(`errors.${notice}`, { max: MAX_CARDS_PER_ORDER })}
           </p>
         )}
       </div>
@@ -335,7 +335,7 @@ function CardSlot({
           {status === "error" && errorKey !== "cardGone" && (
             <>
               {t("autosave.error")}
-              {errorKey && errorKey !== "generic" ? ` ${t(`errors.${errorKey}`)}` : ""}
+              {errorKey && errorKey !== "generic" ? ` ${t(`errors.${errorKey}`, { max: MAX_CARDS_PER_ORDER })}` : ""}
             </>
           )}
         </p>

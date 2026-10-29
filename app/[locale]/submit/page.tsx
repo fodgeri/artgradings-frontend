@@ -7,6 +7,7 @@ import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { resolveLocale } from "@/lib/auth/action-state";
 import { requireUser } from "@/lib/auth/require-user";
+import { MAX_CARDS_PER_ORDER } from "@/lib/orders/card-rules";
 import { loadCatalog } from "@/lib/orders/catalog";
 import { isOrderErrorKey } from "@/lib/orders/errors";
 import { loadDraft } from "@/lib/orders/load-draft";
@@ -37,7 +38,7 @@ export default async function SubmitPage({ params, searchParams }: PageProps<"/[
         <p className="mb-8 max-w-prose text-muted">{t("lead")}</p>
         {isOrderErrorKey(problem) && (
           <p role="alert" className="mb-4 text-sm font-medium text-ink">
-            {errors(problem)}
+            {errors(problem, { max: MAX_CARDS_PER_ORDER })}
           </p>
         )}
         <CardsStep initialDraft={draft} catalog={catalog} />

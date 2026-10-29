@@ -18,13 +18,30 @@ describe("CancelOrder", () => {
     }
   });
 
+  test("asks for confirmation first, and Keep cancels nothing", async () => {
+    const cancel = vi.fn();
+    const { user } = renderWithIntl(<CancelOrder reference="AG-ABCDEFGH" status="draft" cancel={cancel} />);
+
+    await user.click(screen.getByRole("button", { name: t.cancel }));
+    expect(screen.getByText(t.cancelConfirm)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: t.cancelKeep })).toHaveFocus();
+    expect(cancel).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: t.cancelKeep }));
+    expect(screen.queryByText(t.cancelConfirm)).toBeNull();
+    expect(screen.getByRole("button", { name: t.cancel })).toBeEnabled();
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
   test("disables while pending, so a double-click cancels once", async () => {
     const cancel = vi.fn(() => new Promise<never>(() => {}));
     const { user } = renderWithIntl(<CancelOrder reference="AG-ABCDEFGH" status="draft" cancel={cancel} />);
 
     await user.click(screen.getByRole("button", { name: t.cancel }));
+    await user.click(screen.getByRole("button", { name: t.cancelConfirmYes }));
     const pending = screen.getByRole("button", { name: t.cancelling });
     expect(pending).toBeDisabled();
+    expect(screen.getByRole("button", { name: t.cancelKeep })).toBeDisabled();
     await user.click(pending);
 
     expect(cancel).toHaveBeenCalledTimes(1);
@@ -36,6 +53,7 @@ describe("CancelOrder", () => {
     const { user } = renderWithIntl(<CancelOrder reference="AG-ABCDEFGH" status="draft" cancel={cancel} />);
 
     await user.click(screen.getByRole("button", { name: t.cancel }));
+    await user.click(screen.getByRole("button", { name: t.cancelConfirmYes }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(t.cancelError);
     expect(screen.getByRole("button", { name: t.cancel })).toBeEnabled();

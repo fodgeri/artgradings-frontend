@@ -44,7 +44,7 @@ export function OrderDetails({ order }: { order: OrderDetail }) {
                 )}
                 {card.identificationCents ? (
                   <p className="m-0 text-sm text-muted">
-                    {t("identification")}: {money(card.identificationCents)}
+                    {t("identification", { amount: money(card.identificationCents) })}
                   </p>
                 ) : null}
               </div>

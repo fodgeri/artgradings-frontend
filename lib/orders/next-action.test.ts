@@ -4,9 +4,9 @@ import { ORDER_STATUSES } from "./status";
 import { nextAction, printablesAvailable } from "./next-action";
 
 describe("nextAction", () => {
-  test("awaiting payment without a provider offers nothing", () => {
+  test("awaiting payment without a provider says payment is unavailable", () => {
     const order = { status: "awaiting_payment", shippingMethod: "postal" } as const;
-    expect(nextAction(order, { payment: false })).toEqual({ kind: "none" });
+    expect(nextAction(order, { payment: false })).toEqual({ kind: "paymentUnavailable" });
     expect(nextAction(order, { payment: true })).toEqual({ kind: "pay" });
   });
 

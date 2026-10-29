@@ -14,6 +14,7 @@ import {
   CARD_LANGUAGES,
   CARD_NUMBER_MAX,
   CARD_TEXT_MAX,
+  MAX_CARDS_PER_ORDER,
   SURFACE_MAX,
   type CardProblem,
   applicableAddOns,
@@ -356,7 +357,7 @@ export function CardEditor({
         {!saved && <p className="text-sm text-muted">{t("cards.photo.hint")}</p>}
         {photoError && (
           <p role="alert" className="text-sm font-medium text-ink">
-            {t(`errors.${photoError}`)}
+            {t(`errors.${photoError}`, { max: MAX_CARDS_PER_ORDER })}
           </p>
         )}
       </div>

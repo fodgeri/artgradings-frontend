@@ -1,14 +1,21 @@
 import type { OrderDetail } from "./load-orders";
 import type { OrderStatus } from "./status";
 
-export type NextActionKind = { kind: "pay" } | { kind: "ship" } | { kind: "bringIn" } | { kind: "none" };
+export type NextActionKind =
+  | { kind: "pay" }
+  | { kind: "paymentUnavailable" }
+  | { kind: "ship" }
+  | { kind: "bringIn" }
+  | { kind: "none" };
 
 /** What the customer should do next, given what is configured on this host. */
 export function nextAction(
   order: Pick<OrderDetail, "status" | "shippingMethod">,
   providers: { payment: boolean },
 ): NextActionKind {
-  if (order.status === "awaiting_payment" && providers.payment) return { kind: "pay" };
+  if (order.status === "awaiting_payment") {
+    return providers.payment ? { kind: "pay" } : { kind: "paymentUnavailable" };
+  }
   if (order.status === "paid") {
     return order.shippingMethod === "in_person" ? { kind: "bringIn" } : { kind: "ship" };
   }
