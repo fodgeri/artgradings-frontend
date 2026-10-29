@@ -578,7 +578,7 @@
       "cardsHeading": "Cards",
       "cardLabel": "Card {number}",
       "artIdentifies": "ART identifies this card",
-      "hints": "Hints: {hints}",
+      "hints": "Hints typed by the customer:",
       "year": "Year",
       "brand": "Brand",
       "language": "Language",
@@ -602,8 +602,7 @@
       "inbound": "Shipping to ART",
       "return": "Return shipping",
       "identification": "ART identification",
-      "totalPaid": "Total paid",
-      "unknown": "Not given"
+      "totalPaid": "Total paid"
     }
   }
 }

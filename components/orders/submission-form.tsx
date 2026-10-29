@@ -4,6 +4,15 @@ import type { OrderDetail } from "@/lib/orders/load-orders";
 
 import { OrderQr } from "./order-qr";
 
+function Row({ term, children }: { term: string; children: React.ReactNode }) {
+  return (
+    <>
+      <dt className="text-neutral-600">{term}</dt>
+      <dd className="m-0 text-black">{children}</dd>
+    </>
+  );
+}
+
 /** The form enclosed with the cards: who sent them, what each is, and what was paid. */
 export function SubmissionForm({ order, qrSvg }: { order: OrderDetail; qrSvg: string }) {
   const t = useTranslations("orders.printables");
@@ -24,14 +33,9 @@ export function SubmissionForm({ order, qrSvg }: { order: OrderDetail; qrSvg: st
       ? ""
       : (new Intl.DisplayNames([locale], { type: "region" }).of(order.address.country) ?? order.address.country);
   const names = [order.contact.firstName, order.contact.lastName].filter(Boolean).join(" ");
+  const hasHints = (c: OrderDetail["cards"][number]) =>
+    [c.releaseYear, c.brand, c.language, c.name, c.setName, c.cardNumber].some((v) => v !== null && v !== "");
   const cards = [...order.cards].sort((a, b) => a.position - b.position);
-
-  const Row = ({ term, children }: { term: string; children: React.ReactNode }) => (
-    <>
-      <dt className="text-muted">{term}</dt>
-      <dd className="m-0 text-ink">{children}</dd>
-    </>
-  );
 
   return (
     <div className="flex flex-col gap-6 bg-white p-6 text-black">
@@ -60,7 +64,7 @@ export function SubmissionForm({ order, qrSvg }: { order: OrderDetail; qrSvg: st
 
       <section>
         <h2 className="mb-2 font-serif text-h3">{t("cardsHeading")}</h2>
-        <ol className="m-0 flex list-none flex-col divide-y divide-hairline p-0">
+        <ol className="m-0 flex list-none flex-col divide-y divide-black/20 p-0">
           {cards.map((card, index) => {
             const addOns = card.addOns.map((a) => a.key).sort().map((k) => label("addOns", k));
             return (
@@ -70,6 +74,10 @@ export function SubmissionForm({ order, qrSvg }: { order: OrderDetail; qrSvg: st
                   {card.identifiedBy === "art" && (
                     <>
                       <dt className="col-span-2 font-medium">{t("artIdentifies")}</dt>
+                      {card.identificationCents !== null && (
+                        <Row term={t("identification")}>{money(card.identificationCents)}</Row>
+                      )}
+                      {hasHints(card) && <dt className="col-span-2 text-neutral-600">{t("hints")}</dt>}
                     </>
                   )}
                   {card.releaseYear !== null && <Row term={t("year")}>{card.releaseYear}</Row>}

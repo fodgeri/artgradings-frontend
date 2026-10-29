@@ -13,4 +13,12 @@ describe("ParcelLabel", () => {
     expect(img.getAttribute("src")).toMatch(/^data:image\/svg\+xml/);
     expect(screen.getByText(messages.orders.printables.artAddress)).toBeInTheDocument();
   });
+
+  test("is theme-independent: fixed light colours, no theme tokens", () => {
+    document.documentElement.setAttribute("data-theme", "dark");
+    const { container } = renderWithIntl(<ParcelLabel reference="AG-0123ABCD" qrSvg="<svg/>" />);
+    expect(container.firstElementChild).toHaveClass("bg-white", "text-black", "border-black");
+    expect(container.innerHTML).not.toMatch(/text-ink|text-muted|border-ink/);
+    document.documentElement.removeAttribute("data-theme");
+  });
 });

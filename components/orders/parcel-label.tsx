@@ -6,7 +6,7 @@ import { OrderQr } from "./order-qr";
 export function ParcelLabel({ reference, qrSvg }: { reference: string; qrSvg: string }) {
   const t = useTranslations("orders.printables");
   return (
-    <div className="flex h-[15cm] w-[10cm] flex-col items-center justify-between border-2 border-dashed border-ink bg-white p-[0.8cm] text-black">
+    <div className="flex h-[15cm] w-[10cm] flex-col items-center justify-between border-2 border-dashed border-black bg-white p-[0.8cm] text-black">
       <OrderQr svg={qrSvg} reference={reference} size={220} />
       <div className="text-center">
         <p className="m-0 font-mono text-label uppercase">{t("referenceLabel")}</p>

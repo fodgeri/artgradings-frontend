@@ -54,6 +54,24 @@ describe("SubmissionForm", () => {
     expect(within(row).queryByText(p.cardNumber)).not.toBeInTheDocument();
   });
 
+  test("shows the identification fee and the hints label on an ART-identified card", () => {
+    renderWithIntl(<SubmissionForm order={ORDER} qrSvg="<svg/>" />);
+    const row = screen.getAllByRole("listitem")[1];
+    expect(within(row).getByText(p.identification)).toBeInTheDocument();
+    expect(within(row).getByText("€5.00")).toBeInTheDocument();
+    expect(within(row).getByText(p.hints)).toBeInTheDocument();
+    expect(within(screen.getAllByRole("listitem")[0]).queryByText(p.hints)).not.toBeInTheDocument();
+  });
+
+  test("is theme-independent: fixed light colours, no theme tokens", () => {
+    document.documentElement.setAttribute("data-theme", "dark");
+    const { container } = renderWithIntl(<SubmissionForm order={ORDER} qrSvg="<svg/>" />);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root).toHaveClass("bg-white", "text-black");
+    expect(container.innerHTML).not.toMatch(/text-ink|text-muted|divide-hairline|border-ink/);
+    document.documentElement.removeAttribute("data-theme");
+  });
+
   test("shows the total declared value and the total paid", () => {
     renderWithIntl(<SubmissionForm order={ORDER} qrSvg="<svg/>" />);
     expect(screen.getByTestId("declared-total")).toHaveTextContent("€1,500.00");
