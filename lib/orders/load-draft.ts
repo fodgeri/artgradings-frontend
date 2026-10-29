@@ -5,10 +5,14 @@ import type { Database } from "@/lib/supabase/database.types";
 import type { Draft, DraftCard, DraftShipping, IdentifiedBy, ShippingMethod } from "./types";
 
 /**
- * The signed-in customer's draft, or null. RLS limits `orders` to their own
- * rows; the filter picks the draft among them. Throws on a query failure.
+ * The signed-in customer's draft, or null. `userId` comes from verified
+ * claims; filtering on it repeats what RLS already enforces, so a policy
+ * mistake cannot show one customer another's draft. Throws on a query failure.
  */
-export async function loadDraft(supabase: SupabaseClient<Database>): Promise<Draft | null> {
+export async function loadDraft(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<Draft | null> {
   const { data, error } = await supabase
     .from("orders")
     .select(
@@ -18,6 +22,7 @@ export async function loadDraft(supabase: SupabaseClient<Database>): Promise<Dra
          card_number, surface, signed, numbered, declared_value_cents, service, tier_key,
          order_card_add_ons(add_on_key), card_photos(id))`,
     )
+    .eq("user_id", userId)
     .eq("status", "draft")
     .order("position", { referencedTable: "order_cards" })
     .maybeSingle();
@@ -77,6 +82,7 @@ export async function loadPrefill(
     .select(
       "contact_first_name, contact_last_name, contact_phone, address_country, address_postcode, address_city, address_line",
     )
+    .eq("user_id", userId)
     .not("submitted_at", "is", null)
     .order("submitted_at", { ascending: false })
     .limit(1)

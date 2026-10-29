@@ -8,9 +8,9 @@ import { Section } from "@/components/ui/section";
 import { resolveLocale } from "@/lib/auth/action-state";
 import { requireUser } from "@/lib/auth/require-user";
 import { redirect } from "@/i18n/navigation";
-import { cardProblems } from "@/lib/orders/card-rules";
 import { loadCatalog } from "@/lib/orders/catalog";
 import { loadDraft, loadPrefill } from "@/lib/orders/load-draft";
+import { cardsStepRedirect } from "@/lib/orders/step-redirect";
 import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -26,16 +26,11 @@ export default async function ShippingPage({ params }: PageProps<"/[locale]/subm
 
   const supabase = await createClient();
   const catalog = await loadCatalog(supabase);
-  const draft = await loadDraft(supabase);
+  const draft = await loadDraft(supabase, user.id);
 
-  // No draft, or a card still unfinished: back to step 1.
-  if (
-    !draft ||
-    draft.cards.length === 0 ||
-    draft.cards.some((card) => cardProblems(card, catalog).length > 0)
-  ) {
-    return redirect({ href: "/submit", locale });
-  }
+  // No draft, or a card still unfinished or no longer offered: back to step 1.
+  const back = cardsStepRedirect(draft, catalog);
+  if (back !== null || draft === null) return redirect({ href: back ?? "/submit", locale });
 
   const prefill = await loadPrefill(supabase, user.id);
 

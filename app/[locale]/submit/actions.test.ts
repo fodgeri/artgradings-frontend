@@ -115,7 +115,7 @@ beforeEach(() => {
 });
 
 describe("saveCard", () => {
-  test("opens a draft on first save and never sends a user id", async () => {
+  test("opens a draft on first save and never writes a user id", async () => {
     queue("orders.select", { data: null, error: null });
     queue("orders.insert", { data: DRAFT, error: null });
 
@@ -124,7 +124,8 @@ describe("saveCard", () => {
     expect(result).toEqual({ ok: true, data: { reference: DRAFT.reference } });
     const [open] = callsTo("orders", "insert");
     expect(open.payload).toEqual({});
-    expect(JSON.stringify(mocks.state.calls)).not.toMatch(/user_id|user-1/);
+    const payloads = mocks.state.calls.map((c) => c.payload);
+    expect(JSON.stringify(payloads)).not.toMatch(/user_id|user-1/);
     const [insert] = callsTo("order_cards", "insert");
     expect((insert.payload as { order_id: string }).order_id).toBe(DRAFT.id);
   });
@@ -137,6 +138,10 @@ describe("saveCard", () => {
 
     expect(result).toEqual({ ok: true, data: { reference: DRAFT.reference } });
     expect(callsTo("order_cards", "insert")).toHaveLength(1);
+    // Both lookups name the verified user, not RLS alone.
+    const lookups = callsTo("orders", "select");
+    expect(lookups).toHaveLength(2);
+    for (const lookup of lookups) expect(lookup.filters).toContainEqual(["eq", "user_id", "user-1"]);
   });
 
   test("stores identified_by and never a price or catalog_ref", async () => {
@@ -385,6 +390,7 @@ describe("saveShipping", () => {
     );
     expect(update.payload).toMatchObject({ contact_first_name: "Ada" });
     expect(update.filters).toContainEqual(["eq", "status", "draft"]);
+    expect(update.filters).toContainEqual(["eq", "user_id", "user-1"]);
   });
 
   test("with no draft to update returns notDraft", async () => {
@@ -541,6 +547,7 @@ describe("submitOrder", () => {
     );
     const [lookup] = callsTo("orders", "select");
     expect(lookup.filters).toContainEqual(["eq", "status", "awaiting_payment"]);
+    expect(lookup.filters).toContainEqual(["eq", "user_id", "user-1"]);
     expect(mocks.captureException).not.toHaveBeenCalled();
   });
 

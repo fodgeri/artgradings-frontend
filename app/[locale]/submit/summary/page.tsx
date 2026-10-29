@@ -8,12 +8,11 @@ import { Section } from "@/components/ui/section";
 import { redirect } from "@/i18n/navigation";
 import { resolveLocale } from "@/lib/auth/action-state";
 import { requireUser } from "@/lib/auth/require-user";
-import { cardProblems } from "@/lib/orders/card-rules";
 import { loadCatalog } from "@/lib/orders/catalog";
 import { orderErrorKey, reportOrderError } from "@/lib/orders/errors";
 import { loadDraft } from "@/lib/orders/load-draft";
 import { mapQuote } from "@/lib/orders/map-quote";
-import { shippingProblems } from "@/lib/orders/shipping-rules";
+import { summaryRedirect } from "@/lib/orders/step-redirect";
 import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -24,23 +23,16 @@ export async function generateMetadata(): Promise<Metadata> {
 /** Step 3 of the submission wizard: the server's quote, then submit. */
 export default async function SummaryPage({ params }: PageProps<"/[locale]/submit/summary">) {
   const locale = resolveLocale((await params).locale);
-  await requireUser({ locale, next: "/submit/summary" });
+  const user = await requireUser({ locale, next: "/submit/summary" });
   const t = await getTranslations("submit.summary");
 
   const supabase = await createClient();
   const catalog = await loadCatalog(supabase);
-  const draft = await loadDraft(supabase);
+  const draft = await loadDraft(supabase, user.id);
 
-  if (
-    !draft ||
-    draft.cards.length === 0 ||
-    draft.cards.some((card) => cardProblems(card, catalog).length > 0)
-  ) {
-    return redirect({ href: "/submit", locale });
-  }
-  if (shippingProblems(draft.shipping, catalog).length > 0) {
-    return redirect({ href: "/submit/shipping", locale });
-  }
+  // A withdrawn service or tier goes back with `?problem=`, so the reason survives.
+  const back = summaryRedirect(draft, catalog);
+  if (back !== null || draft === null) return redirect({ href: back ?? "/submit", locale });
 
   // The server's figures are the only ones shown here.
   const { data, error } = await supabase.rpc("quote_order");

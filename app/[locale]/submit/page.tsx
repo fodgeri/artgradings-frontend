@@ -21,13 +21,13 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function SubmitPage({ params, searchParams }: PageProps<"/[locale]/submit">) {
   const locale = resolveLocale((await params).locale);
   const problem = (await searchParams).problem;
-  await requireUser({ locale, next: "/submit" });
+  const user = await requireUser({ locale, next: "/submit" });
   const t = await getTranslations("submit.cards");
   const errors = await getTranslations("submit.errors");
 
   const supabase = await createClient();
   const catalog = await loadCatalog(supabase);
-  const draft = await loadDraft(supabase);
+  const draft = await loadDraft(supabase, user.id);
 
   return (
     <Section>

@@ -51,7 +51,7 @@ describe("loadDraft", () => {
   test("maps a draft with its cards, add-ons, photo and shipping", async () => {
     const { supabase, queries } = client({ data: ROW });
 
-    const draft = await loadDraft(supabase);
+    const draft = await loadDraft(supabase, "u1");
 
     expect(draft?.reference).toBe("AG-0123ABCD");
     expect(draft?.shipping).toEqual({
@@ -64,24 +64,25 @@ describe("loadDraft", () => {
       addOnKeys: ["digital_grade"], photo: { id: "p1" }, declaredValueCents: 1000,
     });
     expect(draft?.cards[1]).toMatchObject({ addOnKeys: [], photo: null, surface: "mint" });
+    expect(queries[0].eq).toHaveBeenCalledWith("user_id", "u1");
     expect(queries[0].eq).toHaveBeenCalledWith("status", "draft");
     expect(queries[0].order).toHaveBeenCalledWith("position", { referencedTable: "order_cards" });
   });
 
   test("is null when there is no draft", async () => {
-    expect(await loadDraft(client({ data: null }).supabase)).toBeNull();
+    expect(await loadDraft(client({ data: null }).supabase, "u1")).toBeNull();
   });
 
   test("throws on a query failure, naming only the code", async () => {
-    await expect(loadDraft(client({ data: null, error: { code: "42P01" } }).supabase)).rejects.toThrow(
+    await expect(loadDraft(client({ data: null, error: { code: "42P01" } }).supabase, "u1")).rejects.toThrow(
       "Draft query failed: 42P01",
     );
   });
 });
 
 describe("loadPrefill", () => {
-  test("prefers the most recent submitted order", async () => {
-    const { supabase, from } = client({
+  test("prefers the caller's most recent submitted order", async () => {
+    const { supabase, from, queries } = client({
       data: {
         contact_first_name: "Ada", contact_last_name: "L", contact_phone: "123456",
         address_country: "AT", address_postcode: "1", address_city: "Wien", address_line: "Ring 1",
@@ -93,6 +94,7 @@ describe("loadPrefill", () => {
       postcode: "1", city: "Wien", addressLine: "Ring 1",
     });
     expect(from).toHaveBeenCalledTimes(1);
+    expect(queries[0].eq).toHaveBeenCalledWith("user_id", "u1");
   });
 
   test("falls back to the profile names", async () => {

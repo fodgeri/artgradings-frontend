@@ -41,11 +41,17 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type PgError = { code?: string; message?: string };
 
-/** Locale, signed-in user (or a redirect to sign-in) and the session client. */
+/**
+ * The signed-in user (or a redirect to sign-in) and the session client.
+ *
+ * The user id is from verified claims, never input. Order lookups filter on it
+ * as well as on RLS, so a policy mistake cannot hand one customer another's
+ * draft.
+ */
 async function session(rawLocale: string) {
   const locale = resolveLocale(rawLocale);
-  await requireUser({ locale, next: "/submit" });
-  return createClient();
+  const user = await requireUser({ locale, next: "/submit" });
+  return { user, supabase: await createClient() };
 }
 
 /** Reports an unexpected failure by code only and answers `generic`. */
@@ -99,7 +105,7 @@ export async function saveCard(
   locale: string,
   card: DraftCardInput,
 ): Promise<SaveResult<{ reference: string }>> {
-  const supabase = await session(locale);
+  const { user, supabase } = await session(locale);
   if (!validCard(card)) return GENERIC;
 
   const { persisted, ...input } = card;
@@ -109,6 +115,7 @@ export async function saveCard(
   const found = await supabase
     .from("orders")
     .select("id, reference")
+    .eq("user_id", user.id)
     .eq("status", "draft")
     .maybeSingle();
   if (found.error) return unexpected("saveCard", found.error);
@@ -123,6 +130,7 @@ export async function saveCard(
       const again = await supabase
         .from("orders")
         .select("id, reference")
+        .eq("user_id", user.id)
         .eq("status", "draft")
         .maybeSingle();
       if (again.error) return unexpected("saveCard", again.error);
@@ -209,7 +217,7 @@ function cardWriteFailure(error: PgError): SaveResult<never> {
 }
 
 export async function removeCard(locale: string, cardId: string): Promise<SaveResult<null>> {
-  const supabase = await session(locale);
+  const { supabase } = await session(locale);
   if (typeof cardId !== "string" || !UUID.test(cardId)) return GENERIC;
 
   // Deleting a card that is already gone is the outcome the caller wanted.
@@ -241,7 +249,7 @@ export async function saveShipping(
   locale: string,
   shipping: DraftShipping,
 ): Promise<SaveResult<null>> {
-  const supabase = await session(locale);
+  const { user, supabase } = await session(locale);
   if (!validShipping(shipping)) return GENERIC;
 
   const { data, error } = await supabase
@@ -257,6 +265,7 @@ export async function saveShipping(
       address_line: clean(shipping.addressLine),
       inbound_insurance_confirmed: shipping.inboundInsuranceConfirmed,
     })
+    .eq("user_id", user.id)
     .eq("status", "draft")
     .select("id");
   if (error) return unexpected("saveShipping", error);
@@ -268,7 +277,7 @@ export async function uploadPhoto(
   locale: string,
   formData: FormData,
 ): Promise<SaveResult<{ photoId: string }>> {
-  const supabase = await session(locale);
+  const { supabase } = await session(locale);
 
   const cardId = formData.get("cardId");
   const file = formData.get("file");
@@ -314,7 +323,7 @@ export async function uploadPhoto(
 }
 
 export async function removePhoto(locale: string, photoId: string): Promise<SaveResult<null>> {
-  const supabase = await session(locale);
+  const { supabase } = await session(locale);
   if (typeof photoId !== "string" || !UUID.test(photoId)) return GENERIC;
 
   // The trigger queues the R2 object for deletion.
@@ -336,7 +345,7 @@ export async function submitOrder(
   input: { termsAccepted: boolean },
 ): Promise<SaveResult<null>> {
   const resolved = resolveLocale(locale);
-  const supabase = await session(resolved);
+  const { user, supabase } = await session(resolved);
   if (input?.termsAccepted !== true) return { ok: false, errorKey: "termsRequired" };
 
   const { data, error } = await supabase.rpc("submit_order", { p_terms_version: TERMS_VERSION });
@@ -347,6 +356,7 @@ export async function submitOrder(
       const existing = await supabase
         .from("orders")
         .select("reference")
+        .eq("user_id", user.id)
         .eq("status", "awaiting_payment")
         .order("created_at", { ascending: false })
         .limit(1)
