@@ -6,6 +6,14 @@
 
 -- ── Payment ─────────────────────────────────────────────────────────────
 
+-- Returns 'recorded', 'duplicate' or 'rejected'.
+--   recorded  the order was awaiting payment for exactly this amount; now paid.
+--   duplicate a succeeded attempt already exists for this provider reference.
+--   rejected  the provider says money moved, but the order is not payable
+--             (wrong status, amount or currency), or does not exist. The
+--             attempt is recorded as succeeded when the order exists, as the
+--             refund trail, and the order is NOT transitioned: staff attention.
+-- A failed attempt under the same reference is upgraded to succeeded.
 create or replace function public.record_payment_success(
   p_order_id uuid, p_provider text, p_provider_reference text,
   p_amount_cents bigint, p_currency text)
@@ -21,19 +29,26 @@ begin
   select * into o from public.orders where id = p_order_id for update;
 
   if exists (select 1 from public.payment_attempts
-             where provider = p_provider and provider_reference = p_provider_reference) then
+             where provider = p_provider and provider_reference = p_provider_reference
+               and outcome = 'succeeded') then
     return 'duplicate';
   end if;
 
-  if not found
-     or o.status <> 'awaiting_payment'
+  if not found then
+    return 'rejected';
+  end if;
+
+  insert into public.payment_attempts (order_id, provider, provider_reference, outcome, amount_cents, currency)
+  values (p_order_id, p_provider, p_provider_reference, 'succeeded', p_amount_cents, p_currency)
+  on conflict (provider, provider_reference) do update
+    set outcome = 'succeeded', amount_cents = excluded.amount_cents, currency = excluded.currency;
+
+  if o.status <> 'awaiting_payment'
      or o.total_cents is distinct from p_amount_cents
      or o.currency <> p_currency then
     return 'rejected';
   end if;
 
-  insert into public.payment_attempts (order_id, provider, provider_reference, outcome, amount_cents, currency)
-  values (p_order_id, p_provider, p_provider_reference, 'succeeded', p_amount_cents, p_currency);
   perform private.transition_order(p_order_id, 'paid', 'system', null);
   return 'recorded';
 end;
@@ -119,6 +134,9 @@ begin
   if v_uid is null then
     raise exception 'not_authenticated' using errcode = '42501';
   end if;
+
+  -- Lock first, so an order cannot become paid between the check and the scrub.
+  perform 1 from public.orders where user_id = v_uid for update;
 
   if exists (select 1 from public.orders where user_id = v_uid
              and status in ('paid', 'received', 'grading', 'graded', 'shipped_back')) then
