@@ -34,7 +34,7 @@ export function SiteFooter() {
   const nav = useTranslations("nav");
 
   return (
-    <footer className="surface-invert">
+    <footer className="surface-invert print:hidden">
       <Container>
         <div className="border-t border-hairline pb-[50px] pt-[70px]">
           <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">

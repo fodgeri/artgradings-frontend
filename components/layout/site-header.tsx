@@ -19,7 +19,7 @@ export function SiteHeader() {
   ] as const;
 
   return (
-    <header className="glass sticky top-0 z-50 rounded-none border-x-0 border-t-0">
+    <header className="glass sticky top-0 z-50 rounded-none border-x-0 border-t-0 print:hidden">
       <Container>
         <nav className="flex h-[70px] items-center justify-between">
           <Link href="/" className="focus-ring">

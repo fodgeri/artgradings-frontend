@@ -16,15 +16,21 @@ const controlClass =
  */
 export function Field({
   label,
+  invalid,
   className,
   children,
 }: {
   label: string;
+  /** Marks the control invalid; pair with `FieldError`. */
+  invalid?: boolean;
   className?: string;
   children: ReactNode;
 }) {
   return (
-    <BaseField.Root className={cn("mb-[18px] flex flex-col gap-2", className)}>
+    <BaseField.Root
+      invalid={invalid}
+      className={cn("mb-[18px] flex flex-col gap-2", className)}
+    >
       <BaseField.Label className="font-mono text-label uppercase text-muted">
         {label}
       </BaseField.Label>
@@ -63,5 +69,18 @@ export function FieldSelect({ className, children, ...props }: ComponentProps<"s
 export function FieldDescription({ children }: { children: ReactNode }) {
   return (
     <BaseField.Description className="text-sm text-muted">{children}</BaseField.Description>
+  );
+}
+
+/**
+ * An error under a control. Base UI links it to the control's
+ * `aria-describedby`. Renders nothing without a message.
+ */
+export function FieldError({ children }: { children?: ReactNode }) {
+  if (!children) return null;
+  return (
+    <BaseField.Error match className="text-sm font-medium text-ink">
+      {children}
+    </BaseField.Error>
   );
 }

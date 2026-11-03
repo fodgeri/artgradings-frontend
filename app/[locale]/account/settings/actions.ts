@@ -197,13 +197,14 @@ export async function changePassword(
  * Permanently deletes the signed-in user's account, after re-verifying the
  * password.
  *
- * Nothing changes until `deleteCurrentUser` succeeds, so a failure leaves the
- * account and this session intact and a retry is safe. Only then is this
- * browser's session ended — auth-js tolerates the revoked token a deleted
- * user now holds.
- *
- * M3 adds a check here: deletion is refused while the user has an unfinished
- * order (the deletion contract in the profile-settings spec).
+ * Only after the password check does `deleteCurrentUser` run, and it changes
+ * orders before it deletes anyone: `prepare_account_deletion` refuses while an
+ * order is unfinished, otherwise removes drafts and uncharged orders and scrubs
+ * personal fields on the rest. That step is safe to retry, so a later failure
+ * of the deletion itself leaves the account and this session intact and the
+ * user can simply try again. Anything but a clean deletion stops here. Only
+ * then is this browser's session ended — auth-js tolerates the revoked token a
+ * deleted user now holds.
  */
 export async function deleteAccount(
   locale: string,
@@ -217,10 +218,16 @@ export async function deleteAccount(
   const refused = await verifyCurrentPassword(supabase, formData, "deleteAccount", target);
   if (refused) return refused;
 
-  const { error } = await deleteCurrentUser();
-  if (error) {
-    reportAuthError(error, "deleteAccount");
-    return { status: "error", errorKey: "generic" };
+  const result = await deleteCurrentUser();
+  switch (result.status) {
+    case "ordersInProgress":
+      return { status: "error", errorKey: "ordersInProgress" };
+    case "prepareFailed":
+      reportProfileError({ code: result.code }, "deleteAccount");
+      return { status: "error", errorKey: "generic" };
+    case "deleteFailed":
+      reportAuthError(result.error, "deleteAccount");
+      return { status: "error", errorKey: "generic" };
   }
 
   await endLocalSession(supabase, "deleteAccount");

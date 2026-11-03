@@ -59,3 +59,26 @@ where id = '00000000-0000-0000-0000-0000000000a1';
 update public.profiles
 set first_name = 'Example', last_name = 'Admin'
 where id = '00000000-0000-0000-0000-0000000000a2';
+
+-- One open draft for user@example.test, so /submit and /account have
+-- something to show on a fresh database. Obviously fake: "Example Card" in
+-- "Example Set". Only columns a customer can write through the Data API are
+-- set here, plus the owner (which the app takes from auth.uid()); status,
+-- reference and prices come from the defaults and functions, as they would
+-- for a real draft. Inserting the order logs its creation through the
+-- orders_log_created trigger. Its ids sit in their own `5eed` range: the pgTAP
+-- suite runs against this seeded database and uses fixed ids of its own.
+insert into public.orders (id, user_id)
+values ('00000000-0000-0000-0000-0000005eed01',
+        '00000000-0000-0000-0000-0000000000a1')
+on conflict (id) do nothing;
+
+insert into public.order_cards (
+  id, order_id, position, identified_by, release_year, brand, language,
+  name, set_name, card_number, declared_value_cents, service, tier_key
+)
+values ('00000000-0000-0000-0000-0000005eed02',
+        '00000000-0000-0000-0000-0000005eed01', 0, 'customer', 2000,
+        'Example Brand', 'en', 'Example Card', 'Example Set', '1/100',
+        1000, 'grading', 'grading_standard')
+on conflict (id) do nothing;

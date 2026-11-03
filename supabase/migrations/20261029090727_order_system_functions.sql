@@ -1,0 +1,183 @@
+-- System functions: payment results, draft expiry, the R2 deletion queue and
+-- account-deletion preparation.
+--
+-- Every function here is callable by service_role only.
+
+-- ── Payment ─────────────────────────────────────────────────────────────
+
+-- Returns 'recorded', 'duplicate' or 'rejected'.
+--   recorded  the order was awaiting payment for exactly this amount; now paid.
+--   duplicate a succeeded attempt already exists for this provider reference.
+--   rejected  the provider says money moved, but the order is not payable
+--             (wrong status, amount or currency), or does not exist. The
+--             attempt is recorded as succeeded when the order exists, as the
+--             refund trail, and the order is NOT transitioned: staff attention.
+-- A failed attempt under the same reference is upgraded to succeeded.
+create or replace function public.record_payment_success(
+  p_order_id uuid, p_provider text, p_provider_reference text,
+  p_amount_cents bigint, p_currency text)
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  o public.orders;
+begin
+  -- Serialise on the order, so two deliveries of one webhook cannot both pass.
+  select * into o from public.orders where id = p_order_id for update;
+
+  if exists (select 1 from public.payment_attempts
+             where provider = p_provider and provider_reference = p_provider_reference
+               and outcome = 'succeeded') then
+    return 'duplicate';
+  end if;
+
+  if not found then
+    return 'rejected';
+  end if;
+
+  insert into public.payment_attempts (order_id, provider, provider_reference, outcome, amount_cents, currency)
+  values (p_order_id, p_provider, p_provider_reference, 'succeeded', p_amount_cents, p_currency)
+  on conflict (provider, provider_reference) do update
+    set outcome = 'succeeded', amount_cents = excluded.amount_cents, currency = excluded.currency;
+
+  if o.status <> 'awaiting_payment'
+     or o.total_cents is distinct from p_amount_cents
+     or o.currency <> p_currency then
+    return 'rejected';
+  end if;
+
+  perform private.transition_order(p_order_id, 'paid', 'system', null);
+  return 'recorded';
+end;
+$$;
+
+create or replace function public.record_payment_failure(
+  p_order_id uuid, p_provider text, p_provider_reference text,
+  p_amount_cents bigint, p_currency text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.payment_attempts (order_id, provider, provider_reference, outcome, amount_cents, currency)
+  values (p_order_id, p_provider, p_provider_reference, 'failed', p_amount_cents, p_currency)
+  on conflict (provider, provider_reference) do nothing;
+end;
+$$;
+
+-- ── Expiry and the R2 deletion queue ────────────────────────────────────
+
+-- Children go with the order (cascade); the photo trigger queues their objects.
+create or replace function public.expire_stale_drafts()
+returns int
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  n int;
+begin
+  with gone as (
+    delete from public.orders
+    where status = 'draft' and updated_at < now() - interval '30 days'
+    returning 1
+  )
+  select count(*) into n from gone;
+  return n;
+end;
+$$;
+
+-- A photo row deleted and re-inserted under the same id leaves its key queued
+-- while the object is live again, so keys that still have a row are withheld.
+create or replace function public.list_photo_deletions(p_limit int)
+returns setof text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select d.object_key
+  from private.photo_deletions d
+  where not exists (select 1 from public.card_photos p where p.object_key = d.object_key)
+  order by d.queued_at, d.object_key
+  limit greatest(p_limit, 0);
+$$;
+
+create or replace function public.complete_photo_deletions(p_keys text[])
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  delete from private.photo_deletions where object_key = any (p_keys);
+$$;
+
+-- ── Account deletion ────────────────────────────────────────────────────
+
+-- Called by lib/auth/delete-current-user.ts on the service-role client, after
+-- the password has been re-verified, and before the account is deleted. The
+-- user id comes from that session's verified claims, never from input. It is
+-- service_role only: granted to authenticated, any session could call it
+-- through the Data API and skip the password check and Turnstile in front of
+-- deletion.
+--
+-- Unfinished orders block deletion. Drafts are deleted, and so are
+-- awaiting_payment and cancelled orders with no succeeded payment attempt.
+-- An order with a succeeded attempt is kept whatever its status: that attempt
+-- is the refund trail (see record_payment_success). Kept orders lose their
+-- contact and address fields, and their user_id goes null when the account is
+-- deleted. Safe to run twice: a retry finds nothing left to delete or scrub.
+create or replace function public.prepare_account_deletion(p_user_id uuid)
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if p_user_id is null then
+    raise exception 'not_found' using errcode = 'P0001';
+  end if;
+
+  -- Lock first, so an order cannot become paid between the check and the scrub.
+  perform 1 from public.orders where user_id = p_user_id for update;
+
+  if exists (select 1 from public.orders where user_id = p_user_id
+             and status in ('paid', 'received', 'grading', 'graded', 'shipped_back')) then
+    return 'orders_in_progress';
+  end if;
+
+  delete from public.orders o
+  where o.user_id = p_user_id
+    and (o.status = 'draft'
+         or (o.status in ('awaiting_payment', 'cancelled') and not exists (
+               select 1 from public.payment_attempts a
+               where a.order_id = o.id and a.outcome = 'succeeded')));
+
+  update public.orders
+  set contact_first_name = null, contact_last_name = null, contact_phone = null,
+      address_country = null, address_postcode = null, address_city = null,
+      address_line = null
+  where user_id = p_user_id;
+
+  return 'ok';
+end;
+$$;
+
+-- ── Grants ──────────────────────────────────────────────────────────────
+
+revoke execute on function public.record_payment_success(uuid, text, text, bigint, text) from public, anon, authenticated;
+revoke execute on function public.record_payment_failure(uuid, text, text, bigint, text) from public, anon, authenticated;
+revoke execute on function public.expire_stale_drafts() from public, anon, authenticated;
+revoke execute on function public.list_photo_deletions(int) from public, anon, authenticated;
+revoke execute on function public.complete_photo_deletions(text[]) from public, anon, authenticated;
+revoke execute on function public.prepare_account_deletion(uuid) from public, anon, authenticated;
+
+grant execute on function public.record_payment_success(uuid, text, text, bigint, text) to service_role;
+grant execute on function public.record_payment_failure(uuid, text, text, bigint, text) to service_role;
+grant execute on function public.expire_stale_drafts() to service_role;
+grant execute on function public.list_photo_deletions(int) to service_role;
+grant execute on function public.complete_photo_deletions(text[]) to service_role;
+grant execute on function public.prepare_account_deletion(uuid) to service_role;

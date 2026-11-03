@@ -3,8 +3,10 @@
 import { useState } from "react";
 
 import { Accordion } from "@/components/ui/accordion";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Field, FieldInput, FieldSelect } from "@/components/ui/field";
+import { PhotoInput } from "@/components/ui/photo-input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Switch } from "@/components/ui/switch";
 
@@ -25,6 +27,8 @@ const FAQ_ITEMS = [
 export function ControlSection() {
   const [filter, setFilter] = useState("all");
   const [insured, setInsured] = useState(true);
+  const [express, setExpress] = useState(false);
+  const [photo, setPhoto] = useState<string | null>(null);
 
   return (
     <div>
@@ -81,6 +85,23 @@ export function ControlSection() {
 
       <div className="mt-10 max-w-2xl">
         <Accordion items={FAQ_ITEMS} />
+      </div>
+
+      <div className="mt-8 flex max-w-xl flex-col gap-6">
+        <Checkbox
+          label="Express handling"
+          description="Never pre-ticked: there is no default-checked prop."
+          checked={express}
+          onCheckedChange={setExpress}
+        />
+        <Checkbox label="Disabled" checked={false} disabled onCheckedChange={() => {}} />
+        <PhotoInput
+          label="Add a photo"
+          removeLabel="Remove photo"
+          previewUrl={photo}
+          onSelect={(file) => setPhoto(URL.createObjectURL(file))}
+          onRemove={() => setPhoto(null)}
+        />
       </div>
     </div>
   );

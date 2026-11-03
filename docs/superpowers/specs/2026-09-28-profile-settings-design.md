@@ -31,6 +31,9 @@ that basis.
 - **An "account deleted" email.** Supabase has no such template, and our own
   transactional mail mechanism arrives with the first order email (M3). Until
   then deletion is confirmed on screen only. Recorded as a known gap.
+  *Update 2026-10-29:* M3 sends no order mail — the submission flow tracks
+  orders on screen under `/account`, and the first order email (payment
+  confirmation) moved to M7, so this gap stays open until then.
 - **Requiring names.** Names are optional here, as is standard for profile
   settings. They are required where they are used: at first submission (M3)
   and as the shipping recipient (M6).

@@ -123,6 +123,14 @@ file_size_limit = "50MiB"
 # allowed_mime_types = ["image/png", "image/jpeg"]
 # objects_path = "./images"
 
+# Local stand-in for the Cloudflare R2 bucket that holds card photos. Private:
+# photos are only ever served through GET /api/photos/[id], which proves
+# ownership under RLS first. Keep the limits in step with lib/photos/limits.ts.
+[storage.buckets.card-photos]
+public = false
+file_size_limit = "2MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp"]
+
 # Allow connections via S3 compatible clients
 [storage.s3_protocol]
 enabled = true
