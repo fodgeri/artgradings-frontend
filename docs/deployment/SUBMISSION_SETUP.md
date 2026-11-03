@@ -17,11 +17,13 @@ and the two keys from `npx supabase status -o env`).
 
 ## Before merging the submission-flow branch
 
-- [ ] **Run `npm run db:push` BEFORE merging, not after.** The branch adds four
-      migrations — `order_catalog`, `orders`, `order_functions` and
-      `order_system_functions` — and the new app code reads all of them; with
-      `AUTO_DEPLOY` the new image goes live on merge. Pushing first is safe:
-      they only add tables and functions, which the old image never touches.
+- [ ] **Run `npm run db:push` BEFORE merging, not after.** The branch adds five
+      migrations — `order_catalog`, `orders`, `order_functions`,
+      `order_system_functions` and `account_deletion_guard` — and the new app
+      code reads the order tables; with `AUTO_DEPLOY` the new image goes live on
+      merge. Pushing first is safe: they only add tables, functions and a
+      trigger on deleting a user, which refuses only while an order is
+      unfinished, and the old image creates no orders.
 - [ ] Set the runtime variables below in Coolify before the new image starts,
       or the first photo upload fails (`R2_*`) and the printables throw
       (`SITE_URL`).

@@ -320,7 +320,10 @@ Rules:
   graded cards stay in the Pop Report; deletion is refused while an order is
   unfinished. `prepare_account_deletion(user_id)` does that order work; it is
   `service_role` only and called by `deleteCurrentUser()` after the password
-  check, never by a session. See
+  check, never by a session. The `on_auth_user_deleting` trigger runs it again
+  inside the deletion's transaction, because another tab can write orders
+  between the two, so an unfinished order also refuses a deletion from the
+  Supabase dashboard. See
   `docs/superpowers/specs/2026-09-28-profile-settings-design.md`.
 - **Nothing may run between `createServerClient` and `getClaims()`** in
   `lib/supabase/proxy.ts`, and the root `proxy.ts` must copy the refreshed

@@ -30,6 +30,10 @@ export type DeleteCurrentUserResult =
  *   2. only on its `'ok'`, the hard delete — `deleteUser(id)` with no second
  *      argument.
  *
+ * Another tab can write orders between the two. A trigger on `auth.users` runs
+ * the preparation again inside the deletion's transaction, so such an order is
+ * dealt with too; if one became unfinished the deletion fails as `deleteFailed`.
+ *
  * Future tables must follow the deletion contract in
  * docs/superpowers/specs/2026-09-28-profile-settings-design.md: nothing new
  * cascades from auth.users.
