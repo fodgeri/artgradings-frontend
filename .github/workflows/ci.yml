@@ -81,6 +81,15 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, linux, x64]
     timeout-minutes: 20
+    # DO NOT REMOVE. The runner shares Docker with local development on
+    # geri-mint, and the CLI names containers and volumes after the project id.
+    # Under config.toml's id, the reset and `stop --no-backup` below would
+    # destroy the developer's local database. The ports differ so both can run
+    # at once. Nothing else is started here, so these are the only ports needed.
+    env:
+      SUPABASE_PROJECT_ID: artgradings-frontend-ci
+      SUPABASE_DB_PORT: "55322"
+      SUPABASE_DB_SHADOW_PORT: "55320"
     steps:
       - uses: actions/checkout@v4
 
