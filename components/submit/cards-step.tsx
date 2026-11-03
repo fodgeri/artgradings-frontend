@@ -11,6 +11,7 @@ import { MAX_CARDS_PER_ORDER, cardProblems } from "@/lib/orders/card-rules";
 import type { OrderErrorKey } from "@/lib/orders/errors";
 import { quoteDraft } from "@/lib/orders/pricing";
 import type { Catalog, Draft, DraftCard, DraftShipping } from "@/lib/orders/types";
+import { randomId } from "@/lib/uuid";
 
 import { CardEditor } from "./card-editor";
 import { RunningTotal } from "./running-total";
@@ -30,7 +31,7 @@ const NO_SHIPPING: DraftShipping = {
 
 function blankCard(position: number): DraftCard {
   return {
-    id: crypto.randomUUID(),
+    id: randomId(),
     position,
     identifiedBy: "customer",
     releaseYear: null,

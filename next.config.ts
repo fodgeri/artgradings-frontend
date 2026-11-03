@@ -8,6 +8,15 @@ const nextConfig: NextConfig = {
   // copies; without it the image build fails at the COPY step.
   output: "standalone",
 
+  // `next dev` refuses its dev-only assets (the client bundles, HMR) to any
+  // origin but the one it started on, so a page opened through another
+  // address renders without JavaScript and every form falls back to a native
+  // GET. Hosts that reach a headless dev box by another name list it here —
+  // comma-separated, local only, and ignored by `next build`.
+  allowedDevOrigins: process.env.DEV_ALLOWED_ORIGINS?.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+
   experimental: {
     // Card photos reach a Server Action as multipart form data. The browser
     // caps a photo at 2 MiB (PHOTO_MAX_BYTES); 3mb leaves room for the
