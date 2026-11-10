@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { fireEvent } from "@testing-library/react";
+import { createEvent, fireEvent } from "@testing-library/react";
 
 import { renderWithIntl, screen } from "@/test/i18n";
 
@@ -88,6 +88,23 @@ describe("PhotoInput", () => {
 
   const drop = (zone: Element, file: File) =>
     fireEvent.drop(zone, { dataTransfer: { files: [file] } });
+
+  test("the drag highlight survives crossing a child and ends on leaving the zone", () => {
+    const { container } = renderWithIntl(<PhotoInput {...base} />);
+    const zone = container.querySelector("label")!;
+    fireEvent.dragOver(zone);
+    expect(zone).toHaveClass("border-gold");
+    // jsdom has no DragEvent, so relatedTarget has to be put on the event by hand.
+    const leaveTo = (relatedTarget: Element | null) => {
+      const event = createEvent.dragLeave(zone);
+      Object.defineProperty(event, "relatedTarget", { value: relatedTarget });
+      fireEvent(zone, event);
+    };
+    leaveTo(zone.querySelector("svg"));
+    expect(zone).toHaveClass("border-gold");
+    leaveTo(document.body);
+    expect(zone).not.toHaveClass("border-gold");
+  });
 
   test("a dropped image is reported like a chosen one", () => {
     const onSelect = vi.fn();

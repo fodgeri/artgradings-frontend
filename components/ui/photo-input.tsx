@@ -73,7 +73,11 @@ export function PhotoInput({
             e.preventDefault();
             setDragging(true);
           }}
-          onDragLeave={() => setDragging(false)}
+          onDragLeave={(e) => {
+            // Crossing onto the icon or a line of text is still inside the zone.
+            if (e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)) return;
+            setDragging(false);
+          }}
           onDrop={(e) => {
             e.preventDefault();
             setDragging(false);
