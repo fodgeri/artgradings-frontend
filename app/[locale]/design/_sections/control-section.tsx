@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { Accordion } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ChoiceCards, ChoiceCheckCard } from "@/components/ui/choice-cards";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Field, FieldInput, FieldSelect } from "@/components/ui/field";
 import { PhotoInput } from "@/components/ui/photo-input";
@@ -29,6 +31,9 @@ export function ControlSection() {
   const [insured, setInsured] = useState(true);
   const [express, setExpress] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [level, setLevel] = useState<string | null>("standard");
+  const [extra, setExtra] = useState(false);
+  const [confirm, setConfirm] = useState(false);
 
   return (
     <div>
@@ -56,6 +61,54 @@ export function ControlSection() {
             { value: "tcg", label: "TCG" },
           ]}
         />
+      </div>
+
+      <div className="mt-8 max-w-xl">
+        <ChoiceCards
+          label="Service level"
+          value={level}
+          onValueChange={setLevel}
+          options={[
+            {
+              value: "standard",
+              title: "Standard",
+              description: "Regular turnaround. Any declared value.",
+              meta: "€10.00",
+              metaDetail: "30 business days",
+            },
+            {
+              value: "express",
+              title: "Express",
+              description: "A faster turnaround.",
+              meta: "€20.00",
+              metaDetail: "10 business days",
+              disabled: true,
+              disabledReason: "Only for cards declared up to €1,000.00.",
+            },
+          ]}
+        />
+        <ChoiceCheckCard
+          className="mt-3"
+          checked={extra}
+          onCheckedChange={setExtra}
+          title="Digital Grade"
+          description="A checkbox in the same card."
+          meta="+€0.50"
+        />
+        <div className="mt-3">
+          <Button variant="ghost" size="sm" onClick={() => setConfirm(true)}>
+            Open confirm dialog
+          </Button>
+          <ConfirmDialog
+            open={confirm}
+            onOpenChange={setConfirm}
+            title="Remove this card?"
+            description="Everything entered for it will be deleted."
+            confirmLabel="Remove card"
+            cancelLabel="Keep card"
+            onConfirm={() => {}}
+          />
+        </div>
       </div>
 
       <div className="mt-8 grid max-w-xl grid-cols-1 gap-x-4 sm:grid-cols-2">

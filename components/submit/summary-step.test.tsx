@@ -118,4 +118,31 @@ describe("SummaryStep", () => {
     expect(mocks.refresh).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: s.submit })).toBeEnabled();
   });
+
+  test("each card shows what identifies it and its declared value", () => {
+    renderWithIntl(<SummaryStep draft={REFERENCE_DRAFT} quote={QUOTE} />);
+    const card = REFERENCE_DRAFT.cards[0];
+    const row = screen.getByText(card.name as string).closest("li");
+    expect(row).toHaveTextContent(card.setName as string);
+    expect(row).toHaveTextContent(card.cardNumber as string);
+    expect(row).toHaveTextContent(String(card.releaseYear));
+    const amount = new Intl.NumberFormat("en", { style: "currency", currency: "EUR" }).format(
+      (card.declaredValueCents as number) / 100,
+    );
+    expect(row).toHaveTextContent(s.cardDeclaredValue.replace("{amount}", amount));
+  });
+
+  test("a card's photo is shown as its thumbnail", () => {
+    const withPhoto = {
+      ...REFERENCE_DRAFT,
+      cards: [{ ...REFERENCE_DRAFT.cards[0], photo: { id: "photo-1" } }, REFERENCE_DRAFT.cards[1]],
+    };
+    const { container } = renderWithIntl(<SummaryStep draft={withPhoto} quote={QUOTE} />);
+    expect(container.querySelector('img[src="/api/photos/photo-1"]')).toBeInTheDocument();
+  });
+
+  test("the cards can be edited from the review", () => {
+    renderWithIntl(<SummaryStep draft={REFERENCE_DRAFT} quote={QUOTE} />);
+    expect(screen.getByRole("link", { name: s.editCards })).toHaveAttribute("href", "/submit");
+  });
 });

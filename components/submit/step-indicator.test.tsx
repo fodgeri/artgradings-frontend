@@ -16,11 +16,11 @@ describe("StepIndicator", () => {
     );
     expect(screen.queryByRole("link", { name: steps.shipping })).toBeNull();
     expect(screen.queryByRole("link", { name: steps.summary })).toBeNull();
-    expect(screen.getByText(steps.shipping)).toHaveAttribute(
+    expect(screen.getByText(steps.shipping).closest("[aria-current]")).toHaveAttribute(
       "aria-current",
       "step",
     );
-    expect(screen.getByText(steps.summary)).not.toHaveAttribute("aria-current");
+    expect(screen.getByText(steps.summary).closest("[aria-current]")).toBeNull();
   });
 
   test("the summary step links to both earlier steps", () => {
@@ -33,6 +33,14 @@ describe("StepIndicator", () => {
       "href",
       "/submit",
     );
+  });
+
+  test("payment is shown as the last step and is never a link or current", () => {
+    renderWithIntl(<StepIndicator current="summary" />);
+    expect(screen.getByText(steps.payment)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: steps.payment })).toBeNull();
+    expect(screen.getByText(steps.payment).closest("[aria-current]")).toBeNull();
+    expect(screen.getAllByRole("listitem")).toHaveLength(4);
   });
 
   test("the first step has no links", () => {

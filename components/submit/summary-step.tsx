@@ -51,6 +51,18 @@ export function SummaryStep({
     return catalog.has(path) ? catalog(path) : key;
   };
 
+  const languageNames = new Intl.DisplayNames([locale], { type: "language" });
+  /** Set, number, year and language: what identifies the card, on one line. */
+  const details = (card: Draft["cards"][number]) =>
+    [
+      card.setName?.trim(),
+      card.cardNumber?.trim(),
+      card.releaseYear === null ? null : String(card.releaseYear),
+      card.language ? (languageNames.of(card.language) ?? card.language) : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+
   const submit = async () => {
     if (submitting || !accepted) return;
     setSubmitting(true);
@@ -85,36 +97,61 @@ export function SummaryStep({
       )}
 
       <Card className="p-5 sm:p-6">
-        <h2 className="mb-3 font-serif text-h3 text-ink">{t("summary.cardsHeading")}</h2>
+        <div className="mb-3 flex items-baseline justify-between gap-4">
+          <h2 className="m-0 font-serif text-h3 text-ink">{t("summary.cardsHeading")}</h2>
+          <Link href="/submit" className="text-sm text-muted underline-offset-4 hover:text-ink hover:underline">
+            {t("summary.editCards")}
+          </Link>
+        </div>
         <ul className="m-0 flex list-none flex-col divide-y divide-hairline p-0">
           {draft.cards.map((card, index) => {
             const priced = quote.cards.find((q) => q.cardId === card.id);
             return (
-              <li key={card.id} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-3 first:pt-0 last:pb-0">
-                <div className="min-w-0">
-                  <p className="m-0 font-mono text-label uppercase text-muted">
-                    {t("summary.cardLabel", { number: index + 1 })}
-                  </p>
-                  <p className="m-0 font-medium text-ink">{card.name?.trim() || t("summary.unknownCard")}</p>
-                  {card.setName && <p className="m-0 text-sm text-muted">{card.setName}</p>}
-                  <p className="m-0 text-sm text-muted">
-                    {t("summary.serviceLine", {
-                      service: label("services", card.service),
-                      tier: label("tiers", card.tierKey),
-                    })}
-                  </p>
-                  {card.addOnKeys.length > 0 && (
-                    <p className="m-0 text-sm text-muted">
-                      {t("summary.addOns", { names: card.addOnKeys.map((k) => label("addOns", k)).join(", ") })}
+              <li key={card.id} className="flex gap-4 py-4 first:pt-0 last:pb-0">
+                {card.photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- same-origin, owner-only photo route
+                  <img
+                    src={`/api/photos/${card.photo.id}`}
+                    alt=""
+                    className="aspect-[5/7] w-14 shrink-0 self-start rounded-[6px] border border-hairline object-cover"
+                  />
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    className="aspect-[5/7] w-14 shrink-0 self-start rounded-[6px] border border-hairline bg-surface-sunken"
+                  />
+                )}
+                <div className="flex min-w-0 flex-1 flex-wrap justify-between gap-x-4 gap-y-1">
+                  <div className="min-w-0">
+                    <p className="m-0 font-mono text-label uppercase text-muted">
+                      {t("summary.cardLabel", { number: index + 1 })}
                     </p>
-                  )}
-                  {priced && priced.identificationCents > 0 && (
-                    <p className="m-0 text-sm text-muted">
-                      {t("summary.identification", { amount: money(priced.identificationCents) })}
+                    <p className="m-0 font-medium text-ink">{card.name?.trim() || t("summary.unknownCard")}</p>
+                    {details(card) && <p className="text-sm m-0 text-muted">{details(card)}</p>}
+                    {card.declaredValueCents !== null && (
+                      <p className="text-sm m-0 text-muted">
+                        {t("summary.cardDeclaredValue", { amount: money(card.declaredValueCents) })}
+                      </p>
+                    )}
+                    <p className="text-sm m-0 text-muted">
+                      {t("summary.serviceLine", {
+                        service: label("services", card.service),
+                        tier: label("tiers", card.tierKey),
+                      })}
                     </p>
-                  )}
+                    {card.addOnKeys.length > 0 && (
+                      <p className="text-sm m-0 text-muted">
+                        {t("summary.addOns", { names: card.addOnKeys.map((k) => label("addOns", k)).join(", ") })}
+                      </p>
+                    )}
+                    {priced && priced.identificationCents > 0 && (
+                      <p className="text-sm m-0 text-muted">
+                        {t("summary.identification", { amount: money(priced.identificationCents) })}
+                      </p>
+                    )}
+                  </div>
+                  <p className="m-0 font-medium text-ink">{priced ? money(priced.priceCents ?? 0) : ""}</p>
                 </div>
-                <p className="m-0 font-medium text-ink">{priced ? money(priced.priceCents ?? 0) : ""}</p>
               </li>
             );
           })}

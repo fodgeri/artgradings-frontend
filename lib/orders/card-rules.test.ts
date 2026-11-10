@@ -8,6 +8,8 @@ import {
   cardProblems,
   CARD_LANGUAGES,
   normalizeCard,
+  lowestTierCents,
+  tierChoices,
 } from "./card-rules";
 import type { DraftCard } from "./types";
 
@@ -146,4 +148,34 @@ describe("normalizeCard", () => {
 
 test("languages are two-letter codes", () => {
   for (const code of CARD_LANGUAGES) expect(code).toMatch(/^[a-z]{2}$/);
+});
+
+describe("lowestTierCents", () => {
+  test("is the cheapest tier of the service", () => {
+    expect(lowestTierCents("grading", CATALOG)).toBe(100);
+    expect(lowestTierCents("dual", CATALOG)).toBe(150);
+  });
+
+  test("is null for a service with no tiers", () => {
+    expect(lowestTierCents("nothing", CATALOG)).toBeNull();
+  });
+});
+
+describe("tierChoices", () => {
+  test("keeps every tier of the service, in order, and flags the ones over their limit", () => {
+    const choices = tierChoices("grading", 200000, CATALOG);
+    expect(choices.map((t) => [t.key, t.overCap])).toEqual([
+      ["grading_standard", false],
+      ["grading_express", true],
+    ]);
+  });
+
+  test("a value at the limit is not over it, and no value rules nothing out", () => {
+    expect(tierChoices("grading", 100000, CATALOG).every((t) => !t.overCap)).toBe(true);
+    expect(tierChoices("grading", null, CATALOG).every((t) => !t.overCap)).toBe(true);
+  });
+
+  test("no service, no tiers", () => {
+    expect(tierChoices(null, 100, CATALOG)).toEqual([]);
+  });
 });

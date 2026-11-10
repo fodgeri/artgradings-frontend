@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { PHOTO_INPUT_MAX_BYTES } from "./limits";
+import { PHOTO_INPUT_MAX_BYTES, PHOTO_MAX_BYTES } from "./limits";
 import { compressPhoto, fitWithin } from "./compress";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -58,5 +58,30 @@ describe("compressPhoto", () => {
     const out = await compressPhoto(new File(["x"], "a.png", { type: "image/png" }));
     expect(out).toBe(jpeg);
     expect(toBlob).toHaveBeenLastCalledWith(expect.any(Function), "image/jpeg", 0.85);
+  });
+
+  const sized = (type: string, size: number) => {
+    const blob = new Blob(["x"], { type });
+    Object.defineProperty(blob, "size", { value: size });
+    return blob;
+  };
+
+  test("steps the quality down until the photo fits under the server's limit", async () => {
+    const big = sized("image/webp", PHOTO_MAX_BYTES + 1);
+    const fits = sized("image/webp", PHOTO_MAX_BYTES);
+    const { toBlob } = stubCanvas([big, fits]);
+    const out = await compressPhoto(new File(["x"], "a.png", { type: "image/png" }));
+    expect(out).toBe(fits);
+    expect(toBlob).toHaveBeenCalledTimes(2);
+    expect(toBlob).toHaveBeenLastCalledWith(expect.any(Function), "image/webp", 0.7);
+  });
+
+  test("gives up with photoTooLarge when even the lowest quality is too big", async () => {
+    const big = () => sized("image/webp", PHOTO_MAX_BYTES + 1);
+    const { toBlob } = stubCanvas([big(), big(), big()]);
+    await expect(compressPhoto(new File(["x"], "a.png", { type: "image/png" }))).rejects.toThrow(
+      "photoTooLarge",
+    );
+    expect(toBlob).toHaveBeenLastCalledWith(expect.any(Function), "image/webp", 0.5);
   });
 });

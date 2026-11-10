@@ -471,7 +471,7 @@ describe("uploadPhoto", () => {
   test("deletes the row when R2 rejects the upload", async () => {
     queue("card_photos.select", { data: [], error: null });
     queue("card_photos.insert", { data: { object_key: "k" }, error: null });
-    mocks.putObject.mockRejectedValue(new Error("R2 down"));
+    mocks.putObject.mockRejectedValue(Object.assign(new Error("bucket my-bucket is gone"), { name: "NoSuchBucket" }));
 
     const result = await actions.uploadPhoto("en", upload(JPEG));
 
@@ -480,7 +480,8 @@ describe("uploadPhoto", () => {
     const [del] = callsTo("card_photos", "delete");
     expect(del.filters).toContainEqual(["eq", "id", (insert.payload as { id: string }).id]);
     expect(mocks.captureException).toHaveBeenCalledWith(expect.any(Error), {
-      tags: { "order.flow": "uploadPhoto", "order.code": "storage" },
+      // The error's name, never its message: that can carry the bucket or key.
+      tags: { "order.flow": "uploadPhoto", "order.code": "storage:NoSuchBucket" },
     });
   });
 

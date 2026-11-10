@@ -95,6 +95,40 @@ export function availableTiers(
   );
 }
 
+/** The cheapest tier of a service, for a "from" price; null when it has none. */
+export function lowestTierCents(service: string, catalog: Catalog): number | null {
+  const amounts = catalog.tiers.filter((t) => t.service === service).map((t) => t.amountCents);
+  return amounts.length === 0 ? null : Math.min(...amounts);
+}
+
+export type TierChoice = Catalog["tiers"][number] & {
+  /** The declared value is above this tier's limit, so it cannot be chosen. */
+  overCap: boolean;
+};
+
+/**
+ * Every tier of the service, in catalog order, each flagged when the declared
+ * value rules it out. The picker shows them all: a tier that vanished would
+ * leave the customer guessing why.
+ */
+export function tierChoices(
+  service: string | null,
+  declaredValueCents: number | null,
+  catalog: Catalog,
+): TierChoice[] {
+  if (service === null) return [];
+  return catalog.tiers
+    .filter((t) => t.service === service)
+    .sort((a, b) => a.position - b.position)
+    .map((t) => ({
+      ...t,
+      overCap:
+        t.maxDeclaredValueCents !== null &&
+        declaredValueCents !== null &&
+        declaredValueCents > t.maxDeclaredValueCents,
+    }));
+}
+
 /**
  * Makes a card internally consistent after any edit. Applied by the editor and
  * by `saveCard`. It never touches identification fields, and it keeps a tier

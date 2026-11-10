@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldInput, FieldSelect } from "@/components/ui/field";
-import { SegmentedControl } from "@/components/ui/segmented-control";
+import { ChoiceCards } from "@/components/ui/choice-cards";
 import { Link, useRouter } from "@/i18n/navigation";
 import { MAX_CARDS_PER_ORDER } from "@/lib/orders/card-rules";
 import { quoteDraft } from "@/lib/orders/pricing";
@@ -23,12 +23,18 @@ import {
 } from "@/lib/orders/shipping-rules";
 import type { Catalog, Draft, DraftShipping, ShippingMethod } from "@/lib/orders/types";
 
-import { RunningTotal } from "./running-total";
+import { FormSection } from "./form-section";
+import { type OrderTodo, RunningTotal } from "./running-total";
 import { useAutosave } from "./use-autosave";
 
 type FieldName = "firstName" | "lastName" | "phone" | "country" | "postcode" | "city" | "addressLine";
 
-const FIELD_OF: Partial<Record<ShippingProblem, FieldName>> = {
+/** Where a problem is fixed: a text field, the method cards or the insurance box. */
+type Target = FieldName | "method" | "insurance";
+
+const FIELD_OF: Record<ShippingProblem, Target> = {
+  methodMissing: "method",
+  insuranceUnconfirmed: "insurance",
   firstNameMissing: "firstName",
   lastNameMissing: "lastName",
   phoneInvalid: "phone",
@@ -107,6 +113,12 @@ export function ShippingStep({
     [draft, catalog, shipping],
   );
 
+  const tCatalog = useTranslations("catalog");
+  // Next with something missing shows every problem, touched or not.
+  const [showAll, setShowAll] = useState(false);
+  const [focusTarget, setFocusTarget] = useState<{ target: Target; tick: number } | null>(null);
+  const form = useRef<HTMLDivElement>(null);
+
   const problems = shippingProblems(shipping, catalog);
   const complete = problems.length === 0;
   const postal = shipping.method === "postal";
@@ -114,16 +126,58 @@ export function ShippingStep({
   const update = (patch: Partial<DraftShipping>) => setShipping((prev) => ({ ...prev, ...patch }));
   const touch = (field: FieldName) =>
     setTouched((prev) => (prev.has(field) ? prev : new Set(prev).add(field)));
+  const problemAt = (target: Target) => problems.find((p) => FIELD_OF[p] === target);
   const errorFor = (field: FieldName) => {
-    if (!touched.has(field)) return null;
-    const problem = problems.find((p) => FIELD_OF[p] === field);
-    return problem && FIELD_OF[problem] ? t(`shipping.problems.${problem}` as "shipping.problems.cityMissing") : null;
+    if (!showAll && !touched.has(field)) return null;
+    const problem = problemAt(field);
+    return problem ? t(`shipping.problems.${problem}`) : null;
   };
+  const methodError = showAll && problemAt("method") ? t("shipping.problems.methodMissing") : null;
+  const insuranceError =
+    showAll && problemAt("insurance") ? t("shipping.problems.insuranceUnconfirmed") : null;
+
+  const goTo = (target: Target) => {
+    setShowAll(true);
+    setFocusTarget((prev) => ({ target, tick: (prev?.tick ?? 0) + 1 }));
+  };
+
+  useEffect(() => {
+    if (!focusTarget) return;
+    const target = form.current?.querySelector<HTMLElement>(`[data-field="${focusTarget.target}"]`);
+    if (!target) return;
+    const control = target.matches("input, select")
+      ? target
+      : (target.querySelector<HTMLElement>('[role="radio"], [role="checkbox"]') ?? target);
+    control.scrollIntoView?.({ block: "center" });
+    control.focus?.();
+  }, [focusTarget]);
+
+  const todos: OrderTodo[] = problems.map((problem) => ({
+    id: problem,
+    label: t(`shipping.problems.${problem}`),
+    onSelect: () => goTo(FIELD_OF[problem]),
+  }));
+
+  const catalogLabel = (key: string) => (tCatalog.has(key as never) ? tCatalog(key as never) : null);
+  const lines = draft.cards.map((card) => ({
+    id: card.id,
+    title:
+      card.name?.trim() ||
+      (card.identifiedBy === "art" ? t("cards.unknownSummary") : t("cards.untitled")),
+    detail:
+      [
+        card.service ? (catalogLabel(`services.${card.service}.label`) ?? card.service) : null,
+        card.tierKey ? (catalogLabel(`tiers.${card.tierKey}.label`) ?? card.tierKey) : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || null,
+  }));
 
   const text = (field: FieldName, max: number, label: string, extra: { type?: string; autoComplete?: string } = {}) => (
     <Field label={label} invalid={!!errorFor(field)}>
       <FieldInput
         {...extra}
+        data-field={field}
         value={shipping[field] ?? ""}
         maxLength={max}
         onChange={(e) => update({ [field]: e.target.value === "" ? null : e.target.value })}
@@ -136,6 +190,10 @@ export function ShippingStep({
 
   const next = async () => {
     setFailed(false);
+    if (!complete) {
+      goTo(FIELD_OF[problems[0]]);
+      return;
+    }
     setLeaving(true);
     let ok = false;
     try {
@@ -161,76 +219,105 @@ export function ShippingStep({
   };
 
   return (
-    <div className="grid gap-8 pb-28 lg:grid-cols-[minmax(0,1fr)_340px] lg:pb-0">
-      <div className="flex flex-col gap-4">
-        <Card className="p-5 sm:p-6">
+    <div className="grid gap-8 pb-36 lg:grid-cols-[minmax(0,1fr)_340px] lg:pb-0">
+      <div className="flex flex-col gap-4" ref={form}>
+        <Card className="overflow-hidden">
           <fieldset disabled={leaving} className="m-0 min-w-0 border-0 p-0">
-          <div className="mb-6 flex flex-col gap-2">
-            <span className="font-mono text-label uppercase text-muted">{t("shipping.method.label")}</span>
-            <SegmentedControl
-              label={t("shipping.method.label")}
-              value={shipping.method ?? ""}
-              onValueChange={(next) => update({ method: next as ShippingMethod })}
-              options={[
-                { value: "postal", label: t("shipping.method.postal") },
-                { value: "in_person", label: t("shipping.method.in_person") },
-              ]}
-            />
-          </div>
-
-          <h2 className="mb-3 font-serif text-h3 text-ink">{t("shipping.contact")}</h2>
-          <div className="grid gap-x-4 sm:grid-cols-2">
-            {text("firstName", NAME_MAX, t("shipping.fields.firstName"), { autoComplete: "given-name" })}
-            {text("lastName", NAME_MAX, t("shipping.fields.lastName"), { autoComplete: "family-name" })}
-            {text("phone", PHONE_MAX, t("shipping.fields.phone"), { type: "tel", autoComplete: "tel" })}
-          </div>
-
-          {postal && (
-            <div className="mt-2">
-              <div className="grid gap-x-4 sm:grid-cols-2">
-                <Field label={t("shipping.fields.country")} invalid={!!errorFor("country")}>
-                  <FieldSelect
-                    value={shipping.country ?? ""}
-                    onChange={(e) => update({ country: e.target.value === "" ? null : e.target.value })}
-                    onBlur={() => touch("country")}
-                    autoComplete="country"
-                    aria-invalid={errorFor("country") ? true : undefined}
-                  >
-                    <option value="">{t("shipping.fields.countryPlaceholder")}</option>
-                    {countries.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </FieldSelect>
-                  <FieldError>{errorFor("country")}</FieldError>
-                </Field>
-                {text("postcode", POSTCODE_MAX, t("shipping.fields.postcode"), { autoComplete: "postal-code" })}
-                {text("city", CITY_MAX, t("shipping.fields.city"), { autoComplete: "address-level2" })}
-                {text("addressLine", ADDRESS_LINE_MAX, t("shipping.fields.addressLine"), {
-                  autoComplete: "address-line1",
-                })}
+            <FormSection number="01" heading={t("shipping.method.label")}>
+              <div data-field="method">
+                <ChoiceCards
+                  label={t("shipping.method.label")}
+                  columns={2}
+                  disabled={leaving}
+                  invalid={!!methodError}
+                  value={shipping.method}
+                  onValueChange={(next) => update({ method: next as ShippingMethod })}
+                  options={[
+                    {
+                      value: "postal",
+                      title: t("shipping.method.postal"),
+                      description: t("shipping.method.postalHint"),
+                    },
+                    {
+                      value: "in_person",
+                      title: t("shipping.method.in_person"),
+                      description: t("shipping.method.inPersonHint"),
+                    },
+                  ]}
+                />
+                {methodError && (
+                  <p role="alert" className="text-sm m-0 mt-2 font-medium text-ink">
+                    {methodError}
+                  </p>
+                )}
               </div>
-              <Checkbox
-                checked={shipping.inboundInsuranceConfirmed}
-                disabled={leaving}
-                onCheckedChange={(inboundInsuranceConfirmed) => update({ inboundInsuranceConfirmed })}
-                label={t("shipping.insurance.label")}
-                description={t("shipping.insurance.description")}
-              />
-            </div>
-          )}
+            </FormSection>
 
-          {shipping.method === "in_person" && (
-            <div className="mt-2">
-              <h3 className="font-serif text-h3 text-ink">{t("shipping.inPerson.heading")}</h3>
-              <p className="text-muted">{t("shipping.inPerson.body")}</p>
-            </div>
-          )}
+            <FormSection number="02" heading={t("shipping.contact")}>
+              <div className="grid gap-x-4 sm:grid-cols-2">
+                {text("firstName", NAME_MAX, t("shipping.fields.firstName"), { autoComplete: "given-name" })}
+                {text("lastName", NAME_MAX, t("shipping.fields.lastName"), { autoComplete: "family-name" })}
+                {text("phone", PHONE_MAX, t("shipping.fields.phone"), { type: "tel", autoComplete: "tel" })}
+              </div>
+            </FormSection>
 
+            {postal && (
+              <FormSection number="03" heading={t("shipping.address")}>
+                <div className="grid gap-x-4 sm:grid-cols-2">
+                  <Field label={t("shipping.fields.country")} invalid={!!errorFor("country")}>
+                    <FieldSelect
+                      data-field="country"
+                      value={shipping.country ?? ""}
+                      onChange={(e) => update({ country: e.target.value === "" ? null : e.target.value })}
+                      onBlur={() => touch("country")}
+                      autoComplete="country"
+                      aria-invalid={errorFor("country") ? true : undefined}
+                    >
+                      <option value="">{t("shipping.fields.countryPlaceholder")}</option>
+                      {countries.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </FieldSelect>
+                    <FieldError>{errorFor("country")}</FieldError>
+                  </Field>
+                  {text("postcode", POSTCODE_MAX, t("shipping.fields.postcode"), { autoComplete: "postal-code" })}
+                  {text("city", CITY_MAX, t("shipping.fields.city"), { autoComplete: "address-level2" })}
+                  {text("addressLine", ADDRESS_LINE_MAX, t("shipping.fields.addressLine"), {
+                    autoComplete: "address-line1",
+                  })}
+                </div>
+              </FormSection>
+            )}
+
+            {postal && (
+              <FormSection number="04" heading={t("shipping.insurance.heading")}>
+                <div data-field="insurance">
+                  <Checkbox
+                    checked={shipping.inboundInsuranceConfirmed}
+                    disabled={leaving}
+                    onCheckedChange={(inboundInsuranceConfirmed) => update({ inboundInsuranceConfirmed })}
+                    label={t("shipping.insurance.label")}
+                    description={t("shipping.insurance.description")}
+                  />
+                  {insuranceError && (
+                    <p role="alert" className="text-sm m-0 mt-2 font-medium text-ink">
+                      {insuranceError}
+                    </p>
+                  )}
+                </div>
+              </FormSection>
+            )}
+
+            {shipping.method === "in_person" && (
+              <FormSection number="03" heading={t("shipping.inPerson.heading")}>
+                <p className="m-0 text-muted">{t("shipping.inPerson.body")}</p>
+              </FormSection>
+            )}
           </fieldset>
 
-          <p role="status" className="mt-3 min-h-5 text-sm text-muted">
+          <p role="status" className="text-sm m-0 min-h-5 px-5 pb-3 text-muted empty:hidden sm:px-6">
             {status === "saving" && t("autosave.saving")}
             {status === "saved" && t("autosave.saved")}
             {status === "error" && (
@@ -257,13 +344,13 @@ export function ShippingStep({
       <RunningTotal
         quote={quote}
         cardCount={draft.cards.length}
+        lines={lines}
+        shipping="fees"
+        todos={todos}
         action={
-          <div className="flex flex-col gap-2">
-            <Button type="button" onClick={next} disabled={!complete || leaving}>
-              {t("shipping.next")}
-            </Button>
-            {!complete && <p className="text-sm text-muted">{t("shipping.incomplete")}</p>}
-          </div>
+          <Button type="button" onClick={next} disabled={leaving} className="w-full">
+            {t("shipping.next")}
+          </Button>
         }
       />
     </div>
