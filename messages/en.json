@@ -269,7 +269,8 @@
       "label": "Order steps",
       "cards": "Cards",
       "shipping": "Shipping",
-      "summary": "Summary"
+      "summary": "Review",
+      "payment": "Payment"
     },
     "total": {
       "title": "Your order",
@@ -277,7 +278,14 @@
       "estimate": "Estimated total",
       "turnaround": "Estimated turnaround",
       "turnaroundDays": "{days, plural, one {# business day} other {# business days}}",
-      "unknown": "—"
+      "unknown": "—",
+      "identification": "ART identification",
+      "shipping": "Shipping",
+      "shippingLater": "Added in the next step",
+      "showDetails": "Show details",
+      "hideDetails": "Hide details",
+      "todo": "{count, plural, one {# thing to finish:} other {# things to finish:}}",
+      "todoMore": "and {count, number} more"
     },
     "autosave": {
       "saving": "Saving…",
@@ -288,10 +296,9 @@
       "title": "Your cards",
       "lead": "Add each card you are sending and choose how we should handle it.",
       "metaDescription": "Tell us which cards you are sending and what to do with them.",
-      "addCard": "Add card",
+      "addCard": "Add another card",
       "cardLimit": "An order can include at most {max, number} cards.",
       "next": "Next: shipping",
-      "incomplete": "Complete every card to continue.",
       "nextFailed": "Your cards could not be saved yet. Please try again.",
       "cardLabel": "Card {number}",
       "untitled": "New card",
@@ -302,8 +309,11 @@
       "identification": {
         "label": "Who identifies this card?",
         "customer": "I'll enter the details",
-        "art": "ART identifies it (+{fee})",
-        "artHint": "Tell us whatever you know. A photo helps ART most."
+        "art": "ART identifies it",
+        "artHint": "Tell us whatever you know. A photo helps ART most.",
+        "customerHint": "You tell us the year, set and number.",
+        "included": "Included",
+        "fee": "+{fee}"
       },
       "fields": {
         "optional": "{label} (optional)",
@@ -320,21 +330,24 @@
         "numbered": "Numbered",
         "numberedHint": "The card is part of a numbered print run.",
         "value": "Declared value ({currency})",
-        "valueHint": "What the card is worth. It sets which options are available."
+        "valueHint": "What the card is worth. It decides which service levels are available."
       },
       "service": {
         "label": "Service",
-        "tier": "Option",
-        "tierPlaceholder": "Choose an option",
-        "tierOption": "{label} · {price} · {turnaround}",
+        "tier": "Service level",
         "addOns": "Extras",
         "addOnPrice": "+{price}",
-        "addOnWithDescription": "{description} (+{price})"
+        "from": "from",
+        "anyValue": "Any declared value.",
+        "upTo": "For cards declared up to {amount}.",
+        "overLimit": "Only for cards declared up to {limit}. This card is declared at {value}.",
+        "signedMore": "Signed cards have further services. Tick Signed above to see them."
       },
       "photo": {
         "label": "Add a photo",
         "remove": "Remove photo",
-        "hint": "Optional. Available once the card has been saved.",
+        "optional": "Photo is optional",
+        "hint": "Drop or browse",
         "uploading": "Uploading…"
       },
       "problems": {
@@ -348,8 +361,21 @@
         "valueMissing": "Enter an amount greater than zero.",
         "serviceMissing": "Choose a service.",
         "serviceNeedsSigned": "This service needs a signed card.",
-        "tierMissing": "Choose an option.",
-        "overCap": "The declared value is above the limit for this option. Choose another."
+        "tierMissing": "Choose a service level.",
+        "overCap": "The declared value is above the limit for this service level. Choose another."
+      },
+      "todo": "Card {number}: {problem}",
+      "removeConfirm": {
+        "title": "Remove {name}?",
+        "body": "Everything entered for this card, including its photo, will be deleted.",
+        "confirm": "Remove card",
+        "cancel": "Keep card"
+      },
+      "sections": {
+        "identification": "Photo and identification",
+        "details": "Card details",
+        "value": "Declared value",
+        "service": "Service"
       }
     },
     "shipping": {
@@ -359,7 +385,9 @@
       "method": {
         "label": "How will you send your cards?",
         "postal": "Send by post",
-        "in_person": "Drop off in person"
+        "in_person": "Drop off in person",
+        "postalHint": "Pack your cards and post them to us.",
+        "inPersonHint": "Bring your cards to us yourself."
       },
       "contact": "Contact details",
       "fields": {
@@ -378,11 +406,11 @@
       },
       "insurance": {
         "label": "I understand how my cards are insured in transit to ART Gradings.",
-        "description": "Placeholder: the insurance wording will be supplied by the client."
+        "description": "Placeholder: the insurance wording will be supplied by the client.",
+        "heading": "Insurance"
       },
       "next": "Next: summary",
       "back": "Back to cards",
-      "incomplete": "Complete your shipping details to continue.",
       "nextFailed": "Your shipping details could not be saved yet. Please try again.",
       "problems": {
         "firstNameMissing": "Enter your first name.",
@@ -391,8 +419,11 @@
         "countryUnsupported": "Choose a country we ship to.",
         "postcodeMissing": "Enter the postcode.",
         "cityMissing": "Enter the city.",
-        "addressMissing": "Enter the address."
-      }
+        "addressMissing": "Enter the address.",
+        "methodMissing": "Choose how you will send your cards.",
+        "insuranceUnconfirmed": "Confirm the insurance note to continue."
+      },
+      "address": "Address"
     },
     "summary": {
       "title": "Review your order",
@@ -420,7 +451,9 @@
       "terms": "I accept the <link>terms of service</link>.",
       "submit": "Continue to payment",
       "submitting": "Submitting…",
-      "back": "Back to shipping"
+      "back": "Back to shipping",
+      "editCards": "Edit cards",
+      "cardDeclaredValue": "Declared value: {amount}"
     }
   },
   "catalog": {

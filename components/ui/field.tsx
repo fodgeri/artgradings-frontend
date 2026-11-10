@@ -51,14 +51,23 @@ export function FieldInput({ className, ...props }: ComponentProps<"input">) {
  */
 export function FieldSelect({ className, children, ...props }: ComponentProps<"select">) {
   return (
-    <BaseField.Control
-      render={<select {...props}>{children}</select>}
-      className={cn(
-        controlClass,
-        "cursor-pointer bg-[url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>\")] bg-[position:right_16px_center] bg-no-repeat pr-10",
-        className,
-      )}
-    />
+    <span className="relative block">
+      <BaseField.Control
+        render={<select {...props}>{children}</select>}
+        className={cn(controlClass, "cursor-pointer pr-10", className)}
+      />
+      {/* A real element, not a background image: it follows the theme through
+          `currentColor`. Tailwind's arbitrary-value syntax cannot carry an
+          inline SVG data URI, which is why the old chevron never rendered. */}
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 12 8"
+        fill="none"
+        className="pointer-events-none absolute right-4 top-1/2 h-2 w-3 -translate-y-1/2 text-muted"
+      >
+        <path d="M1 1l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    </span>
   );
 }
 

@@ -1,5 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
+import { fireEvent } from "@testing-library/react";
+
 import { renderWithIntl, screen } from "@/test/i18n";
 
 import { PhotoInput } from "./photo-input";
@@ -75,5 +77,39 @@ describe("PhotoInput", () => {
       "has-[:focus-visible]:outline-gold",
     );
     expect(label.className).not.toContain("focus-within:focus-ring");
+  });
+
+  test("shows the busy label in place of the label while busy", () => {
+    renderWithIntl(<PhotoInput {...base} busy busyLabel="Uploading" />);
+    expect(screen.getByText("Uploading")).toBeInTheDocument();
+    // The input keeps its name: the visible text is what changes.
+    expect(screen.getByLabelText(base.label)).toBeDisabled();
+  });
+
+  const drop = (zone: Element, file: File) =>
+    fireEvent.drop(zone, { dataTransfer: { files: [file] } });
+
+  test("a dropped image is reported like a chosen one", () => {
+    const onSelect = vi.fn();
+    const { container } = renderWithIntl(<PhotoInput {...base} onSelect={onSelect} />);
+    const file = new File(["x"], "a.webp", { type: "image/webp" });
+    drop(container.querySelector("label")!, file);
+    expect(onSelect).toHaveBeenCalledWith(file);
+  });
+
+  test("a dropped file of another type is rejected, not selected", () => {
+    const onSelect = vi.fn();
+    const onReject = vi.fn();
+    const { container } = renderWithIntl(<PhotoInput {...base} onSelect={onSelect} onReject={onReject} />);
+    drop(container.querySelector("label")!, new File(["x"], "a.pdf", { type: "application/pdf" }));
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onReject).toHaveBeenCalledTimes(1);
+  });
+
+  test("nothing can be dropped while busy", () => {
+    const onSelect = vi.fn();
+    const { container } = renderWithIntl(<PhotoInput {...base} busy onSelect={onSelect} />);
+    drop(container.querySelector("label")!, new File(["x"], "a.webp", { type: "image/webp" }));
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });

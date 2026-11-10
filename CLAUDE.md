@@ -147,7 +147,7 @@ Ported from the Claude Design project *Card grading webapplication design*
 |---|---|
 | `app/globals.css` | The whole token layer — palettes, `@theme inline` mapping, glass utilities |
 | `lib/cn.ts` | `cn()` — clsx + tailwind-merge, taught our custom scales |
-| `components/ui/*` | Primitives (Button, Card, Field, Switch, Accordion, SegmentedControl, Stat, Chip, …) |
+| `components/ui/*` | Primitives (Button, Card, Field, Switch, Accordion, SegmentedControl, ChoiceCards, ConfirmDialog, PhotoInput, Stat, Chip, …) |
 | `components/slab/*` | The branded slab and its grade badge |
 | `components/layout/*` | Header, footer, wordmark, ambient glow, theme script and toggle |
 | `app/[locale]/design/` | Internal gallery of every token and component |
@@ -203,6 +203,12 @@ Rules:
   maintain), rendered through `Field.Control`'s `render` prop so Base UI still
   wires its id and ARIA. Base UI supplies `Checkbox`, and `Field`'s error
   wiring — `FieldError` plus the `invalid` prop in `components/ui/field.tsx`.
+  `FieldSelect`'s chevron is a real SVG element over the control: an inline
+  SVG data URI inside a Tailwind arbitrary background class never compiled,
+  and a comment that merely *spells* such a class is scanned as one and breaks
+  the build. `ChoiceCards` / `ChoiceCheckCard` (Base UI `RadioGroup`,
+  `Checkbox`) are the card-shaped pickers, and `ConfirmDialog` (Base UI
+  `AlertDialog`) the yes/no question.
 
 ## Observability
 
@@ -454,6 +460,25 @@ Rules:
   streams the object from R2. The bucket is private; nothing hands out R2
   URLs. Deleting a photo row queues its object key, and the maintenance job
   drains the queue.
+- **The wizard was redesigned after M3 merged** (spec
+  `docs/superpowers/specs/2026-11-10-submission-wizard-redesign-design.md`,
+  screens only — no migration). Its rules:
+  - **Next is never disabled for missing details.** It reveals every problem
+    on the first unfinished card (or the shipping form), focuses the first
+    field, and the order panel lists what is missing as links. Do not go back
+    to a disabled button with a generic hint.
+  - **A service level the declared value rules out stays visible and disabled
+    with its reason** (`tierChoices`). Never filter it out of the list.
+    Signed-only services are the one deliberate exception: hidden until Signed
+    is ticked, with a line saying so.
+  - **A photo can be added to a never-saved card.** `ensureSaved()` in
+    `cards-step.tsx` saves the card first; the photo zone is never disabled
+    for that reason.
+  - **Fields the wizard can jump to carry `data-field`**, inside a
+    `data-card` section. Renaming one without the map in `card-editor.tsx`
+    (`CARD_FIELD_OF`) breaks the "what's missing" links silently.
+  - **The order panel's card lines exclude the identification fee**, which has
+    its own line; the total is a dash only while nothing costs anything.
 - **Autosave's `flush()` returns a boolean.** The wizard's Next buttons
   navigate only when it returns `true`, so a failed save never leaves the step
   with unsaved edits behind.

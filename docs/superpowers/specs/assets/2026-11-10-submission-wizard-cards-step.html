@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cards step mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Playfair:opsz,wght@5..1200,400;5..1200,500&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --surface: #fafaf8; --sunken: #f2f1ec; --raised: #ffffff;
+    --ink: #1a1d29; --muted: rgb(26 29 41 / 0.6);
+    --hairline: rgb(26 29 41 / 0.1); --hairline-faint: rgb(26 29 41 / 0.06);
+    --gold: #a47e1b; --gold-ink: #805b10; --gold-soft: rgb(164 126 27 / 0.12);
+    --gold-line: rgb(164 126 27 / 0.4); --on-gold: #160f02;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--ink); font: 15px/1.5 "Source Sans 3", system-ui, sans-serif; }
+  .note { background: var(--ink); color: #f2f1ec; padding: 10px 24px; font-size: 14px; }
+  .note b { color: #c9a227; font-weight: 600; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 40px 24px 96px; }
+  .mono { font: 500 11px/1.4 "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  h1 { font: 400 40px/1.15 "Playfair", Georgia, serif; margin: 28px 0 6px; }
+  h2 { font: 500 20px/1.3 "Playfair", Georgia, serif; margin: 0; }
+  .lead { color: var(--muted); margin: 0 0 28px; font-size: 16px; }
+
+  /* stepper */
+  .stepper { display: flex; align-items: center; gap: 12px; max-width: 560px; }
+  .step { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  .dot { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--hairline); display: grid; place-items: center; font: 500 12px "JetBrains Mono", monospace; color: var(--muted); background: var(--raised); }
+  .step.current .dot { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+  .step.current .name { color: var(--ink); font-weight: 600; }
+  .step .name { color: var(--muted); font-size: 14px; }
+  .bar { flex: 1; height: 1px; background: var(--hairline); min-width: 24px; }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 32px; align-items: start; }
+  .panel { background: var(--raised); border: 1px solid var(--hairline); border-radius: 13px; box-shadow: 0 18px 40px -28px rgb(26 29 41 / 0.35); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; border-bottom: 1px solid var(--hairline-faint); }
+  .card-head .title { font: 500 22px/1.2 "Playfair", Georgia, serif; }
+  .icon-btn { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 8px; border-radius: 8px; display: inline-flex; gap: 6px; align-items: center; font: inherit; font-size: 14px; }
+  .icon-btn:hover { color: var(--ink); background: var(--sunken); }
+  .sec { padding: 22px 24px; border-bottom: 1px solid var(--hairline-faint); }
+  .sec:last-child { border-bottom: 0; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+  .sec-head .n { font: 500 11px "JetBrains Mono", monospace; color: var(--gold-ink); letter-spacing: 0.14em; }
+  .sec-head .hint { color: var(--muted); font-size: 14px; margin-left: auto; }
+
+  /* photo */
+  .photo-row { display: grid; grid-template-columns: 148px 1fr; gap: 20px; align-items: stretch; }
+  .drop { border: 1.5px dashed var(--gold-line); border-radius: 13px; background: var(--gold-soft); display: grid; place-items: center; text-align: center; padding: 14px; aspect-ratio: 5 / 7; color: var(--gold-ink); font-size: 14px; font-weight: 500; cursor: pointer; }
+  .drop small { display: block; color: var(--muted); font-weight: 400; margin-top: 4px; }
+  .who { display: grid; gap: 10px; align-content: start; }
+
+  /* fields */
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .f label { display: block; margin-bottom: 6px; }
+  .f .ctl { height: 50px; width: 100%; border: 1px solid var(--hairline); border-radius: 10px; background: var(--raised); padding: 0 14px; font: inherit; color: var(--ink); display: flex; align-items: center; justify-content: space-between; }
+  .f .ctl.ph { color: var(--muted); }
+  .f .ctl svg { color: var(--muted); flex: none; }
+  .f .err .ctl { border-color: var(--ink); }
+  .f .msg { font-size: 14px; font-weight: 500; margin-top: 6px; }
+  .checks { display: flex; gap: 28px; margin-top: 18px; flex-wrap: wrap; }
+  .check { display: flex; gap: 10px; align-items: flex-start; }
+  .box { width: 20px; height: 20px; border: 1px solid var(--hairline); border-radius: 6px; background: var(--raised); flex: none; margin-top: 2px; }
+  .check small { display: block; color: var(--muted); font-size: 14px; }
+
+  /* choice cards */
+  .choices { display: grid; gap: 12px; }
+  .choices.two { grid-template-columns: 1fr 1fr; }
+  .choice { border: 1px solid var(--hairline); border-radius: 13px; background: var(--raised); padding: 16px; display: flex; gap: 14px; align-items: flex-start; cursor: pointer; }
+  .choice:hover { border-color: var(--gold-line); }
+  .choice.on { border-color: var(--gold); background: var(--gold-soft); box-shadow: inset 0 0 0 1px var(--gold); }
+  .choice.off { cursor: not-allowed; }
+  .choice.off .t, .choice.off .price { color: var(--muted); }
+  .radio { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--hairline); background: var(--raised); flex: none; margin-top: 2px; display: grid; place-items: center; }
+  .choice.on .radio { background: var(--gold); border-color: var(--gold); }
+  .choice.on .radio::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--on-gold); }
+  .ico { width: 40px; height: 40px; border-radius: 10px; background: var(--sunken); display: grid; place-items: center; flex: none; color: var(--ink); }
+  .choice.on .ico { background: var(--raised); color: var(--gold-ink); }
+  .choice .body { flex: 1; min-width: 0; }
+  .choice .t { font-weight: 600; font-size: 16px; }
+  .choice .d { color: var(--muted); font-size: 14px; }
+  .choice .why { font-size: 14px; font-weight: 500; margin-top: 4px; }
+  .choice .right { text-align: right; flex: none; }
+  .choice .price { font-weight: 600; font-size: 16px; }
+  .choice .from { color: var(--muted); font-size: 13px; }
+  .sub { margin: 22px 0 10px; }
+
+  /* collapsed card */
+  .row { display: flex; align-items: center; gap: 16px; padding: 16px 24px; margin-top: 16px; }
+  .thumb { width: 44px; height: 62px; border-radius: 6px; background: linear-gradient(160deg, #d9d5c6, #b9b39c); flex: none; border: 1px solid var(--hairline); }
+  .row .meta { color: var(--muted); font-size: 14px; }
+  .badge { font: 500 11px "JetBrains Mono", monospace; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; background: var(--gold-soft); color: var(--gold-ink); }
+  .add { margin-top: 16px; border: 1px dashed var(--hairline); border-radius: 13px; padding: 16px; text-align: center; color: var(--ink); font-weight: 600; background: transparent; width: 100%; font: inherit; cursor: pointer; }
+
+  /* summary */
+  aside.panel { padding: 24px; position: sticky; top: 24px; }
+  .line { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--hairline-faint); }
+  .line .s { color: var(--muted); font-size: 14px; }
+  .total { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 0 4px; }
+  .total .amt { font: 500 32px "Playfair", Georgia, serif; }
+  .btn { width: 100%; height: 52px; border: 0; border-radius: 10px; background: var(--gold); color: var(--on-gold); font: 600 16px "Source Sans 3", sans-serif; margin-top: 18px; cursor: pointer; box-shadow: 0 12px 24px -14px rgb(164 126 27 / 0.9); }
+  .todo { margin-top: 12px; font-size: 14px; color: var(--muted); }
+  .todo a { color: var(--ink); font-weight: 500; }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+    .fields, .choices.two { grid-template-columns: 1fr; }
+    .photo-row { grid-template-columns: 110px 1fr; }
+    aside.panel { position: static; }
+    .step .name { display: none; } .step.current .name { display: inline; }
+  }
+</style>
+</head>
+<body>
+<div class="note"><b>Mockup</b> &nbsp;Step 1 of the wizard, redesigned. Brand colours and fonts unchanged. Prices are the placeholder price list. Nothing here is clickable.</div>
+<div class="wrap">
+
+  <div class="stepper" aria-label="Order steps">
+    <div class="step current"><span class="dot">1</span><span class="name">Cards</span></div>
+    <span class="bar"></span>
+    <div class="step"><span class="dot">2</span><span class="name">Shipping</span></div>
+    <span class="bar"></span>
+    <div class="step"><span class="dot">3</span><span class="name">Review</span></div>
+    <span class="bar"></span>
+    <div class="step"><span class="dot">4</span><span class="name">Payment</span></div>
+  </div>
+
+  <h1>Your cards</h1>
+  <p class="lead">Add each card you are sending and choose how we should handle it.</p>
+
+  <div class="grid">
+    <div>
+      <section class="panel">
+        <div class="card-head">
+          <div>
+            <div class="mono">Card 1</div>
+            <div class="title">Example Card</div>
+          </div>
+          <button class="icon-btn" title="Remove card">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3"/></svg>
+            Remove
+          </button>
+        </div>
+
+        <div class="sec">
+          <div class="sec-head"><span class="n">01</span><h2>Photo and identification</h2><span class="hint">Photo is optional</span></div>
+          <div class="photo-row">
+            <div class="drop">
+              <div>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 16V5M8 9l4-4 4 4M5 19h14"/></svg>
+                <div>Add a photo</div>
+                <small>Drop or browse</small>
+              </div>
+            </div>
+            <div class="who">
+              <div class="mono">Who identifies this card?</div>
+              <div class="choices">
+                <div class="choice on"><span class="radio"></span><div class="body"><div class="t">I'll enter the details</div><div class="d">You tell us the year, set and number.</div></div><div class="right"><div class="price">Included</div></div></div>
+                <div class="choice"><span class="radio"></span><div class="body"><div class="t">ART identifies it</div><div class="d">Tell us what you know. A photo helps most.</div></div><div class="right"><div class="price">+€2.00</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec">
+          <div class="sec-head"><span class="n">02</span><h2>Card details</h2></div>
+          <div class="fields">
+            <div class="f"><label class="mono">Card name</label><div class="ctl">Example Card</div></div>
+            <div class="f"><label class="mono">Brand or game</label><div class="ctl">Example Brand</div></div>
+            <div class="f"><label class="mono">Set name</label><div class="ctl">Example Set</div></div>
+            <div class="f"><label class="mono">Card number</label><div class="ctl">1/100</div></div>
+            <div class="f"><label class="mono">Release year</label><div class="ctl">2000</div></div>
+            <div class="f"><label class="mono">Language</label><div class="ctl">English <svg width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 1l5 5 5-5"/></svg></div></div>
+            <div class="f"><label class="mono">Surface or finish (optional)</label><div class="ctl ph">e.g. holo</div></div>
+          </div>
+          <div class="checks">
+            <div class="check"><span class="box"></span><div>Signed<small>The card carries an autograph.</small></div></div>
+            <div class="check"><span class="box"></span><div>Numbered<small>Part of a numbered print run.</small></div></div>
+          </div>
+        </div>
+
+        <div class="sec">
+          <div class="sec-head"><span class="n">03</span><h2>Declared value</h2></div>
+          <div class="fields">
+            <div class="f"><label class="mono">Declared value (EUR)</label><div class="ctl">2,500.00</div><div style="color:var(--muted);font-size:14px;margin-top:6px">What the card is worth. It decides which service levels are available.</div></div>
+          </div>
+        </div>
+
+        <div class="sec">
+          <div class="sec-head"><span class="n">04</span><h2>Service</h2></div>
+          <div class="choices two">
+            <div class="choice on">
+              <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5M8 10.5l2 2 3-3.5"/></svg></span>
+              <div class="body"><div class="t">Grading</div><div class="d">Condition grading by our experts.</div></div>
+              <div class="right"><div class="from">from</div><div class="price">€1.00</div></div>
+            </div>
+            <div class="choice">
+              <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.2 1.6 2.7-.1.8 2.6 2.2 1.6-.9 2.5.9 2.6-2.2 1.6-.8 2.6-2.7-.1L12 20l-2.2-1.6-2.7.1-.8-2.6-2.2-1.6.9-2.6-.9-2.5 2.2-1.6.8-2.6 2.7.1z"/><path d="M9 11.8l2 2 4-4.3"/></svg></span>
+              <div class="body"><div class="t">Authentication</div><div class="d">Confirms the card is genuine.</div></div>
+              <div class="right"><div class="from">from</div><div class="price">€1.00</div></div>
+            </div>
+          </div>
+
+          <div class="mono sub">Service level</div>
+          <div class="choices">
+            <div class="choice on"><span class="radio"></span><div class="body"><div class="t">Standard</div><div class="d">Our regular turnaround. Any declared value.</div></div><div class="right"><div class="price">€1.00</div><div class="from">30 business days</div></div></div>
+            <div class="choice off"><span class="radio" style="opacity:.5"></span><div class="body"><div class="t">Express</div><div class="d">A faster turnaround.</div><div class="why">Only for cards declared up to €1,000.00. This card is declared at €2,500.00.</div></div><div class="right" style="opacity:.5"><div class="price">€2.00</div><div class="from">10 business days</div></div></div>
+          </div>
+
+          <div class="mono sub">Extras</div>
+          <div class="choices">
+            <div class="choice"><span class="box" style="margin-top:2px"></span><div class="body"><div class="t">Digital Grade</div><div class="d">A digital grade report for your card.</div></div><div class="right"><div class="price">+€0.50</div></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel row">
+        <span class="thumb"></span>
+        <div style="flex:1;min-width:0">
+          <div class="mono">Card 2</div>
+          <div style="font-weight:600;font-size:16px">Second Example Card</div>
+          <div class="meta">Example Set · 7/100 · Authentication · Standard</div>
+        </div>
+        <span class="badge">Needs details</span>
+        <div style="font-weight:600">€1.00</div>
+        <button class="icon-btn">Edit</button>
+      </section>
+
+      <button class="add">+ Add another card</button>
+    </div>
+
+    <aside class="panel">
+      <div class="mono">Your order</div>
+      <div class="line" style="margin-top:8px"><div><div>Example Card</div><div class="s">Grading · Standard</div></div><div>€1.00</div></div>
+      <div class="line"><div><div>Second Example Card</div><div class="s">Authentication · Standard</div></div><div>€1.00</div></div>
+      <div class="line"><div class="s">Shipping</div><div class="s">Added in the next step</div></div>
+      <div class="total"><div><div class="mono">Estimated total</div></div><div class="amt">€2.00</div></div>
+      <div class="s" style="color:var(--muted);font-size:14px">Estimated turnaround: 30 business days</div>
+      <button class="btn">Next: shipping</button>
+      <div class="todo">1 thing to finish: <a href="#">Card 2 needs a card number</a></div>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

@@ -61,7 +61,7 @@ describe("ShippingStep", () => {
     expect(screen.getByLabelText(f.postcode)).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: s.insurance.label })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: s.method.in_person }));
+    await user.click(screen.getByRole("radio", { name: s.method.in_person }));
 
     expect(screen.queryByLabelText(f.postcode)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(f.addressLine)).not.toBeInTheDocument();
@@ -72,7 +72,7 @@ describe("ShippingStep", () => {
     expect(screen.getByRole("button", { name: s.next })).toBeEnabled();
   });
 
-  test("postal requires the insurance acknowledgement before Next", async () => {
+  test("postal requires the insurance acknowledgement: Next says so and does not leave", async () => {
     const { user } = renderWithIntl(
       <ShippingStep
         draft={draftWith({ ...complete, inboundInsuranceConfirmed: false })}
@@ -80,9 +80,27 @@ describe("ShippingStep", () => {
         prefill={{}}
       />,
     );
-    expect(screen.getByRole("button", { name: s.next })).toBeDisabled();
+    const next = screen.getByRole("button", { name: s.next });
+    expect(next).toBeEnabled();
+    await user.click(next);
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(s.problems.insuranceUnconfirmed);
+    await vi.waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: s.insurance.label })).toHaveFocus(),
+    );
+
     await user.click(screen.getByRole("checkbox", { name: s.insurance.label }));
-    expect(screen.getByRole("button", { name: s.next })).toBeEnabled();
+    await user.click(next);
+    await vi.waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/submit/summary"));
+  });
+
+  test("Next on an empty form shows every problem and focuses the delivery method", async () => {
+    const { user } = renderWithIntl(<ShippingStep draft={draftWith(EMPTY)} catalog={CATALOG} prefill={{}} />);
+    await user.click(screen.getByRole("button", { name: s.next }));
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(s.problems.methodMissing);
+    expect(screen.getByLabelText(f.firstName)).toHaveAccessibleDescription(s.problems.firstNameMissing);
+    await vi.waitFor(() => expect(screen.getByRole("radio", { name: s.method.postal })).toHaveFocus());
   });
 
   test("only zoned countries are offered, named in the active locale", () => {

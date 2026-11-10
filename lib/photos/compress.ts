@@ -1,4 +1,7 @@
-import { PHOTO_INPUT_MAX_BYTES, PHOTO_MAX_EDGE } from "./limits";
+import { PHOTO_INPUT_MAX_BYTES, PHOTO_MAX_BYTES, PHOTO_MAX_EDGE } from "./limits";
+
+/** Tried in order until the encoded photo fits under `PHOTO_MAX_BYTES`. */
+const QUALITIES = [0.85, 0.7, 0.5] as const;
 
 /** Scales to fit the longest edge within `maxEdge`, keeping aspect. Never enlarges. */
 export function fitWithin(
@@ -15,14 +18,16 @@ export function fitWithin(
   };
 }
 
-function encode(canvas: HTMLCanvasElement, type: string): Promise<Blob | null> {
-  return new Promise((resolve) => canvas.toBlob(resolve, type, 0.85));
+function encode(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob | null> {
+  return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
 }
 
 /**
  * Shrinks a photo in the browser: longest edge cut to `PHOTO_MAX_EDGE`,
- * re-encoded as WebP at 0.85, JPEG where WebP encoding is unsupported.
- * Throws `"photoTooLarge"` before any decoding when the input is over the cap.
+ * re-encoded as WebP, JPEG where WebP encoding is unsupported. Quality starts
+ * at 0.85 and steps down until the result fits under `PHOTO_MAX_BYTES`, the
+ * limit the server enforces. Throws `"photoTooLarge"` before any decoding when
+ * the input is over the cap, and after the last step when nothing fits.
  */
 export async function compressPhoto(file: File): Promise<Blob> {
   if (file.size > PHOTO_INPUT_MAX_BYTES) throw new Error("photoTooLarge");
@@ -37,11 +42,19 @@ export async function compressPhoto(file: File): Promise<Blob> {
     if (!ctx) throw new Error("photoUnsupported");
     ctx.drawImage(bitmap, 0, 0, width, height);
 
-    const webp = await encode(canvas, "image/webp");
-    if (webp && webp.type === "image/webp") return webp;
-    const jpeg = await encode(canvas, "image/jpeg");
-    if (!jpeg) throw new Error("photoUnsupported");
-    return jpeg;
+    // A browser without WebP encoding hands back another type (PNG) instead.
+    const first = await encode(canvas, "image/webp", QUALITIES[0]);
+    const type = first && first.type === "image/webp" ? "image/webp" : "image/jpeg";
+
+    for (const quality of QUALITIES) {
+      const blob =
+        type === "image/webp" && quality === QUALITIES[0]
+          ? first
+          : await encode(canvas, type, quality);
+      if (!blob) throw new Error("photoUnsupported");
+      if (blob.size <= PHOTO_MAX_BYTES) return blob;
+    }
+    throw new Error("photoTooLarge");
   } finally {
     bitmap.close();
   }
