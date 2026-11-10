@@ -3,9 +3,15 @@ import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
-/** Shared control chrome for text inputs and selects. */
+/**
+ * Shared control chrome for text inputs and selects.
+ *
+ * 16px on touch devices, the design's 15px with a mouse: iOS Safari zooms the
+ * page in when a control under 16px takes focus and never zooms back out,
+ * which pushes fixed bars (the wizard's Next button) off the screen edge.
+ */
 const controlClass =
-  "focus-ring h-[50px] w-full appearance-none rounded-control border border-hairline bg-surface-raised px-3.5 font-sans text-[15px] text-ink transition-colors duration-150 placeholder:text-muted focus-visible:border-gold";
+  "focus-ring h-[50px] w-full appearance-none rounded-control border border-hairline bg-surface-raised px-3.5 font-sans text-[16px] pointer-fine:text-[15px] text-ink transition-colors duration-150 placeholder:text-muted focus-visible:border-gold";
 
 /**
  * A labelled form control.
