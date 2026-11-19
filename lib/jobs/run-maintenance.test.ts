@@ -12,15 +12,10 @@ vi.mock("@/lib/orders/errors", () => ({ reportOrderError }));
 
 import { runMaintenance } from "./run-maintenance";
 
-/** Queues of list_photo_deletions answers; the last repeats as empty. */
-function setup(expired: number | Error, batches: string[][]) {
+/** Queue of list_photo_deletions answers; once drained it answers empty. */
+function setup(batches: string[][]) {
   const queue = [...batches];
   rpc.mockImplementation(async (name: string) => {
-    if (name === "expire_stale_drafts") {
-      return expired instanceof Error
-        ? { data: null, error: { code: "XX000" } }
-        : { data: expired, error: null };
-    }
     if (name === "list_photo_deletions") return { data: queue.shift() ?? [], error: null };
     return { data: null, error: null };
   });
@@ -36,10 +31,10 @@ beforeEach(() => {
 
 describe("runMaintenance", () => {
   test("drains until the queue is empty", async () => {
-    setup(3, [["a", "b"], ["c"]]);
+    setup([["a", "b"], ["c"]]);
     deleteObjects.mockResolvedValue(undefined);
 
-    await expect(runMaintenance()).resolves.toEqual({ expiredDrafts: 3, deletedPhotos: 3 });
+    await expect(runMaintenance()).resolves.toEqual({ deletedPhotos: 3 });
     expect(deleteObjects).toHaveBeenNthCalledWith(1, ["a", "b"]);
     expect(deleteObjects).toHaveBeenNthCalledWith(2, ["c"]);
     expect(calls("complete_photo_deletions").map(([, a]) => a)).toEqual([
@@ -50,17 +45,17 @@ describe("runMaintenance", () => {
   });
 
   test("an R2 failure leaves the batch queued for the next run", async () => {
-    setup(0, [["a"], ["b"]]);
+    setup([["a"], ["b"]]);
     deleteObjects.mockRejectedValue(new Error("R2 down"));
 
-    await expect(runMaintenance()).resolves.toEqual({ expiredDrafts: 0, deletedPhotos: 0 });
+    await expect(runMaintenance()).resolves.toEqual({ deletedPhotos: 0 });
     expect(calls("complete_photo_deletions")).toHaveLength(0);
     expect(calls("list_photo_deletions")).toHaveLength(1);
     expect(reportOrderError).toHaveBeenCalledWith("maintenance", "r2_delete");
   });
 
   test("stops after 50 batches", async () => {
-    setup(0, Array.from({ length: 80 }, (_, i) => [`k${i}`]));
+    setup(Array.from({ length: 80 }, (_, i) => [`k${i}`]));
     deleteObjects.mockResolvedValue(undefined);
 
     const result = await runMaintenance();
@@ -68,11 +63,9 @@ describe("runMaintenance", () => {
     expect(calls("list_photo_deletions")).toHaveLength(50);
   });
 
-  test("a failing expiry is reported and the photo drain still runs", async () => {
-    setup(new Error("x"), [["a"]]);
-    deleteObjects.mockResolvedValue(undefined);
-
-    await expect(runMaintenance()).resolves.toEqual({ expiredDrafts: 0, deletedPhotos: 1 });
-    expect(reportOrderError).toHaveBeenCalledWith("maintenance", "XX000");
+  test("no longer expires drafts (pure Cron now)", async () => {
+    setup([]);
+    await runMaintenance();
+    expect(calls("expire_stale_drafts")).toHaveLength(0);
   });
 });

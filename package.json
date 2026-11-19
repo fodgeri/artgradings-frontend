@@ -21,7 +21,8 @@
     "db:test": "supabase test db",
     "db:push": "supabase db push",
     "db:types": "supabase gen types typescript --local > lib/supabase/database.types.ts",
-    "auth:templates": "node scripts/push-auth-templates.mjs"
+    "auth:templates": "node scripts/push-auth-templates.mjs",
+    "job": "node scripts/run-job.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1159.0",

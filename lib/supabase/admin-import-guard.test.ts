@@ -81,6 +81,7 @@ const ADMIN_ALLOWLIST: string[] = [
   join("lib", "auth", "delete-current-user.ts"),
   join("lib", "payments", "record-payment.ts"),
   join("lib", "jobs", "run-maintenance.ts"),
+  join("lib", "jobs", "run-job.ts"),
 ];
 
 describe("service_role client containment", () => {
@@ -96,6 +97,7 @@ describe("service_role client containment", () => {
       join("lib", "auth", "delete-current-user.ts"),
       join("lib", "payments", "record-payment.ts"),
       join("lib", "jobs", "run-maintenance.ts"),
+  join("lib", "jobs", "run-job.ts"),
     ]);
   });
 
