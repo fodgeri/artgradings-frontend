@@ -787,6 +787,28 @@
       "language": "Language: {language}",
       "noSeries": "Other sets",
       "noYear": "Year unknown"
+    },
+    "set": {
+      "title": "{set} Pop Report",
+      "metaDescription": "Graded copy counts for every card in {set}.",
+      "back": "{category} Pop Report",
+      "details": "{year} · {language}",
+      "code": "Set code {code}",
+      "tableCaption": "Graded copies per card in {set}",
+      "empty": "No graded cards in this set yet."
+    },
+    "card": {
+      "title": "{name} Pop Report",
+      "metaDescription": "How many copies of {name} from {set} have reached each grade.",
+      "tableCaption": "Graded copies of {name}",
+      "number": "Number",
+      "variant": "Variant",
+      "rarity": "Rarity",
+      "set": "Set",
+      "category": "Category",
+      "year": "Release year",
+      "language": "Language",
+      "highest": "Highest grade"
     }
   }
 }
