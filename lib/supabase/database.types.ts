@@ -181,6 +181,184 @@ export type Database = {
           },
         ]
       }
+      card_set_external_refs: {
+        Row: {
+          created_at: string
+          external_id: string
+          language: string | null
+          set_id: string
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          external_id: string
+          language?: string | null
+          set_id: string
+          source: string
+        }
+        Update: {
+          created_at?: string
+          external_id?: string
+          language?: string | null
+          set_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_set_external_refs_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "card_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_sets: {
+        Row: {
+          category: string
+          code: string | null
+          created_at: string
+          id: string
+          language: string
+          name: string
+          release_year: number | null
+          series: string | null
+          total_cards: number | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          code?: string | null
+          created_at?: string
+          id?: string
+          language?: string
+          name: string
+          release_year?: number | null
+          series?: string | null
+          total_cards?: number | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          code?: string | null
+          created_at?: string
+          id?: string
+          language?: string
+          name?: string
+          release_year?: number | null
+          series?: string | null
+          total_cards?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_sets_category_fkey"
+            columns: ["category"]
+            isOneToOne: false
+            referencedRelation: "catalog_categories"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      catalog_cards: {
+        Row: {
+          card_number: string
+          created_at: string
+          external_id: string | null
+          external_source: string | null
+          id: string
+          merged_into: string | null
+          name: string
+          number_key: string | null
+          rarity: string | null
+          set_id: string
+          updated_at: string
+          variant: string | null
+        }
+        Insert: {
+          card_number: string
+          created_at?: string
+          external_id?: string | null
+          external_source?: string | null
+          id?: string
+          merged_into?: string | null
+          name: string
+          number_key?: string | null
+          rarity?: string | null
+          set_id: string
+          updated_at?: string
+          variant?: string | null
+        }
+        Update: {
+          card_number?: string
+          created_at?: string
+          external_id?: string | null
+          external_source?: string | null
+          id?: string
+          merged_into?: string | null
+          name?: string
+          number_key?: string | null
+          rarity?: string | null
+          set_id?: string
+          updated_at?: string
+          variant?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_cards_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "catalog_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_cards_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "card_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_categories: {
+        Row: {
+          active: boolean
+          key: string
+          kind: string
+          position: number
+        }
+        Insert: {
+          active?: boolean
+          key: string
+          kind: string
+          position: number
+        }
+        Update: {
+          active?: boolean
+          key?: string
+          kind?: string
+          position?: number
+        }
+        Relationships: []
+      }
+      grades: {
+        Row: {
+          key: string
+          position: number
+          value: number
+        }
+        Insert: {
+          key: string
+          position: number
+          value: number
+        }
+        Update: {
+          key?: string
+          position?: number
+          value?: number
+        }
+        Relationships: []
+      }
       order_card_add_ons: {
         Row: {
           add_on_key: string
@@ -806,6 +984,7 @@ export type Database = {
     }
     Functions: {
       cancel_order: { Args: { p_reference: string }; Returns: undefined }
+      card_number_key: { Args: { p: string }; Returns: string }
       complete_photo_deletions: {
         Args: { p_keys: string[] }
         Returns: undefined

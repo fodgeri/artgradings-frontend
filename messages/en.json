@@ -505,6 +505,102 @@
     },
     "zones": {
       "placeholder_eu": "European Union (placeholder)"
+    },
+    "kinds": {
+      "tcg": {
+        "label": "Trading card games"
+      },
+      "sports": {
+        "label": "Sports cards"
+      }
+    },
+    "categories": {
+      "pokemon": {
+        "label": "Pokémon"
+      },
+      "mtg": {
+        "label": "Magic: The Gathering"
+      },
+      "yugioh": {
+        "label": "Yu-Gi-Oh!"
+      },
+      "one_piece": {
+        "label": "One Piece"
+      },
+      "basketball": {
+        "label": "Basketball"
+      },
+      "soccer": {
+        "label": "Soccer"
+      },
+      "baseball": {
+        "label": "Baseball"
+      },
+      "american_football": {
+        "label": "American football"
+      },
+      "hockey": {
+        "label": "Hockey"
+      }
+    },
+    "grades": {
+      "g1": {
+        "label": "Grade 1"
+      },
+      "g1_5": {
+        "label": "Grade 1.5"
+      },
+      "g2": {
+        "label": "Grade 2"
+      },
+      "g2_5": {
+        "label": "Grade 2.5"
+      },
+      "g3": {
+        "label": "Grade 3"
+      },
+      "g3_5": {
+        "label": "Grade 3.5"
+      },
+      "g4": {
+        "label": "Grade 4"
+      },
+      "g4_5": {
+        "label": "Grade 4.5"
+      },
+      "g5": {
+        "label": "Grade 5"
+      },
+      "g5_5": {
+        "label": "Grade 5.5"
+      },
+      "g6": {
+        "label": "Grade 6"
+      },
+      "g6_5": {
+        "label": "Grade 6.5"
+      },
+      "g7": {
+        "label": "Grade 7"
+      },
+      "g7_5": {
+        "label": "Grade 7.5"
+      },
+      "g8": {
+        "label": "Grade 8"
+      },
+      "g8_5": {
+        "label": "Grade 8.5"
+      },
+      "g9": {
+        "label": "Mint"
+      },
+      "g9_5": {
+        "label": "Mint+"
+      },
+      "g10": {
+        "label": "Gem Mint"
+      }
     }
   },
   "orders": {
