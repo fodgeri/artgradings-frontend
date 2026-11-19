@@ -1,3 +1,4 @@
+import { createTranslator } from "next-intl";
 import { describe, expect, test } from "vitest";
 
 import type { PopSearchResult } from "@/lib/search/query";
@@ -23,6 +24,7 @@ const ok = (hits: PopCardDocument[], page = 1, pages = 1): PopSearchResult => ({
   status: "ok", hits, total: hits.length, page, pages,
 });
 const search = { q: "char", page: 1 };
+const t = createTranslator({ locale: "en", messages, namespace: "pop.search.results" });
 
 describe("SearchResults", () => {
   test("links each hit to its card page and shows its details", () => {
@@ -36,7 +38,8 @@ describe("SearchResults", () => {
 
   test("shows the highest grade present, not the first", () => {
     renderWithIntl(<SearchResults result={ok([hit])} search={search} grades={grades} />);
-    expect(screen.getByText(/Highest/).textContent).toContain(messages.catalog.grades.g9.label);
+    const expected = t("highest", { grade: `9 ${messages.catalog.grades.g9.label}`, count: "2" });
+    expect(screen.getByText(expected)).toBeTruthy();
   });
 
   test("a card with only authentic copies says it has no grades", () => {

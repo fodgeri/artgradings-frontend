@@ -1,3 +1,4 @@
+import { createTranslator } from "next-intl";
 import { describe, expect, test } from "vitest";
 
 import type { PopSetSummary } from "@/lib/pop/types";
@@ -49,7 +50,14 @@ describe("CategorySets", () => {
       />,
     );
     expect(screen.getByRole("link", { name: /Alpha/ }).getAttribute("href")).toBe("/pop-report/sets/x1");
-    expect(screen.getByRole("link", { name: /Beta/ }).textContent).toContain("ja");
-    expect(screen.getByRole("link", { name: /Alpha/ }).textContent).not.toContain("Language");
+    const t = createTranslator({ locale: "en", messages, namespace: "pop.category" });
+    const marker = t("language", { language: "ja" });
+    expect(screen.getByRole("link", { name: /Beta/ }).textContent).toContain(marker);
+    expect(screen.getByRole("link", { name: /Alpha/ }).textContent).not.toContain(t("language", { language: "en" }));
+  });
+
+  test("a multi-word era names its section", () => {
+    renderWithIntl(<CategorySets kind="tcg" sets={[set({ series: "Sword & Shield" })]} />);
+    expect(screen.getByRole("region", { name: "Sword & Shield" })).toBeTruthy();
   });
 });

@@ -1,4 +1,5 @@
 import { useTranslations } from "next-intl";
+import { useId } from "react";
 
 import { Link } from "@/i18n/navigation";
 import type { CategoryKind } from "@/lib/pop/keys";
@@ -30,12 +31,13 @@ function groupSets(kind: CategoryKind, sets: PopSetSummary[]): Group[] {
 
 export function CategorySets({ kind, sets }: { kind: CategoryKind; sets: PopSetSummary[] }) {
   const t = useTranslations("pop.category");
+  const prefix = useId();
 
   return (
     <div className="flex flex-col gap-10">
-      {groupSets(kind, sets).map((group) => (
-        <section key={group.key} aria-labelledby={`group-${group.key || "none"}`}>
-          <h2 id={`group-${group.key || "none"}`} className="font-serif text-h3 text-ink">
+      {groupSets(kind, sets).map((group, i) => (
+        <section key={group.key} aria-labelledby={`${prefix}-${i}`}>
+          <h2 id={`${prefix}-${i}`} className="font-serif text-h3 text-ink">
             {group.title ?? (kind === "tcg" ? t("noSeries") : t("noYear"))}
           </h2>
           <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -48,7 +50,7 @@ export function CategorySets({ kind, sets }: { kind: CategoryKind; sets: PopSetS
                   <span className="text-ink">
                     {s.name}
                     {s.language && s.language !== "en" && (
-                      <span className="ml-2 font-mono text-label uppercase text-muted">{s.language}</span>
+                      <span className="ml-2 font-mono text-label uppercase text-muted">{t("language", { language: s.language })}</span>
                     )}
                   </span>
                   <span className="text-sm text-muted">

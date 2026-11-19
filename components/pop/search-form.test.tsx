@@ -15,6 +15,13 @@ describe("SearchForm", () => {
     expect(form.hasAttribute("action")).toBe(false);
   });
 
+  test("every control carries the name the GET query needs", () => {
+    renderWithIntl(<SearchForm search={{ q: "", page: 1 }} />);
+    const names = (label: string) => screen.getByLabelText(label).getAttribute("name");
+    const f = messages.pop.search.form;
+    expect([f.q, f.kind, f.category, f.year, f.grade].map(names)).toEqual(["q", "kind", "category", "year", "grade"]);
+  });
+
   test("is prefilled from the parsed search", () => {
     const search: PopSearch = { q: "pikachu", kind: "tcg", category: "pokemon", year: 1999, grade: "g10", page: 3 };
     renderWithIntl(<SearchForm search={search} />);

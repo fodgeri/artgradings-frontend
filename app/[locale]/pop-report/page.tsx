@@ -7,12 +7,19 @@ import { SearchResults } from "@/components/pop/search-results";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { loadCategories, loadGrades } from "@/lib/pop/load";
-import { isEmptySearch, parsePopSearch } from "@/lib/pop/search-params";
+import { isEmptySearch, parsePopSearch, type PopSearch } from "@/lib/pop/search-params";
 import { searchPopCards } from "@/lib/search/query";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("pop.search");
   return { title: t("title"), description: t("metaDescription") };
+}
+
+/** Grades are needed only to name a hit's best grade, so the degraded states never wait on them. */
+async function Results({ search }: { search: PopSearch }) {
+  const result = await searchPopCards(search);
+  const grades = result.status === "ok" && result.hits.length > 0 ? await loadGrades() : [];
+  return <SearchResults result={result} search={search} grades={grades} />;
 }
 
 /** Always fresh: the search is per-request and counts change with every published grade. */
@@ -36,11 +43,7 @@ export default async function PopReportPage({ searchParams }: PageProps<"/[local
               <CategoryTiles categories={await loadCategories()} />
             </div>
           ) : (
-            <SearchResults
-              result={await searchPopCards(search)}
-              search={search}
-              grades={await loadGrades()}
-            />
+            <Results search={search} />
           )}
         </div>
       </Container>

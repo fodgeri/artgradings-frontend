@@ -1,3 +1,4 @@
+import { createTranslator } from "next-intl";
 import { describe, expect, test } from "vitest";
 
 import type { PopCategory } from "@/lib/pop/types";
@@ -25,8 +26,8 @@ describe("CategoryTiles", () => {
     renderWithIntl(<CategoryTiles categories={categories} />);
     const link = screen.getByRole("link", { name: new RegExp(messages.catalog.categories.pokemon.label) });
     expect(link.getAttribute("href")).toBe("/pop-report/pokemon");
-    expect(link.textContent).toContain("3 sets");
-    expect(link.textContent).toContain("1,200 graded copies");
+    const t = createTranslator({ locale: "en", messages, namespace: "pop.category" });
+    expect(link.textContent).toContain(t("tileMeta", { sets: 3, total: 1200 }));
   });
 
   test("omits a kind with no categories", () => {
