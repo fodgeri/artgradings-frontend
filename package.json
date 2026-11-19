@@ -22,7 +22,9 @@
     "db:push": "supabase db push",
     "db:types": "supabase gen types typescript --local > lib/supabase/database.types.ts",
     "auth:templates": "node scripts/push-auth-templates.mjs",
-    "job": "node scripts/run-job.mjs"
+    "job": "node scripts/run-job.mjs",
+    "search:start": "docker compose -f docker-compose.meilisearch.yml up -d",
+    "search:stop": "docker compose -f docker-compose.meilisearch.yml down"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1159.0",
@@ -32,6 +34,7 @@
     "@supabase/supabase-js": "^2.112.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "meilisearch": "0.62.0",
     "next": "16.3.0",
     "next-intl": "^4.13.5",
     "qrcode": "^1.5.4",
