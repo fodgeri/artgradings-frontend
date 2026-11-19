@@ -1,17 +1,18 @@
 import "server-only";
 
-import type { EnqueuedTaskPromise, Meilisearch, Settings } from "meilisearch";
+import { MeilisearchApiError, type EnqueuedTaskPromise, type Meilisearch } from "meilisearch";
 
+import { JOB_LEASE_SECONDS } from "@/lib/jobs/lease";
 import type { JobContext, JobFn } from "@/lib/jobs/registry";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-import { toDocument, type PopCardRow } from "./documents";
+import { toDocument, type PopCardDocument, type PopCardRow } from "./documents";
 import { searchClient } from "./client";
 import { POP_INDEX, POP_INDEX_SETTINGS } from "./settings";
 
 export const DELTA_OVERLAP_MINUTES = 10;
 export const SYNC_BATCH = 500;
-const REBUILD_INDEX = "pop_cards_rebuild";
+const TEMP_PREFIX = "pop_cards_rebuild_";
 const TASK_TIMEOUT_MS = 60_000;
 
 /** A failure with a stable code; `runJob` reports the code, never the message. */
@@ -41,7 +42,7 @@ async function settled(task: EnqueuedTaskPromise): Promise<void> {
   try {
     status = (await task.waitTask({ timeout: TASK_TIMEOUT_MS })).status;
   } catch {
-    throw new SyncError("meili_task_failed");
+    throw new SyncError("meili_unavailable");
   }
   if (status !== "succeeded") throw new SyncError("meili_task_failed");
 }
@@ -52,7 +53,7 @@ async function rpc<T>(call: PromiseLike<{ data: T | null; error: unknown }>): Pr
   return data;
 }
 
-async function documentsFor(ids: string[]): Promise<ReturnType<typeof toDocument>[]> {
+async function documentsFor(ids: string[]): Promise<PopCardDocument[]> {
   const rows = await rpc(
     createAdminClient().rpc("search_card_documents", { p_card_ids: ids }),
   );
@@ -90,26 +91,45 @@ async function indexExists(client: Meilisearch, uid: string): Promise<boolean> {
   try {
     await client.getIndex(uid);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    if (err instanceof MeilisearchApiError && err.cause?.code === "index_not_found") return false;
+    throw new SyncError("meili_unavailable");
   }
 }
 
-export const rebuildSearchIndex: JobFn = async () => {
+/** Temp indexes of crashed runs; a live run's (younger than the lease) is never touched. */
+async function dropStaleTemps(client: Meilisearch, now: number): Promise<void> {
+  let uids: string[];
+  try {
+    uids = (await client.getIndexes({ limit: 1000 })).results.map((i) => i.uid);
+  } catch {
+    throw new SyncError("meili_unavailable");
+  }
+  for (const uid of uids) {
+    if (!uid.startsWith(TEMP_PREFIX)) continue;
+    const n = Number(uid.slice(TEMP_PREFIX.length));
+    if (!Number.isInteger(n) || now - n <= JOB_LEASE_SECONDS * 1000) continue;
+    await settled(client.deleteIndex(uid));
+  }
+}
+
+export const rebuildSearchIndex: JobFn = async (ctx?: JobContext) => {
   const client = requireClient();
+  const start = ctx?.startedAt ?? new Date();
+  const temp = `${TEMP_PREFIX}${start.getTime()}`;
 
   if (!(await indexExists(client, POP_INDEX))) {
     await settled(client.createIndex(POP_INDEX, { primaryKey: "id" }));
-    await settled(client.index(POP_INDEX).updateSettings(POP_INDEX_SETTINGS as Settings));
+    await settled(client.index(POP_INDEX).updateSettings(POP_INDEX_SETTINGS));
   }
-  if (await indexExists(client, REBUILD_INDEX)) {
-    await settled(client.deleteIndex(REBUILD_INDEX));
-  }
-  await settled(client.createIndex(REBUILD_INDEX, { primaryKey: "id" }));
-  const fresh = client.index(REBUILD_INDEX);
-  await settled(fresh.updateSettings(POP_INDEX_SETTINGS as Settings));
+  await dropStaleTemps(client, start.getTime());
+  if (await indexExists(client, temp)) await settled(client.deleteIndex(temp));
+  await settled(client.createIndex(temp, { primaryKey: "id" }));
+  const fresh = client.index(temp);
+  await settled(fresh.updateSettings(POP_INDEX_SETTINGS));
 
   let documents = 0;
+  // null on the first page is intentional: the RPC coalesces it to "from the start".
   let after: string | null = null;
   for (;;) {
     const ids: string[] = await rpc(
@@ -128,18 +148,25 @@ export const rebuildSearchIndex: JobFn = async () => {
     if (ids.length < SYNC_BATCH) break;
   }
 
-  await settled(client.swapIndexes([{ indexes: [POP_INDEX, REBUILD_INDEX], rename: false }]));
-  await settled(client.deleteIndex(REBUILD_INDEX));
+  await settled(client.swapIndexes([{ indexes: [POP_INDEX, temp], rename: false }]));
+  await settled(client.deleteIndex(temp));
+
+  // Writes that landed on the old index while we built are gone with the swap.
+  await reindexSince(new Date(start.getTime() - DELTA_OVERLAP_MINUTES * 60_000));
   return { documents };
 };
 
-export const runSearchDelta: JobFn = async (ctx: JobContext) => {
-  if (!ctx.previousSuccessStartedAt) return rebuildSearchIndex(ctx);
-  const since = new Date(
-    ctx.previousSuccessStartedAt.getTime() - DELTA_OVERLAP_MINUTES * 60_000,
-  );
+async function reindexSince(since: Date) {
   const ids = await rpc(
     createAdminClient().rpc("search_changed_card_ids", { p_since: since.toISOString() }),
   );
   return indexCards(ids);
+}
+
+export const runSearchDelta: JobFn = async (ctx: JobContext) => {
+  if (!ctx.previousSuccessStartedAt) return rebuildSearchIndex(ctx);
+  if (!(await indexExists(requireClient(), POP_INDEX))) return rebuildSearchIndex(ctx);
+  return reindexSince(
+    new Date(ctx.previousSuccessStartedAt.getTime() - DELTA_OVERLAP_MINUTES * 60_000),
+  );
 };

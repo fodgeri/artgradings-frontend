@@ -20,12 +20,15 @@ const client = vi.hoisted(() => ({
   createIndex: vi.fn(),
   deleteIndex: vi.fn(),
   swapIndexes: vi.fn(),
+  getIndexes: vi.fn(),
 }));
 const searchClient = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc }) }));
 vi.mock("./client", () => ({ searchClient }));
+
+import { MeilisearchApiError } from "meilisearch";
 
 import { POP_INDEX_SETTINGS } from "./settings";
 import {
@@ -43,7 +46,13 @@ const row = (id: string) => ({
   latest_published_at: null,
 });
 
-const ctx = (prev: Date | null) => ({ startedAt: new Date(), previousSuccessStartedAt: prev });
+const STARTED = new Date("2026-11-19T12:00:00Z");
+const TEMP = `pop_cards_rebuild_${STARTED.getTime()}`;
+const ctx = (prev: Date | null) => ({ startedAt: STARTED, previousSuccessStartedAt: prev });
+const notFound = () =>
+  new MeilisearchApiError(new Response(null, { status: 404 }), {
+    message: "x", code: "index_not_found", type: "invalid_request", link: "",
+  });
 
 beforeEach(() => {
   calls.length = 0;
@@ -54,9 +63,13 @@ beforeEach(() => {
   idx.addDocuments.mockImplementation(() => ok());
   idx.deleteDocuments.mockImplementation(() => ok());
   idx.updateSettings.mockImplementation(() => { calls.push("settings"); return ok(); });
-  client.getIndex.mockResolvedValue({});
+  client.getIndex.mockImplementation(async (u: string) => {
+    if (u.startsWith("pop_cards_rebuild_")) throw notFound();
+    return {};
+  });
   client.createIndex.mockImplementation(() => ok());
   client.deleteIndex.mockImplementation((u: string) => { calls.push(`delete:${u}`); return ok(); });
+  client.getIndexes.mockResolvedValue({ results: [] });
   client.swapIndexes.mockImplementation(() => { calls.push("swap"); return ok(); });
 });
 
@@ -105,24 +118,82 @@ describe("runSearchDelta", () => {
     rpc.mockResolvedValue({ data: [], error: null });
     await runSearchDelta(ctx(null));
     expect(client.swapIndexes).toHaveBeenCalled();
-    expect(rpc).not.toHaveBeenCalledWith("search_changed_card_ids", expect.anything());
+    expect(rpc).toHaveBeenCalledWith("search_public_card_ids", expect.anything());
   });
 });
 
 describe("rebuildSearchIndex", () => {
-  test("applies settings before documents, then swaps and drops the rebuild index", async () => {
+  function publicIds() {
     idx.addDocuments.mockImplementation(() => { calls.push("add"); return ok(); });
-    rpc.mockImplementation(async (name: string) =>
-      name === "search_public_card_ids"
-        ? { data: rpc.mock.calls.filter(([n]) => n === name).length === 1 ? ["a"] : [], error: null }
-        : { data: [row("a")], error: null },
-    );
+    rpc.mockImplementation(async (name: string) => {
+      if (name === "search_public_card_ids")
+        return { data: rpc.mock.calls.filter(([n]) => n === name).length === 1 ? ["a"] : [], error: null };
+      if (name === "search_changed_card_ids") return { data: [], error: null };
+      return { data: [row("a")], error: null };
+    });
+  }
+
+  test("builds in a temp index named for the run, settings first, then swaps and drops it", async () => {
+    publicIds();
     await expect(rebuildSearchIndex(ctx(null))).resolves.toEqual({ documents: 1 });
-    expect(client.index).toHaveBeenCalledWith("pop_cards_rebuild");
+    expect(client.index).toHaveBeenCalledWith(TEMP);
     expect(idx.updateSettings).toHaveBeenCalledWith(POP_INDEX_SETTINGS);
-    expect(calls).toEqual(["delete:pop_cards_rebuild", "settings", "add", "swap", "delete:pop_cards_rebuild"]);
+    expect(calls).toEqual(["settings", "add", "swap", `delete:${TEMP}`]);
     expect(client.swapIndexes).toHaveBeenCalledWith([
-      { indexes: ["pop_cards", "pop_cards_rebuild"], rename: false },
+      { indexes: ["pop_cards", TEMP], rename: false },
     ]);
+  });
+
+  test("catches up changes made during the build, from start minus 10 minutes", async () => {
+    publicIds();
+    await rebuildSearchIndex(ctx(null));
+    expect(rpc).toHaveBeenCalledWith("search_changed_card_ids", {
+      p_since: "2026-11-19T11:50:00.000Z",
+    });
+  });
+
+  test("deletes stale temp indexes but keeps a live run's", async () => {
+    publicIds();
+    const old = `pop_cards_rebuild_${STARTED.getTime() - 601_000}`;
+    const live = `pop_cards_rebuild_${STARTED.getTime() - 5_000}`;
+    client.getIndexes.mockResolvedValue({
+      results: [{ uid: "pop_cards" }, { uid: "pop_cards_rebuild_1" }, { uid: old }, { uid: live }],
+    });
+    await rebuildSearchIndex(ctx(null));
+    const deleted = client.deleteIndex.mock.calls.map(([u]) => u);
+    expect(deleted).toContain("pop_cards_rebuild_1");
+    expect(deleted).toContain(old);
+    expect(deleted).not.toContain(live);
+  });
+
+  test("creates a missing pop_cards with settings", async () => {
+    publicIds();
+    client.getIndex.mockRejectedValue(notFound());
+    await rebuildSearchIndex(ctx(null));
+    expect(client.createIndex).toHaveBeenCalledWith("pop_cards", { primaryKey: "id" });
+    expect(client.index).toHaveBeenCalledWith("pop_cards");
+  });
+
+  test("a probe that fails for another reason is meili_unavailable", async () => {
+    client.getIndex.mockRejectedValue(new Error("ECONNREFUSED"));
+    await expect(rebuildSearchIndex(ctx(null))).rejects.toMatchObject({ code: "meili_unavailable" });
+  });
+
+  test("a failing swap is meili_task_failed", async () => {
+    publicIds();
+    client.swapIndexes.mockImplementation(() => failed());
+    await expect(rebuildSearchIndex(ctx(null))).rejects.toMatchObject({ code: "meili_task_failed" });
+  });
+});
+
+describe("runSearchDelta with a missing index", () => {
+  test("rebuilds instead of creating a bare index", async () => {
+    client.getIndex.mockImplementation(async (u: string) => {
+      if (u === "pop_cards" && client.swapIndexes.mock.calls.length === 0) throw notFound();
+      return {};
+    });
+    rpc.mockResolvedValue({ data: [], error: null });
+    await runSearchDelta(ctx(new Date("2026-11-19T11:00:00Z")));
+    expect(client.swapIndexes).toHaveBeenCalled();
   });
 });

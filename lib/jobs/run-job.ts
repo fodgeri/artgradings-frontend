@@ -2,10 +2,11 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
+import { JOB_LEASE_SECONDS } from "./lease";
 import { reportJobError } from "./errors";
 import { JOBS, type JobName } from "./registry";
 
-export const JOB_LEASE_SECONDS = 600;
+export { JOB_LEASE_SECONDS };
 
 /**
  * Runs a job under a database lease so overlapping Cron calls do nothing.

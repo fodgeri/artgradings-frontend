@@ -92,7 +92,7 @@ describe("service_role client containment", () => {
     expect(walk("lib")).toContain(join("lib", "supabase", "admin.ts"));
   });
 
-  test("the allowlist is exactly account deletion, the payment handler, the maintenance job and the job runner", () => {
+  test("the allowlist is exactly account deletion, the payment handler, the maintenance job, the job runner and the search sync", () => {
     // Widening this is a security decision; the test makes it a visible one.
     expect(ADMIN_ALLOWLIST).toEqual([
       join("lib", "auth", "delete-current-user.ts"),
