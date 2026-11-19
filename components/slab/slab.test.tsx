@@ -24,8 +24,7 @@ describe("Slab", () => {
 
   test("renders no certificate line when cert is absent", () => {
     const { container } = renderWithIntl(<Slab data={{ ...data, cert: undefined }} />);
-    // The only such span left is the category placeholder in the card window.
-    expect(container.querySelectorAll("span.font-mono.text-meta.text-muted")).toHaveLength(1);
+    expect(container.textContent).not.toContain("ART-");
     expect(screen.queryByText("ART-08831204")).not.toBeInTheDocument();
   });
 

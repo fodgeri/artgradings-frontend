@@ -768,7 +768,6 @@
       "not_genuine": "Not genuine"
     },
     "gradedOn": "Date graded",
-    "population": "Population",
     "graded": "{count, plural, one {# graded copy} other {# graded copies}}",
     "gradedHigher": "{count, plural, =0 {No copy graded higher} one {# copy graded higher} other {# copies graded higher}}",
     "viewCard": "View this card in the Pop Report",

@@ -1,3 +1,4 @@
+import { createTranslator } from "next-intl";
 import { describe, expect, test } from "vitest";
 
 import type { PopCertificate } from "@/lib/pop/types";
@@ -7,6 +8,7 @@ import { renderWithIntl, screen } from "@/test/i18n";
 import { Certificate, WithdrawnCertificate } from "./certificate";
 
 type Pub = Extract<PopCertificate, { status: "public" }>;
+const t = createTranslator({ locale: "en", messages, namespace: "cert" });
 const grades = [{ key: "g10" as const, value: 10 }, { key: "g9" as const, value: 9 }];
 const cert = (o: Partial<Pub> = {}): Pub => ({
   status: "public", certNumber: "ART-08831204", cardId: "c1", cardName: "Charizard", cardNumber: "4/102",
@@ -20,7 +22,8 @@ describe("Certificate", () => {
     renderWithIntl(<Certificate cert={cert({ gradedHigher: 3 })} grades={grades} />);
     expect(screen.getAllByText(messages.catalog.grades.g10.label).length).toBeGreaterThan(0);
     expect(screen.getAllByText("ART-08831204").length).toBeGreaterThan(0);
-    expect(screen.getByText(/\b3\b/)).toBeInTheDocument();
+    expect(screen.getByText(t("gradedHigher", { count: 3 }))).toBeInTheDocument();
+    expect(screen.getByText(t("graded", { count: 12 }))).toBeInTheDocument();
     expect(screen.getByRole("link", { name: messages.cert.viewCard })).toHaveAttribute(
       "href",
       "/pop-report/cards/c1",
@@ -29,7 +32,9 @@ describe("Certificate", () => {
 
   test("hides graded higher when unknown", () => {
     renderWithIntl(<Certificate cert={cert({ gradedHigher: null })} grades={grades} />);
-    expect(screen.queryByText(/graded higher/)).not.toBeInTheDocument();
+    expect(screen.queryByText(t("gradedHigher", { count: 0 }))).not.toBeInTheDocument();
+    expect(screen.queryByText(t("gradedHigher", { count: 3 }))).not.toBeInTheDocument();
+    expect(screen.getByText(t("graded", { count: 12 }))).toBeInTheDocument();
   });
 
   test("autograph line is absent when there is no autograph grade", () => {
@@ -48,6 +53,20 @@ describe("Certificate", () => {
     );
     expect(screen.getByText(messages.pop.table.authentic)).toBeInTheDocument();
     expect(screen.queryByText(messages.cert.cardGrade)).not.toBeInTheDocument();
+  });
+});
+
+describe("Certificate slab badge", () => {
+  test("an autograph-only copy shows the autograph numeral captioned Autograph", () => {
+    renderWithIntl(
+      <Certificate
+        cert={cert({ cardGrade: null, cardAuthentication: null, autographGrade: "g9" })}
+        grades={grades}
+      />,
+    );
+    expect(screen.getByText("9")).toBeInTheDocument();
+    expect(screen.getAllByText(messages.pop.table.autograph).length).toBeGreaterThan(0);
+    expect(screen.queryByText(messages.pop.card.noGrade)).not.toBeInTheDocument();
   });
 });
 

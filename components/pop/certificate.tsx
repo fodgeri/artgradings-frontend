@@ -40,6 +40,12 @@ export function Certificate({ cert, grades }: { cert: PublicCertificate; grades:
     slabLabel = table("authentic");
   }
 
+  const autographValue = numeral(cert.autographGrade);
+  if (slabLabel === "" && cert.autographGrade && autographValue !== undefined) {
+    slabGrade = format.number(autographValue);
+    slabLabel = table("autograph");
+  }
+
   const result = (value: string | null) =>
     value === "genuine" || value === "not_genuine" ? t(`authentication.${value}`) : t("unknownResult");
 
@@ -83,10 +89,10 @@ export function Certificate({ cert, grades }: { cert: PublicCertificate; grades:
             </div>
           ))}
         </dl>
-        <p className="mt-6 text-ink">
-          {t("graded", { count: cert.cardTotal })}
-          {cert.gradedHigher !== null ? ` · ${t("gradedHigher", { count: cert.gradedHigher })}` : null}
-        </p>
+        <div className="mt-6 flex flex-wrap gap-x-6 gap-y-1 text-ink">
+          <p>{t("graded", { count: cert.cardTotal })}</p>
+          {cert.gradedHigher !== null ? <p>{t("gradedHigher", { count: cert.gradedHigher })}</p> : null}
+        </div>
         <p className="mt-6">
           <Link
             href={`/pop-report/cards/${cert.cardId}`}
