@@ -174,7 +174,7 @@ Functions:
   - anything else → no row. Looks up `p_cert` exactly (normalisation is the app's job).
 - `pop_recent_copies(p_limit int) returns table(cert_number, card_id, card_name, card_number, variant, rarity, set_name, category, release_year, card_grade, published_at)` — public copies with a card grade, newest `published_at` first, `limit least(p_limit, 24)`.
 
-- [ ] **Step 1: Failing `140-pop-functions.sql`.** Fixture (inside the test): one set, cards A (`2`), B (`10`), C (`004/102`), D (`TG01`), E (`2`, variant `Holo`), F merged into A; copies of A: two `g10`, one `g9`, one authentic-only, one autograph `g8` on a dual copy with `card_authentication='genuine'`, one unpublished `g10`, one withdrawn `g10`, one `not_genuine`; one dual copy on B with `autograph_authentication='not_genuine'` and card `g7`. Assert, as `anon`:
+- [ ] **Step 1: Failing `140-pop-functions.sql`.** Fixture (inside the test): one set, cards A (`2`), B (`10`), C (`004/102`), D (`TG01`), E (`2`, variant `Holo`), F merged into A; copies of A: two `g10`, one `g9`, one authentic-only (service `authentication`, `card_authentication='genuine'`, no grades), one autograph-only (service `autograph`, `card_grade` and `card_authentication` null, `autograph_grade='g8'`, `autograph_authentication='genuine'`), one unpublished `g10`, one withdrawn `g10`, one `not_genuine`; one dual copy on B with `autograph_authentication='not_genuine'` and card `g7`. Assert, as `anon`:
   - `pop_card(A)` → `grade_counts = {"g10":2,"g9":1}`, `authentic_count = 1`, `total = 4`, `autograph_counts = {"g8":1}`, `autograph_total = 1`.
   - `pop_card(B)` → `total = 1`, `autograph_total = 0`.
   - `pop_card(F)` → no row; `pop_resolve_card(F) = A`; `pop_resolve_card(gen_random_uuid())` is null.
