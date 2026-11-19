@@ -82,3 +82,11 @@ values ('00000000-0000-0000-0000-0000005eed02',
         'Example Brand', 'en', 'Example Card', 'Example Set', '1/100',
         1000, 'grading', 'grading_standard')
 on conflict (id) do nothing;
+
+-- Local-only Vault secrets for the scheduled app jobs (private.call_job).
+-- Hosted projects set their own per docs/deployment/SEARCH_SETUP.md; these
+-- values must never be used there. Guarded so a re-seed does not duplicate.
+select vault.create_secret('http://host.docker.internal:3000', 'jobs_base_url')
+where not exists (select 1 from vault.secrets where name = 'jobs_base_url');
+select vault.create_secret('local-jobs-secret', 'jobs_secret')
+where not exists (select 1 from vault.secrets where name = 'jobs_secret');
