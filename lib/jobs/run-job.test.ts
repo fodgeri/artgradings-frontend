@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const rpc = vi.hoisted(() => vi.fn());
+const createAdminClient = vi.hoisted(() => vi.fn());
 const reportJobError = vi.hoisted(() => vi.fn());
 const jobs = vi.hoisted(() => ({
   maintenance: vi.fn(),
@@ -10,7 +11,7 @@ const jobs = vi.hoisted(() => ({
 }));
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc }) }));
+vi.mock("@/lib/supabase/admin", () => ({ createAdminClient }));
 vi.mock("./errors", () => ({ reportJobError }));
 vi.mock("./registry", () => ({ JOBS: jobs }));
 
@@ -30,6 +31,8 @@ const finishCalls = () => rpc.mock.calls.filter(([n]) => n === "finish_job_run")
 
 beforeEach(() => {
   rpc.mockReset();
+  createAdminClient.mockReset();
+  createAdminClient.mockReturnValue({ rpc });
   reportJobError.mockReset();
   for (const fn of Object.values(jobs)) fn.mockReset();
 });
@@ -73,6 +76,26 @@ describe("runJob", () => {
     rpc.mockResolvedValue({ data: null, error: { code: "XX000" } });
     await expect(runJob("maintenance")).resolves.toBe("failed");
     expect(reportJobError).toHaveBeenCalledWith("maintenance", "XX000");
+    expect(jobs.maintenance).not.toHaveBeenCalled();
+  });
+
+  test("a failing finish is reported and fails", async () => {
+    rpc.mockImplementation(async (name: string) =>
+      name === "begin_job_run"
+        ? { data: [{ acquired: true, started_at: STARTED, previous_success_started_at: null }], error: null }
+        : { data: null, error: { code: "XX001" } },
+    );
+    jobs.maintenance.mockResolvedValue({});
+    await expect(runJob("maintenance")).resolves.toBe("failed");
+    expect(reportJobError).toHaveBeenCalledWith("maintenance", "XX001");
+  });
+
+  test("never rejects: an unexpected throw is reported", async () => {
+    createAdminClient.mockImplementation(() => {
+      throw new Error("SUPABASE_SECRET_KEY unset");
+    });
+    await expect(runJob("maintenance")).resolves.toBe("failed");
+    expect(reportJobError).toHaveBeenCalledWith("maintenance", "unexpected");
     expect(jobs.maintenance).not.toHaveBeenCalled();
   });
 });

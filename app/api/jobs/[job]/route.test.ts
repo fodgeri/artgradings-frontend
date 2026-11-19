@@ -44,10 +44,16 @@ describe("POST /api/jobs/[job]", () => {
   test("404 without a secret", async () => {
     delete process.env.JOBS_SECRET;
     expect((await call("search-delta")).status).toBe(404);
+    expect(callbacks).toHaveLength(0);
+    expect(runJob).not.toHaveBeenCalled();
   });
 
   test("404 for an unknown job even when signed", async () => {
-    expect((await call("unknown")).status).toBe(404);
+    for (const job of ["unknown", "constructor", "__proto__"]) {
+      expect((await call(job)).status).toBe(404);
+    }
+    expect(callbacks).toHaveLength(0);
+    expect(runJob).not.toHaveBeenCalled();
   });
 
   test("401 for a stale or foreign signature", async () => {

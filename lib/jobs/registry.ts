@@ -10,7 +10,7 @@ function notImplemented(): Promise<Record<string, number>> {
 }
 
 export const JOBS: Record<"maintenance" | "search-delta" | "search-rebuild", JobFn> = {
-  maintenance: async () => ({ ...(await runMaintenance()) }),
+  maintenance: runMaintenance,
   // Task 8 replaces these two with runSearchDelta / rebuildSearchIndex.
   "search-delta": notImplemented,
   "search-rebuild": notImplemented,

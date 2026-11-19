@@ -12,7 +12,7 @@ export const JOB_LEASE_SECONDS = 600;
  * `finish_job_run` is always called for an acquired lease, with the exact
  * `started_at` text `begin_job_run` returned.
  */
-export async function runJob(job: JobName): Promise<"ran" | "busy" | "failed"> {
+async function execute(job: JobName): Promise<"ran" | "busy" | "failed"> {
   const admin = createAdminClient();
 
   const begun = await admin.rpc("begin_job_run", {
@@ -49,4 +49,18 @@ export async function runJob(job: JobName): Promise<"ran" | "busy" | "failed"> {
     return "failed";
   }
   return success ? "ran" : "failed";
+}
+
+/**
+ * Never rejects: inside `after()` an escaped error reaches only console.error,
+ * never Sentry, so anything unexpected (e.g. a missing service key) is
+ * reported here.
+ */
+export async function runJob(job: JobName): Promise<"ran" | "busy" | "failed"> {
+  try {
+    return await execute(job);
+  } catch {
+    reportJobError(job, "unexpected");
+    return "failed";
+  }
 }
