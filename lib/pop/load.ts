@@ -92,9 +92,14 @@ export async function loadGrades(): Promise<Grade[]> {
 
 export async function loadCategories(): Promise<PopCategory[]> {
   const rows = await call("pop_categories");
+  let reported = false;
   return rows.flatMap((r) => {
     const key = categoryKey(r.key);
     const kind = kindOf(r.kind);
+    if (!key && !reported) {
+      reported = true;
+      reportPopError("categories", "unknown_category");
+    }
     return key && kind ? [{ key, kind, setCount: reqNum(r.set_count), total: reqNum(r.total) }] : [];
   });
 }
@@ -117,6 +122,7 @@ export async function loadSet(id: string): Promise<PopSet | null> {
   const [r] = await call("pop_set", { p_set: id });
   const category = r && categoryKey(r.category);
   const kind = r && kindOf(r.kind);
+  if (r && !category) reportPopError("set", "unknown_category");
   if (!r || !category || !kind) return null;
   return {
     id: reqStr(r.id),
@@ -147,6 +153,7 @@ export async function loadCard(id: string): Promise<PopCard | null> {
   const [r] = await call("pop_card", { p_card: id });
   const category = r && categoryKey(r.category);
   const kind = r && kindOf(r.kind);
+  if (r && !category) reportPopError("card", "unknown_category");
   if (!r || !category || !kind) return null;
   return {
     ...population(r, unknownGradeReporter()),
@@ -178,8 +185,10 @@ export async function loadCertificate(certNumber: string): Promise<PopCertificat
   const [r] = await call("pop_certificate", { p_cert: certNumber });
   if (!r) return null;
   if (r.status === "withdrawn") return { status: "withdrawn", certNumber: reqStr(r.cert_number) };
+  if (r.status !== "public") return null;
+  // Printed on slabs: an unknown category must never turn a genuine certificate into a 404.
   const category = categoryKey(r.category);
-  if (r.status !== "public" || !category) return null;
+  if (!category) reportPopError("certificate", "unknown_category");
   return {
     status: "public",
     certNumber: reqStr(r.cert_number),
@@ -215,6 +224,7 @@ export async function loadRecentCopies(limit: number): Promise<PopRecentCopy[]> 
   return rows.flatMap((r) => {
     const cardGrade = gradeKey(r.card_grade);
     const category = categoryKey(r.category);
+    if (!category) reportPopError("recentCopies", "unknown_category");
     if (!cardGrade || !category) return [];
     return [
       {

@@ -9,7 +9,7 @@ vi.mock("@/lib/supabase/public", () => ({ createPublicClient: () => ({ rpc }) })
 const report = vi.fn();
 vi.mock("./errors", () => ({ reportPopError: (...a: unknown[]) => report(...a) }));
 
-import { loadCard, loadCertificate, loadRecentCopies, resolveCard } from "./load";
+import { loadCard, loadCategories, loadCertificate, loadRecentCopies, resolveCard } from "./load";
 
 beforeEach(() => {
   rpc.mockReset();
@@ -98,6 +98,48 @@ describe("loadCertificate", () => {
     expect(await loadCertificate("ART-2")).toMatchObject({
       status: "public", cardGrade: null, autographGrade: "g9", gradedHigher: null, cardTotal: 4,
     });
+  });
+});
+
+describe("unknown categories", () => {
+  test("a certificate with an unknown category still resolves, with category null", async () => {
+    rpc.mockResolvedValue({
+      data: [
+        {
+          status: "public", cert_number: "ART-3", card_id: "c", card_name: "N", card_number: "1",
+          set_id: "s", set_name: "S", category: "newcat", card_grade: "g10",
+          published_at: "2026-01-01T00:00:00Z", card_total: 1,
+        },
+      ],
+      error: null,
+    });
+    expect(await loadCertificate("ART-3")).toMatchObject({
+      status: "public", category: null, cardGrade: "g10", cardName: "N",
+    });
+    expect(report).toHaveBeenCalledWith("certificate", "unknown_category");
+  });
+
+  test("loadCategories drops unknown categories and reports once", async () => {
+    rpc.mockResolvedValue({
+      data: [
+        { key: "pokemon", kind: "tcg", set_count: 1, total: 2 },
+        { key: "x1", kind: "tcg", set_count: 1, total: 2 },
+        { key: "x2", kind: "sports", set_count: 1, total: 2 },
+      ],
+      error: null,
+    });
+    expect(await loadCategories()).toHaveLength(1);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith("categories", "unknown_category");
+  });
+
+  test("loadCard reports an unknown category and returns null", async () => {
+    rpc.mockResolvedValue({
+      data: [{ id: "c1", category: "nope", kind: "tcg", grade_counts: {}, autograph_counts: {} }],
+      error: null,
+    });
+    expect(await loadCard("c1")).toBeNull();
+    expect(report).toHaveBeenCalledWith("card", "unknown_category");
   });
 });
 

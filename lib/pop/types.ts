@@ -69,7 +69,8 @@ export type PopCertificate =
       variant: string | null;
       setId: string;
       setName: string;
-      category: CategoryKey;
+      /** Null when the database has a category this build does not know yet. */
+      category: CategoryKey | null;
       releaseYear: number | null;
       language: string | null;
       service: string | null;
