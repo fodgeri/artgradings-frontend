@@ -21,7 +21,7 @@ import type { SlabData } from "./slab";
  * `rarity` is absent on several entries on purpose — it is optional on the
  * label, so both branches need to stay exercised.
  */
-export const SAMPLE_SLABS: SlabData[] = [
+export const SAMPLE_SLABS: (SlabData & { cert: string })[] = [
   { grade: "10", label: "GEM MINT", name: "Charizard", year: "1999", set: "Base · Holo", number: "#004/102", rarity: "HOLO RARE", cert: "ART-08831204", category: "TCG" },
   { grade: "9.5", label: "MINT+", name: "Michael Jordan", year: "1986", set: "Fleer #57", number: "#57", rarity: "BASE", cert: "ART-08830417", category: "Sports" },
   { grade: "10", label: "GEM MINT", name: "Pikachu", year: "1998", set: "Promo · Holo", number: "#001/018", cert: "ART-08827781", category: "TCG" },

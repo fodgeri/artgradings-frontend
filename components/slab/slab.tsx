@@ -4,7 +4,8 @@ import { cn } from "@/lib/cn";
 import { GradeBadge } from "./grade-badge";
 
 export type SlabData = {
-  cert: string;
+  /** Absent for a card with no certificate of its own (a card page); nothing renders. */
+  cert?: string;
   category: string;
   name: string;
   year: string;
@@ -69,7 +70,7 @@ export function Slab({ data, className }: { data: SlabData; className?: string }
             {data.name}
           </div>
           <div className="mt-[5px] font-mono text-meta uppercase text-muted">
-            {data.year} · {data.set}
+            {[data.year, data.set].filter(Boolean).join(" · ")}
           </div>
           <div className="mt-[3px] font-mono text-meta uppercase text-muted">
             <span>{data.number}</span>
@@ -84,7 +85,7 @@ export function Slab({ data, className }: { data: SlabData; className?: string }
 
         <div className="flex shrink-0 flex-col items-end gap-[7px]">
           <GradeBadge grade={data.grade} label={data.label} />
-          <span className="font-mono text-meta text-muted">{data.cert}</span>
+          {data.cert ? <span className="font-mono text-meta text-muted">{data.cert}</span> : null}
         </div>
       </div>
     </div>

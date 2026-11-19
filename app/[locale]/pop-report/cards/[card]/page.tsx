@@ -58,15 +58,13 @@ export default async function PopCardPage({ params }: PageProps<"/[locale]/pop-r
           <div className="grid gap-10 md:grid-cols-[minmax(0,320px)_1fr] md:items-start">
             <Slab
               data={{
-                // A card has no certificate of its own; each copy has one.
-                cert: "",
                 category: categoryLabel,
                 name: card.name,
                 year: card.releaseYear === null ? "" : format.number(card.releaseYear, { useGrouping: false }),
                 set: card.setName,
                 number: card.cardNumber,
                 rarity: card.rarity ?? undefined,
-                grade: highest ? format.number(highest.value) : "–",
+                grade: highest ? format.number(highest.value) : t("noGrade"),
                 label: highest ? tg(`${highest.key}.label`) : categoryLabel,
               }}
             />

@@ -22,6 +22,18 @@ describe("Slab", () => {
     expect(screen.getByText("ART-08831204")).toBeInTheDocument();
   });
 
+  test("renders no certificate line when cert is absent", () => {
+    const { container } = renderWithIntl(<Slab data={{ ...data, cert: undefined }} />);
+    // The only such span left is the category placeholder in the card window.
+    expect(container.querySelectorAll("span.font-mono.text-meta.text-muted")).toHaveLength(1);
+    expect(screen.queryByText("ART-08831204")).not.toBeInTheDocument();
+  });
+
+  test("has no stray separator when year is empty", () => {
+    renderWithIntl(<Slab data={{ ...data, year: "" }} />);
+    expect(screen.getByText("Base · Holo")).toBeInTheDocument();
+  });
+
   test("renders the card name and its year and set", () => {
     renderWithIntl(<Slab data={data} />);
     expect(screen.getByText("Charizard")).toBeInTheDocument();

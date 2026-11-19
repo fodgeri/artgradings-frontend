@@ -740,6 +740,40 @@
       "totalPaid": "Total paid"
     }
   },
+  "cert": {
+    "title": "Certificate lookup",
+    "lead": "Enter the certificate number printed on the slab to check the result we recorded.",
+    "metaDescription": "Check an ART Gradings certificate: the grade and authentication result recorded for a slab.",
+    "pageTitle": "Certificate {number}",
+    "form": {
+      "number": "Certificate number",
+      "placeholder": "ART-00000000",
+      "submit": "Look up"
+    },
+    "notFound": {
+      "title": "No certificate found",
+      "body": "We have no certificate with this number. Check it against the label on the slab, or the certificate may not be published yet."
+    },
+    "withdrawn": {
+      "title": "Certificate withdrawn",
+      "body": "Certificate {number} is no longer valid. Contact us if you hold a slab with this number."
+    },
+    "authenticMark": "A",
+    "cardGrade": "Card grade",
+    "autographGrade": "Autograph grade",
+    "authentication": {
+      "card": "Card authentication",
+      "autograph": "Signature authentication",
+      "genuine": "Genuine",
+      "not_genuine": "Not genuine"
+    },
+    "gradedOn": "Date graded",
+    "population": "Population",
+    "graded": "{count, plural, one {# graded copy} other {# graded copies}}",
+    "gradedHigher": "{count, plural, =0 {No copy graded higher} one {# copy graded higher} other {# copies graded higher}}",
+    "viewCard": "View this card in the Pop Report",
+    "unknownResult": "Not recorded"
+  },
   "pop": {
     "table": {
       "card": "Card",
@@ -808,7 +842,8 @@
       "category": "Category",
       "year": "Release year",
       "language": "Language",
-      "highest": "Highest grade"
+      "highest": "Highest grade",
+      "noGrade": "–"
     }
   }
 }
