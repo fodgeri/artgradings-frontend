@@ -1,0 +1,161 @@
+// @vitest-environment node
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+
+const rpc = vi.fn();
+vi.mock("@/lib/supabase/public", () => ({ createPublicClient: () => ({ rpc }) }));
+
+const report = vi.fn();
+vi.mock("./errors", () => ({ reportPopError: (...a: unknown[]) => report(...a) }));
+
+import { loadCard, loadCategories, loadCertificate, loadRecentCopies, resolveCard } from "./load";
+
+beforeEach(() => {
+  rpc.mockReset();
+  report.mockReset();
+});
+
+describe("loadCard", () => {
+  test("maps snake_case rows and jsonb counts to a Population", async () => {
+    rpc.mockResolvedValue({
+      data: [
+        {
+          id: "c1", set_id: "s1", set_name: "Base", set_code: null, category: "pokemon", kind: "tcg",
+          card_number: "4", name: "Charizard", variant: null, rarity: null, language: "en",
+          release_year: 1999, series: null,
+          grade_counts: { g10: 3, g9: 5, bogus: 9 }, authentic_count: 2, total: 10,
+          autograph_counts: { g8: 1 }, autograph_total: 1,
+        },
+      ],
+      error: null,
+    });
+    const card = await loadCard("c1");
+    expect(rpc).toHaveBeenCalledWith("pop_card", { p_card: "c1" });
+    expect(card).toMatchObject({
+      id: "c1", setCode: null, variant: null, rarity: null, series: null,
+      gradeCounts: { g10: 3, g9: 5 }, authenticCount: 2, total: 10,
+      autographCounts: { g8: 1 }, autographTotal: 1,
+    });
+  });
+
+  test("reports a count for an unknown grade key once and keeps the server total", async () => {
+    rpc.mockResolvedValue({
+      data: [
+        {
+          id: "c1", set_id: "s1", set_name: "B", category: "pokemon", kind: "tcg",
+          card_number: "1", name: "N", grade_counts: { g10: 1, bogus: 2 }, authentic_count: 0,
+          total: 3, autograph_counts: {}, autograph_total: 0,
+        },
+      ],
+      error: null,
+    });
+    const card = await loadCard("c1");
+    expect(card?.gradeCounts).toEqual({ g10: 1 });
+    expect(card?.total).toBe(3);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith("population", "unknown_grade");
+  });
+
+  test("returns null for an unknown category", async () => {
+    rpc.mockResolvedValue({
+      data: [{ id: "c1", category: "nope", kind: "tcg", grade_counts: {}, autograph_counts: {} }],
+      error: null,
+    });
+    expect(await loadCard("c1")).toBeNull();
+  });
+
+  test("returns null when there are no rows, throws on an RPC error", async () => {
+    rpc.mockResolvedValueOnce({ data: [], error: null });
+    expect(await loadCard("x")).toBeNull();
+    rpc.mockResolvedValueOnce({ data: null, error: { message: "boom" } });
+    await expect(loadCard("x")).rejects.toThrow();
+  });
+});
+
+describe("loadCertificate", () => {
+  test("maps a withdrawn certificate to status and number only", async () => {
+    rpc.mockResolvedValue({
+      data: [{ status: "withdrawn", cert_number: "ART-1", card_id: null, card_name: null }],
+      error: null,
+    });
+    expect(await loadCertificate("ART-1")).toEqual({ status: "withdrawn", certNumber: "ART-1" });
+  });
+
+  test("maps a public certificate with nullable grades", async () => {
+    rpc.mockResolvedValue({
+      data: [
+        {
+          status: "public", cert_number: "ART-2", card_id: "c", card_name: "N", card_number: "1",
+          variant: null, set_id: "s", set_name: "S", category: "mtg", release_year: null,
+          language: null, service: "grading", card_grade: null, autograph_grade: "g9",
+          card_authentication: "genuine", autograph_authentication: null,
+          published_at: "2026-01-01T00:00:00Z", card_total: 4, graded_higher: null,
+        },
+      ],
+      error: null,
+    });
+    expect(await loadCertificate("ART-2")).toMatchObject({
+      status: "public", cardGrade: null, autographGrade: "g9", gradedHigher: null, cardTotal: 4,
+    });
+  });
+});
+
+describe("unknown categories", () => {
+  test("a certificate with an unknown category still resolves, with category null", async () => {
+    rpc.mockResolvedValue({
+      data: [
+        {
+          status: "public", cert_number: "ART-3", card_id: "c", card_name: "N", card_number: "1",
+          set_id: "s", set_name: "S", category: "newcat", card_grade: "g10",
+          published_at: "2026-01-01T00:00:00Z", card_total: 1,
+        },
+      ],
+      error: null,
+    });
+    expect(await loadCertificate("ART-3")).toMatchObject({
+      status: "public", category: null, cardGrade: "g10", cardName: "N",
+    });
+    expect(report).toHaveBeenCalledWith("certificate", "unknown_category");
+  });
+
+  test("loadCategories drops unknown categories and reports once", async () => {
+    rpc.mockResolvedValue({
+      data: [
+        { key: "pokemon", kind: "tcg", set_count: 1, total: 2 },
+        { key: "x1", kind: "tcg", set_count: 1, total: 2 },
+        { key: "x2", kind: "sports", set_count: 1, total: 2 },
+      ],
+      error: null,
+    });
+    expect(await loadCategories()).toHaveLength(1);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith("categories", "unknown_category");
+  });
+
+  test("loadCard reports an unknown category and returns null", async () => {
+    rpc.mockResolvedValue({
+      data: [{ id: "c1", category: "nope", kind: "tcg", grade_counts: {}, autograph_counts: {} }],
+      error: null,
+    });
+    expect(await loadCard("c1")).toBeNull();
+    expect(report).toHaveBeenCalledWith("card", "unknown_category");
+  });
+});
+
+describe("resolveCard", () => {
+  test("returns the id or null", async () => {
+    rpc.mockResolvedValueOnce({ data: "abc", error: null });
+    expect(await resolveCard("old")).toBe("abc");
+    rpc.mockResolvedValueOnce({ data: null, error: null });
+    expect(await resolveCard("old")).toBeNull();
+  });
+});
+
+describe("loadRecentCopies", () => {
+  test("returns [] and reports when the RPC errors", async () => {
+    rpc.mockResolvedValue({ data: null, error: { code: "XX000", message: "boom" } });
+    expect(await loadRecentCopies(6)).toEqual([]);
+    expect(report).toHaveBeenCalledWith("recentCopies", "rpc_failed");
+  });
+});

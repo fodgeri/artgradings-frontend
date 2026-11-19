@@ -181,6 +181,271 @@ export type Database = {
           },
         ]
       }
+      card_set_external_refs: {
+        Row: {
+          created_at: string
+          external_id: string
+          language: string | null
+          set_id: string
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          external_id: string
+          language?: string | null
+          set_id: string
+          source: string
+        }
+        Update: {
+          created_at?: string
+          external_id?: string
+          language?: string | null
+          set_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_set_external_refs_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "card_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_sets: {
+        Row: {
+          category: string
+          code: string | null
+          created_at: string
+          id: string
+          language: string
+          name: string
+          release_year: number | null
+          series: string | null
+          total_cards: number | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          code?: string | null
+          created_at?: string
+          id?: string
+          language?: string
+          name: string
+          release_year?: number | null
+          series?: string | null
+          total_cards?: number | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          code?: string | null
+          created_at?: string
+          id?: string
+          language?: string
+          name?: string
+          release_year?: number | null
+          series?: string | null
+          total_cards?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_sets_category_fkey"
+            columns: ["category"]
+            isOneToOne: false
+            referencedRelation: "catalog_categories"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      catalog_cards: {
+        Row: {
+          card_number: string
+          created_at: string
+          external_id: string | null
+          external_source: string | null
+          id: string
+          merged_into: string | null
+          name: string
+          number_key: string | null
+          rarity: string | null
+          set_id: string
+          updated_at: string
+          variant: string | null
+        }
+        Insert: {
+          card_number: string
+          created_at?: string
+          external_id?: string | null
+          external_source?: string | null
+          id?: string
+          merged_into?: string | null
+          name: string
+          number_key?: string | null
+          rarity?: string | null
+          set_id: string
+          updated_at?: string
+          variant?: string | null
+        }
+        Update: {
+          card_number?: string
+          created_at?: string
+          external_id?: string | null
+          external_source?: string | null
+          id?: string
+          merged_into?: string | null
+          name?: string
+          number_key?: string | null
+          rarity?: string | null
+          set_id?: string
+          updated_at?: string
+          variant?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_cards_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "catalog_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_cards_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "card_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_categories: {
+        Row: {
+          active: boolean
+          key: string
+          kind: string
+          position: number
+        }
+        Insert: {
+          active?: boolean
+          key: string
+          kind: string
+          position: number
+        }
+        Update: {
+          active?: boolean
+          key?: string
+          kind?: string
+          position?: number
+        }
+        Relationships: []
+      }
+      graded_copies: {
+        Row: {
+          autograph_authentication: string | null
+          autograph_grade: string | null
+          card_authentication: string | null
+          card_grade: string | null
+          catalog_card_id: string
+          cert_number: string
+          created_at: string
+          finalized_at: string | null
+          id: string
+          order_card_id: string | null
+          published_at: string | null
+          service: string
+          updated_at: string
+          withdrawn_at: string | null
+        }
+        Insert: {
+          autograph_authentication?: string | null
+          autograph_grade?: string | null
+          card_authentication?: string | null
+          card_grade?: string | null
+          catalog_card_id: string
+          cert_number: string
+          created_at?: string
+          finalized_at?: string | null
+          id?: string
+          order_card_id?: string | null
+          published_at?: string | null
+          service: string
+          updated_at?: string
+          withdrawn_at?: string | null
+        }
+        Update: {
+          autograph_authentication?: string | null
+          autograph_grade?: string | null
+          card_authentication?: string | null
+          card_grade?: string | null
+          catalog_card_id?: string
+          cert_number?: string
+          created_at?: string
+          finalized_at?: string | null
+          id?: string
+          order_card_id?: string | null
+          published_at?: string | null
+          service?: string
+          updated_at?: string
+          withdrawn_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "graded_copies_autograph_grade_fkey"
+            columns: ["autograph_grade"]
+            isOneToOne: false
+            referencedRelation: "grades"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "graded_copies_card_grade_fkey"
+            columns: ["card_grade"]
+            isOneToOne: false
+            referencedRelation: "grades"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "graded_copies_catalog_card_id_fkey"
+            columns: ["catalog_card_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "graded_copies_order_card_id_fkey"
+            columns: ["order_card_id"]
+            isOneToOne: false
+            referencedRelation: "order_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "graded_copies_service_fkey"
+            columns: ["service"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      grades: {
+        Row: {
+          key: string
+          position: number
+          value: number
+        }
+        Insert: {
+          key: string
+          position: number
+          value: number
+        }
+        Update: {
+          key?: string
+          position?: number
+          value?: number
+        }
+        Relationships: []
+      }
       order_card_add_ons: {
         Row: {
           add_on_key: string
@@ -805,13 +1070,148 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      begin_job_run: {
+        Args: { p_job: string; p_lease_seconds: number }
+        Returns: {
+          acquired: boolean
+          previous_success_started_at: string
+          started_at: string
+        }[]
+      }
       cancel_order: { Args: { p_reference: string }; Returns: undefined }
+      card_number_key: { Args: { p: string }; Returns: string }
       complete_photo_deletions: {
         Args: { p_keys: string[] }
         Returns: undefined
       }
       expire_stale_drafts: { Args: never; Returns: number }
+      finish_job_run: {
+        Args: { p_job: string; p_started_at: string; p_success: boolean }
+        Returns: undefined
+      }
       list_photo_deletions: { Args: { p_limit: number }; Returns: string[] }
+      overdue_jobs: { Args: never; Returns: string[] }
+      pop_card: {
+        Args: { p_card: string }
+        Returns: {
+          authentic_count: number
+          autograph_counts: Json
+          autograph_total: number
+          card_number: string
+          category: string
+          grade_counts: Json
+          id: string
+          kind: string
+          language: string
+          name: string
+          rarity: string
+          release_year: number
+          series: string
+          set_code: string
+          set_id: string
+          set_name: string
+          total: number
+          variant: string
+        }[]
+      }
+      pop_categories: {
+        Args: never
+        Returns: {
+          key: string
+          kind: string
+          set_count: number
+          total: number
+        }[]
+      }
+      pop_category_sets: {
+        Args: { p_category: string }
+        Returns: {
+          card_count: number
+          code: string
+          id: string
+          language: string
+          name: string
+          release_year: number
+          series: string
+          total: number
+        }[]
+      }
+      pop_certificate: {
+        Args: { p_cert: string }
+        Returns: {
+          autograph_authentication: string
+          autograph_grade: string
+          card_authentication: string
+          card_grade: string
+          card_id: string
+          card_name: string
+          card_number: string
+          card_total: number
+          category: string
+          cert_number: string
+          graded_higher: number
+          language: string
+          published_at: string
+          release_year: number
+          service: string
+          set_id: string
+          set_name: string
+          status: string
+          variant: string
+        }[]
+      }
+      pop_grades: {
+        Args: never
+        Returns: {
+          key: string
+          value: number
+        }[]
+      }
+      pop_recent_copies: {
+        Args: { p_limit: number }
+        Returns: {
+          card_grade: string
+          card_id: string
+          card_name: string
+          card_number: string
+          category: string
+          cert_number: string
+          published_at: string
+          rarity: string
+          release_year: number
+          set_name: string
+          variant: string
+        }[]
+      }
+      pop_resolve_card: { Args: { p_card: string }; Returns: string }
+      pop_set: {
+        Args: { p_set: string }
+        Returns: {
+          category: string
+          code: string
+          id: string
+          kind: string
+          language: string
+          name: string
+          release_year: number
+          series: string
+          total_cards: number
+        }[]
+      }
+      pop_set_cards: {
+        Args: { p_set: string }
+        Returns: {
+          authentic_count: number
+          autograph_counts: Json
+          autograph_total: number
+          card_number: string
+          grade_counts: Json
+          id: string
+          name: string
+          total: number
+          variant: string
+        }[]
+      }
       prepare_account_deletion: { Args: { p_user_id: string }; Returns: string }
       quote_order: { Args: never; Returns: Json }
       record_payment_failure: {
@@ -833,6 +1233,36 @@ export type Database = {
           p_provider_reference: string
         }
         Returns: string
+      }
+      search_card_documents: {
+        Args: { p_card_ids: string[] }
+        Returns: {
+          authentic_count: number
+          autograph_total: number
+          card_number: string
+          category: string
+          grade_counts: Json
+          grades_present: string[]
+          id: string
+          kind: string
+          language: string
+          latest_published_at: string
+          name: string
+          number_key: string
+          rarity: string
+          release_year: number
+          series: string
+          set_code: string
+          set_id: string
+          set_name: string
+          total: number
+          variant: string
+        }[]
+      }
+      search_changed_card_ids: { Args: { p_since: string }; Returns: string[] }
+      search_public_card_ids: {
+        Args: { p_after: string; p_limit: number }
+        Returns: string[]
       }
       submit_order: { Args: { p_terms_version: string }; Returns: string }
     }

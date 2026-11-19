@@ -65,7 +65,7 @@ Blocks hosted email, not development.
 |---|---|
 | Pricing page and pricing band | Not scoped in `docs/01-project-estimation.md`. The design's `$19 / $39 / $99 / $299` tiers, `45 / 20 / 5 business day` turnarounds and `$499 / $2,500 / $10,000` value caps are invented and are **not** built. `/pricing` stays a 404 until the client supplies real numbers. |
 | Hero secondary CTA | Points at `/how-it-works`. The design pointed it at `#pricing`; revisit when pricing lands. |
-| Showcase cards | `SAMPLE_SLABS` fixtures, replaced by real Pop Report data at M4. Card names, certificate numbers and grades are invented. |
+| Showcase cards | `SAMPLE_SLABS` fixtures, shown until 8 real published card-graded copies exist; the landing page then switches to real slabs on its own. Card names, certificate numbers and grades in the fixtures are invented. |
 
 ## Submission flow (M3)
 
@@ -137,9 +137,21 @@ list above.
 | 15 | **Packing instructions** and ART's **receiving address** for the parcel label. | Placeholder copy. |
 | 16 | **Card search:** a change request. Which games come first, and is a paid catalogue source acceptable for sports cards? | Not built; `order_cards.catalog_ref` is reserved for it. |
 
+## Pop Report (M4)
+
+The Pop Report ships on **placeholders** the client must confirm.
+
+| Item | Current placeholder | What is needed |
+|---|---|---|
+| Grading scale | 19 grades, 1 to 10 in half steps (`grades` table, keys `g1`…`g10`, `g1_5`…`g9_5`), with placeholder labels under the grade message keys. | **The real scale and its labels.** Is there a half-grade at every step; is 10 split (Gem Mint / Pristine)? Client-supplied, never ours to invent. **Blocks M5:** needed before staff record the first real grade. Until then no stored copy references a grade key outside the seed, so swapping the scale is one migration plus message keys; afterwards it means remapping recorded grades. |
+| Certificate number format | `^[A-Z0-9-]{4,32}$`, entered case-insensitively. Real numbers are the client's; seed data uses `TEST-####`. | **The format and numbering** printed on the slab. `/cert/<number>` is printed on slabs and can never change once slabs exist. |
+| Launch categories | Nine placeholders: Pokemon, Magic: The Gathering, Yu-Gi-Oh!, One Piece, basketball, soccer, baseball, American football, hockey (`catalog_categories`). | Which games and sports launch, in what order. A category is a row plus a message key. |
+| Early-access window | Published copies appear as soon as staff publish them. | Whether a result is held back for the owner for a period before it becomes public. |
+| Landing showcase | Fixtures until 8 real published card-graded copies exist, then real slabs. | Confirm 8 is the right threshold, or supply the curated list. |
+
 ## Known dead links
 
-`/pricing`, `/pop-report` and `/terms` are linked from the header, a CTA or the
-submit summary and all 404 today. `/pop-report` lands with M4; `/terms` is
-legal content, drafted by the lawyer. This is deliberate and is stated at
+`/pricing` and `/terms` are linked from the header, a CTA or the submit summary
+and both 404 today. `/pop-report` shipped with M4; `/terms` is legal content,
+drafted by the lawyer. This is deliberate and is stated at
 handover rather than papered over with stub pages nobody scoped.

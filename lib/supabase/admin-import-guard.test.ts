@@ -81,6 +81,8 @@ const ADMIN_ALLOWLIST: string[] = [
   join("lib", "auth", "delete-current-user.ts"),
   join("lib", "payments", "record-payment.ts"),
   join("lib", "jobs", "run-maintenance.ts"),
+  join("lib", "jobs", "run-job.ts"),
+  join("lib", "search", "sync.ts"),
 ];
 
 describe("service_role client containment", () => {
@@ -90,12 +92,14 @@ describe("service_role client containment", () => {
     expect(walk("lib")).toContain(join("lib", "supabase", "admin.ts"));
   });
 
-  test("the allowlist is exactly account deletion, the payment handler and the maintenance job", () => {
+  test("the allowlist is exactly account deletion, the payment handler, the maintenance job, the job runner and the search sync", () => {
     // Widening this is a security decision; the test makes it a visible one.
     expect(ADMIN_ALLOWLIST).toEqual([
       join("lib", "auth", "delete-current-user.ts"),
       join("lib", "payments", "record-payment.ts"),
       join("lib", "jobs", "run-maintenance.ts"),
+      join("lib", "jobs", "run-job.ts"),
+      join("lib", "search", "sync.ts"),
     ]);
   });
 

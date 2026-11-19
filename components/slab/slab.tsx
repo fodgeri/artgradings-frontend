@@ -1,10 +1,12 @@
 import { Wordmark } from "@/components/layout/wordmark";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/cn";
 
 import { GradeBadge } from "./grade-badge";
 
 export type SlabData = {
-  cert: string;
+  /** Absent for a card with no certificate of its own (a card page); nothing renders. */
+  cert?: string;
   category: string;
   name: string;
   year: string;
@@ -22,6 +24,8 @@ export type SlabData = {
   label: string;
   /** Absent until R2 uploads land in M3; the window falls back to the hatch. */
   image?: string;
+  /** When set the whole slab is a link (a real certificate page). Fixtures never set it. */
+  href?: string;
 };
 
 /**
@@ -31,8 +35,10 @@ export type SlabData = {
  * black — which is what `glass-strong` resolves to per theme.
  */
 export function Slab({ data, className }: { data: SlabData; className?: string }) {
-  return (
-    <div className={cn("glass-strong rounded-card p-[13px]", className)}>
+  // `block` and the base come before `className` so a caller's `hidden` wins.
+  const classes = cn("glass-strong block rounded-card p-[13px]", data.href && "focus-ring", className);
+  const body = (
+    <>
       {/* The brand manual's signature device (p. 7) at label scale: a rule
           interrupted at centre by the mark. On the physical holder this is
           the top of the label, above the card window. */}
@@ -69,7 +75,7 @@ export function Slab({ data, className }: { data: SlabData; className?: string }
             {data.name}
           </div>
           <div className="mt-[5px] font-mono text-meta uppercase text-muted">
-            {data.year} · {data.set}
+            {[data.year, data.set].filter(Boolean).join(" · ")}
           </div>
           <div className="mt-[3px] font-mono text-meta uppercase text-muted">
             <span>{data.number}</span>
@@ -84,9 +90,17 @@ export function Slab({ data, className }: { data: SlabData; className?: string }
 
         <div className="flex shrink-0 flex-col items-end gap-[7px]">
           <GradeBadge grade={data.grade} label={data.label} />
-          <span className="font-mono text-meta text-muted">{data.cert}</span>
+          {data.cert ? <span className="font-mono text-meta text-muted">{data.cert}</span> : null}
         </div>
       </div>
-    </div>
+    </>
+  );
+
+  return data.href ? (
+    <Link href={data.href} className={classes}>
+      {body}
+    </Link>
+  ) : (
+    <div className={classes}>{body}</div>
   );
 }

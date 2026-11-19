@@ -1,0 +1,20 @@
+# Local Meilisearch for development. Loopback only; the key matches .env.example.
+services:
+  meilisearch:
+    image: getmeili/meilisearch:v1.35.1
+    ports:
+      - "127.0.0.1:7700:7700"
+    environment:
+      MEILI_ENV: development
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-local-meili-master-key}
+    volumes:
+      - meili_data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:7700/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  meili_data:

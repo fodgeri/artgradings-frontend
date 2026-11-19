@@ -22,6 +22,17 @@ describe("Slab", () => {
     expect(screen.getByText("ART-08831204")).toBeInTheDocument();
   });
 
+  test("renders no certificate line when cert is absent", () => {
+    const { container } = renderWithIntl(<Slab data={{ ...data, cert: undefined }} />);
+    expect(container.textContent).not.toContain("ART-");
+    expect(screen.queryByText("ART-08831204")).not.toBeInTheDocument();
+  });
+
+  test("has no stray separator when year is empty", () => {
+    renderWithIntl(<Slab data={{ ...data, year: "" }} />);
+    expect(screen.getByText("Base · Holo")).toBeInTheDocument();
+  });
+
   test("renders the card name and its year and set", () => {
     renderWithIntl(<Slab data={data} />);
     expect(screen.getByText("Charizard")).toBeInTheDocument();
@@ -78,5 +89,17 @@ describe("Slab", () => {
   test("gives the image an accessible name built from the card", () => {
     renderWithIntl(<Slab data={{ ...data, image: "/cards/charizard.webp" }} />);
     expect(screen.getByRole("img", { name: /Charizard/ })).toBeInTheDocument();
+  });
+
+  test("with href it is a link to it, and the caller's className still wins", () => {
+    renderWithIntl(<Slab data={{ ...data, href: "/cert/ART-08831204" }} className="hidden sm:block" />);
+    const link = screen.getByRole("link");
+    expect(link).toHaveAttribute("href", "/cert/ART-08831204");
+    expect(link).toHaveClass("hidden", "sm:block");
+  });
+
+  test("without href it is not a link", () => {
+    renderWithIntl(<Slab data={data} />);
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });

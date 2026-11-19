@@ -505,6 +505,102 @@
     },
     "zones": {
       "placeholder_eu": "European Union (placeholder)"
+    },
+    "kinds": {
+      "tcg": {
+        "label": "Trading card games"
+      },
+      "sports": {
+        "label": "Sports cards"
+      }
+    },
+    "categories": {
+      "pokemon": {
+        "label": "Pokémon"
+      },
+      "mtg": {
+        "label": "Magic: The Gathering"
+      },
+      "yugioh": {
+        "label": "Yu-Gi-Oh!"
+      },
+      "one_piece": {
+        "label": "One Piece"
+      },
+      "basketball": {
+        "label": "Basketball"
+      },
+      "soccer": {
+        "label": "Soccer"
+      },
+      "baseball": {
+        "label": "Baseball"
+      },
+      "american_football": {
+        "label": "American football"
+      },
+      "hockey": {
+        "label": "Hockey"
+      }
+    },
+    "grades": {
+      "g1": {
+        "label": "Grade 1"
+      },
+      "g1_5": {
+        "label": "Grade 1.5"
+      },
+      "g2": {
+        "label": "Grade 2"
+      },
+      "g2_5": {
+        "label": "Grade 2.5"
+      },
+      "g3": {
+        "label": "Grade 3"
+      },
+      "g3_5": {
+        "label": "Grade 3.5"
+      },
+      "g4": {
+        "label": "Grade 4"
+      },
+      "g4_5": {
+        "label": "Grade 4.5"
+      },
+      "g5": {
+        "label": "Grade 5"
+      },
+      "g5_5": {
+        "label": "Grade 5.5"
+      },
+      "g6": {
+        "label": "Grade 6"
+      },
+      "g6_5": {
+        "label": "Grade 6.5"
+      },
+      "g7": {
+        "label": "Grade 7"
+      },
+      "g7_5": {
+        "label": "Grade 7.5"
+      },
+      "g8": {
+        "label": "Grade 8"
+      },
+      "g8_5": {
+        "label": "Grade 8.5"
+      },
+      "g9": {
+        "label": "Mint"
+      },
+      "g9_5": {
+        "label": "Mint+"
+      },
+      "g10": {
+        "label": "Gem Mint"
+      }
     }
   },
   "orders": {
@@ -642,6 +738,111 @@
       "return": "Return shipping",
       "identification": "ART identification",
       "totalPaid": "Total paid"
+    }
+  },
+  "cert": {
+    "title": "Certificate lookup",
+    "lead": "Enter the certificate number printed on the slab to check the result we recorded.",
+    "metaDescription": "Check an ART Gradings certificate: the grade and authentication result recorded for a slab.",
+    "pageTitle": "Certificate {number}",
+    "form": {
+      "number": "Certificate number",
+      "placeholder": "ART-00000000",
+      "submit": "Look up"
+    },
+    "notFound": {
+      "title": "No certificate found",
+      "body": "We have no certificate with this number. Check it against the label on the slab, or the certificate may not be published yet."
+    },
+    "withdrawn": {
+      "title": "Certificate withdrawn",
+      "body": "Certificate {number} is no longer valid. Contact us if you hold a slab with this number."
+    },
+    "authenticMark": "A",
+    "cardGrade": "Card grade",
+    "autographGrade": "Autograph grade",
+    "authentication": {
+      "card": "Card authentication",
+      "autograph": "Signature authentication",
+      "genuine": "Genuine",
+      "not_genuine": "Not genuine"
+    },
+    "gradedOn": "Date graded",
+    "graded": "{count, plural, one {# graded copy} other {# graded copies}}",
+    "gradedHigher": "{count, plural, =0 {No copy graded higher} one {# copy graded higher} other {# copies graded higher}}",
+    "viewCard": "View this card in the Pop Report",
+    "unknownResult": "Not recorded"
+  },
+  "pop": {
+    "table": {
+      "card": "Card",
+      "authentic": "Authentic",
+      "total": "Total",
+      "autograph": "Autograph",
+      "none": "–",
+      "empty": "No graded copies yet."
+    },
+    "search": {
+      "title": "Pop Report",
+      "lead": "Search every card we have graded and see how many copies reached each grade.",
+      "metaDescription": "Search the public Pop Report: how many copies of each card have reached each grade.",
+      "form": {
+        "q": "Card name",
+        "qPlaceholder": "Search by card name",
+        "kind": "Type",
+        "category": "Category",
+        "year": "Release year",
+        "grade": "Grade",
+        "any": "Any",
+        "submit": "Search",
+        "clear": "Clear"
+      },
+      "results": {
+        "count": "{count, plural, one {# card} other {# cards}}",
+        "number": "No. {number}",
+        "total": "{count, plural, one {# graded copy} other {# graded copies}}",
+        "highest": "Highest: {grade} ({count})",
+        "noGrades": "No card grades yet",
+        "empty": "No cards match your search. Try fewer filters or a different spelling.",
+        "unavailable": "Search is unavailable right now. Please try again in a few minutes, or browse by category.",
+        "browse": "Browse by category",
+        "pagination": "Search results pages",
+        "previous": "Previous",
+        "next": "Next",
+        "page": "Page {page} of {pages}"
+      }
+    },
+    "category": {
+      "browseTitle": "Browse by category",
+      "tileMeta": "{sets, plural, one {# set} other {# sets}} · {total, plural, one {# graded copy} other {# graded copies}}",
+      "title": "{category} Pop Report",
+      "metaDescription": "Every {category} set in the Pop Report, with graded copy counts.",
+      "back": "All categories",
+      "setMeta": "{cards, plural, one {# card} other {# cards}} · {total, plural, one {# copy} other {# copies}}",
+      "language": "Language: {language}",
+      "noSeries": "Other sets",
+      "noYear": "Year unknown"
+    },
+    "set": {
+      "title": "{set} Pop Report",
+      "metaDescription": "Graded copy counts for every card in {set}.",
+      "back": "{category} Pop Report",
+      "code": "Set code {code}",
+      "tableCaption": "Graded copies per card in {set}",
+      "empty": "No graded cards in this set yet."
+    },
+    "card": {
+      "title": "{name} Pop Report",
+      "metaDescription": "How many copies of {name} from {set} have reached each grade.",
+      "tableCaption": "Graded copies of {name}",
+      "number": "Number",
+      "variant": "Variant",
+      "rarity": "Rarity",
+      "set": "Set",
+      "category": "Category",
+      "year": "Release year",
+      "language": "Language",
+      "noGrade": "–"
     }
   }
 }
