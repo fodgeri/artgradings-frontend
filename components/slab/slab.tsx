@@ -1,4 +1,5 @@
 import { Wordmark } from "@/components/layout/wordmark";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/cn";
 
 import { GradeBadge } from "./grade-badge";
@@ -23,6 +24,8 @@ export type SlabData = {
   label: string;
   /** Absent until R2 uploads land in M3; the window falls back to the hatch. */
   image?: string;
+  /** When set the whole slab is a link (a real certificate page). Fixtures never set it. */
+  href?: string;
 };
 
 /**
@@ -32,8 +35,9 @@ export type SlabData = {
  * black — which is what `glass-strong` resolves to per theme.
  */
 export function Slab({ data, className }: { data: SlabData; className?: string }) {
-  return (
-    <div className={cn("glass-strong rounded-card p-[13px]", className)}>
+  const classes = cn("glass-strong rounded-card p-[13px]", className);
+  const body = (
+    <>
       {/* The brand manual's signature device (p. 7) at label scale: a rule
           interrupted at centre by the mark. On the physical holder this is
           the top of the label, above the card window. */}
@@ -88,6 +92,14 @@ export function Slab({ data, className }: { data: SlabData; className?: string }
           {data.cert ? <span className="font-mono text-meta text-muted">{data.cert}</span> : null}
         </div>
       </div>
-    </div>
+    </>
+  );
+
+  return data.href ? (
+    <Link href={data.href} className={cn(classes, "focus-ring block")}>
+      {body}
+    </Link>
+  ) : (
+    <div className={classes}>{body}</div>
   );
 }
