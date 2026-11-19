@@ -143,7 +143,7 @@ The Pop Report ships on **placeholders** the client must confirm.
 
 | Item | Current placeholder | What is needed |
 |---|---|---|
-| Grading scale | 19 grades, 1 to 10 in half steps (`grades` table, keys `g1`…`g10`, `g1_5`…`g9_5`), with placeholder labels under the grade message keys. | **The real scale and its labels.** Is there a half-grade at every step; is 10 split (Gem Mint / Pristine)? Client-supplied, never ours to invent. |
+| Grading scale | 19 grades, 1 to 10 in half steps (`grades` table, keys `g1`…`g10`, `g1_5`…`g9_5`), with placeholder labels under the grade message keys. | **The real scale and its labels.** Is there a half-grade at every step; is 10 split (Gem Mint / Pristine)? Client-supplied, never ours to invent. **Blocks M5:** needed before staff record the first real grade. Until then no stored copy references a grade key outside the seed, so swapping the scale is one migration plus message keys; afterwards it means remapping recorded grades. |
 | Certificate number format | `^[A-Z0-9-]{4,32}$`, entered case-insensitively. Real numbers are the client's; seed data uses `TEST-####`. | **The format and numbering** printed on the slab. `/cert/<number>` is printed on slabs and can never change once slabs exist. |
 | Launch categories | Nine placeholders: Pokemon, Magic: The Gathering, Yu-Gi-Oh!, One Piece, basketball, soccer, baseball, American football, hockey (`catalog_categories`). | Which games and sports launch, in what order. A category is a row plus a message key. |
 | Early-access window | Published copies appear as soon as staff publish them. | Whether a result is held back for the owner for a period before it becomes public. |

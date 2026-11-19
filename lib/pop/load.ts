@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { createPublicClient } from "@/lib/supabase/public";
 
 import { reportPopError } from "./errors";
@@ -82,7 +84,7 @@ async function call(fn: string, args?: Record<string, unknown>): Promise<Row[]> 
   return Array.isArray(data) ? (data as Row[]) : [];
 }
 
-export async function loadGrades(): Promise<Grade[]> {
+async function loadGradesUncached(): Promise<Grade[]> {
   const rows = await call("pop_grades");
   return rows.flatMap((r) => {
     const key = gradeKey(r.key);
@@ -90,7 +92,7 @@ export async function loadGrades(): Promise<Grade[]> {
   });
 }
 
-export async function loadCategories(): Promise<PopCategory[]> {
+async function loadCategoriesUncached(): Promise<PopCategory[]> {
   const rows = await call("pop_categories");
   let reported = false;
   return rows.flatMap((r) => {
@@ -104,7 +106,7 @@ export async function loadCategories(): Promise<PopCategory[]> {
   });
 }
 
-export async function loadCategorySets(category: string): Promise<PopSetSummary[]> {
+async function loadCategorySetsUncached(category: string): Promise<PopSetSummary[]> {
   const rows = await call("pop_category_sets", { p_category: category });
   return rows.map((r) => ({
     id: reqStr(r.id),
@@ -118,7 +120,7 @@ export async function loadCategorySets(category: string): Promise<PopSetSummary[
   }));
 }
 
-export async function loadSet(id: string): Promise<PopSet | null> {
+async function loadSetUncached(id: string): Promise<PopSet | null> {
   const [r] = await call("pop_set", { p_set: id });
   const category = r && categoryKey(r.category);
   const kind = r && kindOf(r.kind);
@@ -137,7 +139,7 @@ export async function loadSet(id: string): Promise<PopSet | null> {
   };
 }
 
-export async function loadSetCards(id: string): Promise<PopSetCard[]> {
+async function loadSetCardsUncached(id: string): Promise<PopSetCard[]> {
   const rows = await call("pop_set_cards", { p_set: id });
   const onUnknown = unknownGradeReporter();
   return rows.map((r) => ({
@@ -149,7 +151,7 @@ export async function loadSetCards(id: string): Promise<PopSetCard[]> {
   }));
 }
 
-export async function loadCard(id: string): Promise<PopCard | null> {
+async function loadCardUncached(id: string): Promise<PopCard | null> {
   const [r] = await call("pop_card", { p_card: id });
   const category = r && categoryKey(r.category);
   const kind = r && kindOf(r.kind);
@@ -174,14 +176,14 @@ export async function loadCard(id: string): Promise<PopCard | null> {
 }
 
 /** Follows merges to the live card id, or null when the card is unknown. */
-export async function resolveCard(id: string): Promise<string | null> {
+async function resolveCardUncached(id: string): Promise<string | null> {
   const client = createPublicClient();
   const { data, error } = await client.rpc("pop_resolve_card", { p_card: id });
   if (error) throw new Error(`Pop RPC pop_resolve_card failed${error.code ? ` (${error.code})` : ""}`);
   return typeof data === "string" ? data : null;
 }
 
-export async function loadCertificate(certNumber: string): Promise<PopCertificate | null> {
+async function loadCertificateUncached(certNumber: string): Promise<PopCertificate | null> {
   const [r] = await call("pop_certificate", { p_cert: certNumber });
   if (!r) return null;
   if (r.status === "withdrawn") return { status: "withdrawn", certNumber: reqStr(r.cert_number) };
@@ -213,7 +215,7 @@ export async function loadCertificate(certNumber: string): Promise<PopCertificat
 }
 
 /** Never throws: the landing page must not break on a Pop Report outage. */
-export async function loadRecentCopies(limit: number): Promise<PopRecentCopy[]> {
+async function loadRecentCopiesUncached(limit: number): Promise<PopRecentCopy[]> {
   let rows: Row[];
   try {
     rows = await call("pop_recent_copies", { p_limit: limit });
@@ -243,3 +245,15 @@ export async function loadRecentCopies(limit: number): Promise<PopRecentCopy[]> 
     ];
   });
 }
+
+// Memoised per request: a page and its generateMetadata (and the components
+// under them) share one RPC per argument instead of each issuing their own.
+export const loadGrades = cache(loadGradesUncached);
+export const loadCategories = cache(loadCategoriesUncached);
+export const loadCategorySets = cache(loadCategorySetsUncached);
+export const loadSet = cache(loadSetUncached);
+export const loadSetCards = cache(loadSetCardsUncached);
+export const loadCard = cache(loadCardUncached);
+export const resolveCard = cache(resolveCardUncached);
+export const loadCertificate = cache(loadCertificateUncached);
+export const loadRecentCopies = cache(loadRecentCopiesUncached);
