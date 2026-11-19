@@ -82,6 +82,7 @@ const ADMIN_ALLOWLIST: string[] = [
   join("lib", "payments", "record-payment.ts"),
   join("lib", "jobs", "run-maintenance.ts"),
   join("lib", "jobs", "run-job.ts"),
+  join("lib", "search", "sync.ts"),
 ];
 
 describe("service_role client containment", () => {
@@ -98,6 +99,7 @@ describe("service_role client containment", () => {
       join("lib", "payments", "record-payment.ts"),
       join("lib", "jobs", "run-maintenance.ts"),
       join("lib", "jobs", "run-job.ts"),
+      join("lib", "search", "sync.ts"),
     ]);
   });
 

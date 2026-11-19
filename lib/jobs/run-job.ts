@@ -35,8 +35,10 @@ async function execute(job: JobName): Promise<"ran" | "busy" | "failed"> {
         : null,
     });
     success = true;
-  } catch {
-    reportJobError(job, "job_failed");
+  } catch (err) {
+    // Only a stable `code` string is reported — never the message, which may carry data.
+    const code = (err as { code?: unknown } | null)?.code;
+    reportJobError(job, typeof code === "string" && /^[a-z_]{1,40}$/.test(code) ? code : "job_failed");
   }
 
   const finished = await admin.rpc("finish_job_run", {

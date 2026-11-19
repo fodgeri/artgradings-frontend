@@ -23,6 +23,7 @@
     "db:types": "supabase gen types typescript --local > lib/supabase/database.types.ts",
     "auth:templates": "node scripts/push-auth-templates.mjs",
     "job": "node scripts/run-job.mjs",
+    "search:reindex": "node scripts/run-job.mjs search-rebuild",
     "search:start": "docker compose -f docker-compose.meilisearch.yml up -d",
     "search:stop": "docker compose -f docker-compose.meilisearch.yml down"
   },

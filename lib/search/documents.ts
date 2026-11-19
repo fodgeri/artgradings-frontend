@@ -33,13 +33,17 @@ export type PopCardDocument = Omit<
   latest_published_at: number | null;
 };
 
+function unixSeconds(iso: string | null): number | null {
+  if (!iso) return null;
+  const ms = new Date(iso).getTime();
+  return Number.isNaN(ms) ? null : Math.floor(ms / 1000);
+}
+
 export function toDocument(row: PopCardRow): PopCardDocument {
   return {
     ...row,
     kind: row.kind as CategoryKind,
     grade_counts: (row.grade_counts ?? {}) as Partial<Record<GradeKey, number>>,
-    latest_published_at: row.latest_published_at
-      ? Math.floor(new Date(row.latest_published_at).getTime() / 1000)
-      : null,
+    latest_published_at: unixSeconds(row.latest_published_at),
   };
 }

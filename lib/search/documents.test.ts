@@ -38,4 +38,8 @@ describe("toDocument", () => {
     expect(doc.latest_published_at).toBeNull();
     expect(doc.grade_counts).toEqual({});
   });
+
+  test("an unparseable date becomes null, never NaN", () => {
+    expect(toDocument({ ...row, latest_published_at: "not a date" }).latest_published_at).toBeNull();
+  });
 });

@@ -1,19 +1,16 @@
 import "server-only";
 
+import { rebuildSearchIndex, runSearchDelta } from "@/lib/search/sync";
+
 import { runMaintenance } from "./run-maintenance";
 
 export type JobContext = { startedAt: Date; previousSuccessStartedAt: Date | null };
 export type JobFn = (ctx: JobContext) => Promise<Record<string, number>>;
 
-function notImplemented(): Promise<Record<string, number>> {
-  throw new Error("not implemented");
-}
-
 export const JOBS: Record<"maintenance" | "search-delta" | "search-rebuild", JobFn> = {
   maintenance: runMaintenance,
-  // Task 8 replaces these two with runSearchDelta / rebuildSearchIndex.
-  "search-delta": notImplemented,
-  "search-rebuild": notImplemented,
+  "search-delta": runSearchDelta,
+  "search-rebuild": rebuildSearchIndex,
 };
 
 export type JobName = keyof typeof JOBS;

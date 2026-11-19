@@ -72,6 +72,13 @@ describe("runJob", () => {
     expect(reportJobError).toHaveBeenCalledWith("maintenance", "job_failed");
   });
 
+  test("a thrown error with a code is reported under that code, not its message", async () => {
+    begin(true);
+    jobs.maintenance.mockRejectedValue(Object.assign(new Error("secret row data"), { code: "rpc_failed" }));
+    await expect(runJob("maintenance")).resolves.toBe("failed");
+    expect(reportJobError).toHaveBeenCalledWith("maintenance", "rpc_failed");
+  });
+
   test("a failing begin is reported and fails", async () => {
     rpc.mockResolvedValue({ data: null, error: { code: "XX000" } });
     await expect(runJob("maintenance")).resolves.toBe("failed");
