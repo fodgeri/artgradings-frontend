@@ -1070,6 +1070,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      begin_job_run: {
+        Args: { p_job: string; p_lease_seconds: number }
+        Returns: {
+          acquired: boolean
+          previous_success_started_at: string
+          started_at: string
+        }[]
+      }
       cancel_order: { Args: { p_reference: string }; Returns: undefined }
       card_number_key: { Args: { p: string }; Returns: string }
       complete_photo_deletions: {
@@ -1077,7 +1085,12 @@ export type Database = {
         Returns: undefined
       }
       expire_stale_drafts: { Args: never; Returns: number }
+      finish_job_run: {
+        Args: { p_job: string; p_started_at: string; p_success: boolean }
+        Returns: undefined
+      }
       list_photo_deletions: { Args: { p_limit: number }; Returns: string[] }
+      overdue_jobs: { Args: never; Returns: string[] }
       pop_card: {
         Args: { p_card: string }
         Returns: {
@@ -1220,6 +1233,36 @@ export type Database = {
           p_provider_reference: string
         }
         Returns: string
+      }
+      search_card_documents: {
+        Args: { p_card_ids: string[] }
+        Returns: {
+          authentic_count: number
+          autograph_total: number
+          card_number: string
+          category: string
+          grade_counts: Json
+          grades_present: string[]
+          id: string
+          kind: string
+          language: string
+          latest_published_at: string
+          name: string
+          number_key: string
+          rarity: string
+          release_year: number
+          series: string
+          set_code: string
+          set_id: string
+          set_name: string
+          total: number
+          variant: string
+        }[]
+      }
+      search_changed_card_ids: { Args: { p_since: string }; Returns: string[] }
+      search_public_card_ids: {
+        Args: { p_after: string; p_limit: number }
+        Returns: string[]
       }
       submit_order: { Args: { p_terms_version: string }; Returns: string }
     }
