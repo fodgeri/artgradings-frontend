@@ -747,6 +747,46 @@
       "total": "Total",
       "autograph": "Autograph",
       "empty": "No graded copies yet."
+    },
+    "search": {
+      "title": "Pop Report",
+      "lead": "Search every card we have graded and see how many copies reached each grade.",
+      "metaDescription": "Search the public Pop Report: how many copies of each card have reached each grade.",
+      "form": {
+        "q": "Card name",
+        "qPlaceholder": "Search by card name",
+        "kind": "Type",
+        "category": "Category",
+        "year": "Release year",
+        "grade": "Grade",
+        "any": "Any",
+        "submit": "Search",
+        "clear": "Clear"
+      },
+      "results": {
+        "count": "{count, plural, one {# card} other {# cards}}",
+        "number": "No. {number}",
+        "total": "{count, plural, one {# graded copy} other {# graded copies}}",
+        "highest": "Highest: {grade} ({count})",
+        "noGrades": "No card grades yet",
+        "empty": "No cards match your search. Try fewer filters or a different spelling.",
+        "unavailable": "Search is unavailable right now. Please try again in a few minutes, or browse by category.",
+        "pagination": "Search results pages",
+        "previous": "Previous",
+        "next": "Next",
+        "page": "Page {page} of {pages}"
+      }
+    },
+    "category": {
+      "browseTitle": "Browse by category",
+      "tileMeta": "{sets, plural, one {# set} other {# sets}} · {total, plural, one {# graded copy} other {# graded copies}}",
+      "title": "{category} Pop Report",
+      "metaDescription": "Every {category} set in the Pop Report, with graded copy counts.",
+      "back": "All categories",
+      "setMeta": "{cards, plural, one {# card} other {# cards}} · {total, plural, one {# copy} other {# copies}}",
+      "language": "Language: {language}",
+      "noSeries": "Other sets",
+      "noYear": "Year unknown"
     }
   }
 }
