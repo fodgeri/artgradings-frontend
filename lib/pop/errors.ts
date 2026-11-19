@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 
-export type PopFlow = "recentCopies" | "population" | "categories" | "set" | "card" | "certificate";
+export type PopFlow = "recentCopies" | "population" | "categories" | "set" | "card" | "certificate" | "landing";
 
 /** Reports a caught-and-swallowed Pop Report error: flow and code only, never data. */
 export function reportPopError(flow: PopFlow, code: string): void {

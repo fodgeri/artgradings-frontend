@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 
 import { SAMPLE_SLABS } from "@/components/slab/fixtures";
 import type { SlabData } from "@/components/slab/slab";
+import { reportPopError } from "@/lib/pop/errors";
 import { loadGrades, loadRecentCopies } from "@/lib/pop/load";
 import { SHOWCASE_MIN, toShowcaseSlabs } from "@/lib/pop/showcase";
 
@@ -12,6 +13,10 @@ export const revalidate = 300;
 
 /** The newest published copies, or the fixtures while there are too few (or anything fails). */
 async function loadSlabs(): Promise<SlabData[]> {
+  // No Supabase env (CI build): the fixtures stand in, and that is not an error.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+    return SAMPLE_SLABS;
+  }
   try {
     const [copies, grades] = await Promise.all([loadRecentCopies(SHOWCASE_MIN), loadGrades()]);
     const [grade, category, format] = await Promise.all([
@@ -29,7 +34,8 @@ async function loadSlabs(): Promise<SlabData[]> {
       ) ?? SAMPLE_SLABS
     );
   } catch {
-    // Missing env at build time, or the database is down: the fixtures stand in.
+    // The database is down: the fixtures stand in, and staff hear about it.
+    reportPopError("landing", "load_failed");
     return SAMPLE_SLABS;
   }
 }

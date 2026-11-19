@@ -35,7 +35,8 @@ export type SlabData = {
  * black — which is what `glass-strong` resolves to per theme.
  */
 export function Slab({ data, className }: { data: SlabData; className?: string }) {
-  const classes = cn("glass-strong rounded-card p-[13px]", className);
+  // `block` and the base come before `className` so a caller's `hidden` wins.
+  const classes = cn("glass-strong block rounded-card p-[13px]", data.href && "focus-ring", className);
   const body = (
     <>
       {/* The brand manual's signature device (p. 7) at label scale: a rule
@@ -96,7 +97,7 @@ export function Slab({ data, className }: { data: SlabData; className?: string }
   );
 
   return data.href ? (
-    <Link href={data.href} className={cn(classes, "focus-ring block")}>
+    <Link href={data.href} className={classes}>
       {body}
     </Link>
   ) : (

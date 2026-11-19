@@ -90,4 +90,16 @@ describe("Slab", () => {
     renderWithIntl(<Slab data={{ ...data, image: "/cards/charizard.webp" }} />);
     expect(screen.getByRole("img", { name: /Charizard/ })).toBeInTheDocument();
   });
+
+  test("with href it is a link to it, and the caller's className still wins", () => {
+    renderWithIntl(<Slab data={{ ...data, href: "/cert/ART-08831204" }} className="hidden sm:block" />);
+    const link = screen.getByRole("link");
+    expect(link).toHaveAttribute("href", "/cert/ART-08831204");
+    expect(link).toHaveClass("hidden", "sm:block");
+  });
+
+  test("without href it is not a link", () => {
+    renderWithIntl(<Slab data={data} />);
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
 });
