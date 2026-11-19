@@ -1,5 +1,5 @@
 begin;
-select plan(25);
+select plan(31);
 
 insert into public.card_sets (id, category, name, code, language, release_year, series, total_cards) values
   ('00000000-0000-0000-0000-0000000001b1', 'pokemon', 'Pop Set', 'PS', 'en', 2020, 'Pop Series', 102),
@@ -30,6 +30,11 @@ insert into public.graded_copies
   ('00000000-0000-0000-0000-0000000002c1', 'ART-P0000010', '00000000-0000-0000-0000-0000000001a3', 'grading', 'g6', null, null, null, now(), now(), null),
   ('00000000-0000-0000-0000-0000000002d1', 'ART-P0000011', '00000000-0000-0000-0000-0000000001a4', 'grading', 'g5', null, null, null, now(), now(), null),
   ('00000000-0000-0000-0000-0000000002e1', 'ART-P0000012', '00000000-0000-0000-0000-0000000001a5', 'grading', 'g4', null, null, null, now(), now(), null);
+
+insert into public.graded_copies
+  (cert_number, catalog_card_id, service, card_grade, autograph_grade, card_authentication, autograph_authentication, finalized_at, published_at, withdrawn_at) values
+  ('ART-P0000013', '00000000-0000-0000-0000-0000000001a1', 'autograph', null, 'g8', null, 'not_genuine', now(), now(), null),
+  ('ART-P0000014', '00000000-0000-0000-0000-0000000001a1', 'authentication', null, null, 'not_genuine', null, now(), now(), now());
 
 select set_config('role', 'anon', true);
 
@@ -64,6 +69,13 @@ select is((select status || coalesce(card_id::text, 'null') from public.pop_cert
 select is((select count(*)::int from public.pop_certificate('ART-P0000006')), 0, 'unpublished cert: no row');
 select is((select count(*)::int from public.pop_certificate('ART-P0000008')), 0, 'not_genuine cert: no row');
 select is((select count(*)::int from public.pop_certificate('ART-NOPE0000')), 0, 'unknown cert: no row');
+
+select is((select count(*)::int from public.pop_certificate('ART-P0000013')), 0, 'a forged-signature-only copy has no certificate');
+select is((select autograph_grade from public.pop_certificate('ART-P0000009')), null, 'a forged signature shows no grade');
+select is((select autograph_authentication from public.pop_certificate('ART-P0000009')), 'not_genuine', 'the forged verdict is kept');
+select is((select card_grade from public.pop_certificate('ART-P0000009')), 'g7', 'the dual copy keeps its card grade');
+select is((select status from public.pop_certificate('ART-P0000014')), 'withdrawn', 'a withdrawn not_genuine copy answers withdrawn');
+select is((select graded_higher from public.pop_certificate('ART-P0000004')), null, 'an authentic-only copy has no graded_higher');
 
 select ok((select count(*) from public.pop_recent_copies(100)) <= 24
   and not exists (select 1 from public.pop_recent_copies(100) where cert_number in ('ART-P0000004', 'ART-P0000005')),
