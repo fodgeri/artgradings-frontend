@@ -83,6 +83,71 @@ values ('00000000-0000-0000-0000-0000005eed02',
         1000, 'grading', 'grading_standard')
 on conflict (id) do nothing;
 
+-- Pop Report sample data (M4). Obviously synthetic: "Example" names and
+-- TEST-#### certificate numbers, a range real numbers can never use. Ids sit
+-- in the `5eed` range. Covers: several grades incl. halves, authentic-only,
+-- dual with a genuine and with a forged signature, unpublished, withdrawn and
+-- not-genuine copies. 12 published card-graded copies, so the landing page's
+-- switch to real slabs (at 8) shows locally.
+insert into public.card_sets (id, category, name, code, language, release_year, series, total_cards)
+values
+  ('00000000-0000-0000-0000-0000005eed10', 'pokemon', 'Example Base Set', 'EXB', 'en', 1999, 'Example Series', 102),
+  ('00000000-0000-0000-0000-0000005eed11', 'pokemon', 'Example Japanese Set', 'EXJ', 'ja', 2001, 'Example Series', 80),
+  ('00000000-0000-0000-0000-0000005eed12', 'basketball', 'Example Hoops', 'EXH', 'en', 2003, null, null)
+on conflict (id) do nothing;
+
+insert into public.catalog_cards (id, set_id, card_number, name, variant, rarity, merged_into)
+values
+  ('00000000-0000-0000-0000-0000005eed20', '00000000-0000-0000-0000-0000005eed10', '4/102', 'Example Flamewing', null, 'Holo Rare', null),
+  ('00000000-0000-0000-0000-0000005eed21', '00000000-0000-0000-0000-0000005eed10', '44/102', 'Example Sprout', null, 'Common', null),
+  ('00000000-0000-0000-0000-0000005eed22', '00000000-0000-0000-0000-0000005eed10', '7/102', 'Example Tidepool', null, 'Rare', null),
+  ('00000000-0000-0000-0000-0000005eed23', '00000000-0000-0000-0000-0000005eed10', '4/102', 'Example Flamewing', '1st Edition', 'Holo Rare', null),
+  ('00000000-0000-0000-0000-0000005eed24', '00000000-0000-0000-0000-0000005eed11', '1', 'Example Dragonet', null, 'Rare', null),
+  ('00000000-0000-0000-0000-0000005eed25', '00000000-0000-0000-0000-0000005eed11', '25', 'Example Moonfox', null, 'Uncommon', null),
+  ('00000000-0000-0000-0000-0000005eed26', '00000000-0000-0000-0000-0000005eed12', '23', 'Example Guard', null, null, null),
+  ('00000000-0000-0000-0000-0000005eed27', '00000000-0000-0000-0000-0000005eed12', '5', 'Example Center', null, null, null),
+  ('00000000-0000-0000-0000-0000005eed28', '00000000-0000-0000-0000-0000005eed12', '101', 'Example Rookie', 'Rookie Auto', null, null),
+  ('00000000-0000-0000-0000-0000005eed29', '00000000-0000-0000-0000-0000005eed12', '7', 'Example Winger', null, null, null),
+  ('00000000-0000-0000-0000-0000005eed2a', '00000000-0000-0000-0000-0000005eed12', '12', 'Example Forward', null, null, null)
+on conflict (id) do nothing;
+
+-- A duplicate of Example Flamewing #4 that was merged into the canonical card;
+-- /pop-report/cards/<this id> redirects to the canonical one.
+insert into public.catalog_cards (id, set_id, card_number, name, merged_into)
+values ('00000000-0000-0000-0000-0000005eed2b', '00000000-0000-0000-0000-0000005eed10',
+        '004/102', 'Example Flamewing (duplicate)', '00000000-0000-0000-0000-0000005eed20')
+on conflict (id) do nothing;
+
+insert into public.graded_copies (
+  cert_number, catalog_card_id, order_card_id, service, card_grade,
+  autograph_grade, card_authentication, autograph_authentication,
+  finalized_at, published_at, withdrawn_at
+)
+values
+  ('TEST-0001', '00000000-0000-0000-0000-0000005eed20', '00000000-0000-0000-0000-0000005eed02', 'grading', 'g10', null, null, null, now(), now(), null),
+  ('TEST-0002', '00000000-0000-0000-0000-0000005eed20', null, 'grading', 'g9_5', null, null, null, now(), now(), null),
+  ('TEST-0003', '00000000-0000-0000-0000-0000005eed20', null, 'grading', 'g9', null, null, null, now(), now(), null),
+  ('TEST-0004', '00000000-0000-0000-0000-0000005eed21', null, 'grading', 'g8_5', null, null, null, now(), now(), null),
+  ('TEST-0005', '00000000-0000-0000-0000-0000005eed22', null, 'grading', 'g10', null, null, null, now(), now(), null),
+  ('TEST-0006', '00000000-0000-0000-0000-0000005eed23', null, 'grading', 'g7', null, null, null, now(), now(), null),
+  ('TEST-0007', '00000000-0000-0000-0000-0000005eed24', null, 'grading', 'g9', null, null, null, now(), now(), null),
+  ('TEST-0008', '00000000-0000-0000-0000-0000005eed25', null, 'grading', 'g8', null, null, null, now(), now(), null),
+  ('TEST-0009', '00000000-0000-0000-0000-0000005eed26', null, 'grading', 'g10', null, null, null, now(), now(), null),
+  ('TEST-0010', '00000000-0000-0000-0000-0000005eed27', null, 'grading', 'g6_5', null, null, null, now(), now(), null),
+  -- authentic only
+  ('TEST-0011', '00000000-0000-0000-0000-0000005eed21', null, 'authentication', null, null, 'genuine', null, now(), now(), null),
+  -- dual: card grade plus an autograph grade
+  ('TEST-0012', '00000000-0000-0000-0000-0000005eed28', null, 'dual', 'g9', 'g10', null, 'genuine', now(), now(), null),
+  -- dual: card grade, forged signature
+  ('TEST-0013', '00000000-0000-0000-0000-0000005eed28', null, 'dual', 'g8', null, null, 'not_genuine', now(), now(), null),
+  -- finalized, not yet published
+  ('TEST-0014', '00000000-0000-0000-0000-0000005eed29', null, 'grading', 'g9', null, null, null, now(), null, null),
+  -- published, then withdrawn
+  ('TEST-0015', '00000000-0000-0000-0000-0000005eed29', null, 'grading', 'g9', null, null, null, now(), now(), now()),
+  -- the card itself is not genuine
+  ('TEST-0016', '00000000-0000-0000-0000-0000005eed2a', null, 'authentication', null, null, 'not_genuine', null, now(), now(), null)
+on conflict (cert_number) do nothing;
+
 -- Local-only Vault secrets for the scheduled app jobs (private.call_job).
 -- Hosted projects set their own per docs/deployment/SEARCH_SETUP.md; these
 -- values must never be used there. Guarded so a re-seed does not duplicate.

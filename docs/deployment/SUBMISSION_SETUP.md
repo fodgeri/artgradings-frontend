@@ -35,10 +35,10 @@ and the two keys from `npx supabase status -o env`).
       `requestChecksumCalculation: "WHEN_REQUIRED"` and
       `responseChecksumValidation: "WHEN_REQUIRED"`. `lib/storage/r2.ts`
       sets neither today. On the deployed host: upload a photo, view it,
-      remove it, and run the maintenance task once (it must report
-      `"deletedPhotos"` of at least 1, and the object must be gone from the
-      bucket). Add
-      the two options if any step fails.
+      remove it, and run `npm run job maintenance` once (it answers 202;
+      the `maintenance` row in `private.job_runs` then shows `deletedPhotos` of
+      at least 1, and the object must be gone from the bucket). Add the two
+      options if any step fails.
 
 ## Cloudflare R2
 
@@ -81,30 +81,30 @@ the origin it names must be the one customers and staff will reach for as long
 as the paper exists. The pages that render the code throw if `SITE_URL` is
 unset.
 
-## `JOBS_SECRET` and the hourly maintenance task
+## `JOBS_SECRET` and the scheduled jobs
 
-`POST /api/jobs/maintenance` expires drafts untouched for 30 days (with their
-photos) and drains the queue of R2 objects whose rows are gone. It runs on the
-service-role client (`lib/jobs/run-maintenance.ts`). Without `JOBS_SECRET`
-the route returns 404; with a wrong or missing bearer token, 401.
+Scheduled work is run by **Supabase Cron** (pg_cron), not by Coolify. The
+schedule lives in the `job_scheduling` migration: draft expiry is pure SQL
+(`expire-stale-drafts`), and the app jobs (`maintenance`, `search-delta`,
+`search-rebuild`) are `POST /api/jobs/<job>` calls that `private.call_job`
+signs with an HMAC and the Vault secret `jobs_secret`, sent to the Vault
+`jobs_base_url`. The route verifies the signature (5-minute window) against
+`JOBS_SECRET`, answers 202 and does the work in `after()`. Without
+`JOBS_SECRET` the route returns 404; a bad signature, 401.
 
-- [ ] **`JOBS_SECRET`** = `openssl rand -hex 32`. Runtime variable. Never logged
-      or echoed by the route.
-- [ ] **Coolify → the application → Scheduled Tasks → Add.** Frequency
-      `0 * * * *` (hourly). Container: the app. Command:
+`maintenance` drains the queue of R2 objects whose rows are gone
+(`lib/jobs/run-maintenance.ts`) and returns `{ deletedPhotos }`. It no longer
+expires drafts; the SQL cron does that.
 
-      ```sh
-      wget -q -O - --post-data='' --header="Authorization: Bearer $JOBS_SECRET" http://localhost:3000/api/jobs/maintenance
-      ```
-
-      The task runs **inside the app container**, which is `node:24-alpine`:
-      it has BusyBox `wget` and **no `curl`** (checked against the image). If
-      the task is ever moved to the host, the equivalent is
-      `curl -fsS -X POST -H "Authorization: Bearer $JOBS_SECRET" http://localhost:3000/api/jobs/maintenance`.
-- [ ] Run the task once by hand from Coolify and check its log shows
-      `{"expiredDrafts":…,"deletedPhotos":…}`. A 404 means `JOBS_SECRET` is
-      not set in the container; a 401 means `$JOBS_SECRET` was not expanded
-      in the task's shell or does not match.
+- [ ] **`JOBS_SECRET`** = `openssl rand -hex 32`. Runtime variable, never
+      logged. It must equal the project's Vault `jobs_secret`.
+- [ ] **Set the Vault secrets** (`jobs_base_url`, `jobs_secret`) on each
+      Supabase project; the SQL is in `SEARCH_SETUP.md`.
+- [ ] **Delete the old Coolify scheduled task** (the hourly `wget` with a
+      Bearer token against `/api/jobs/maintenance`). That route no longer
+      accepts a Bearer token; left in place it only logs 401s.
+- [ ] Check a run: `select * from private.job_runs`, and
+      `select * from cron.job_run_details order by start_time desc limit 10`.
 
 Failures inside the job are reported to Sentry (`reportOrderError`, flow
 `maintenance`). An R2 failure leaves that batch queued for the next run.
@@ -128,12 +128,15 @@ awaiting payment and says that online payment is not available yet, with no
 - [ ] **`SITE_URL` is the production origin before the first real label is
       printed.** A label printed with the wrong origin cannot be recalled.
 - [ ] **Repeat the R2 check against the production bucket**: upload, view
-      and remove a photo, then run the maintenance task once (see *Before
+      and remove a photo, then run the maintenance job once (see *Before
       merging*).
 - [ ] The production R2 bucket is its own bucket with its own scoped token —
       never the dev bucket.
-- [ ] `JOBS_SECRET` is a fresh value for production, and the scheduled task
-      exists on the production application.
+- [ ] **Production `JOBS_SECRET` is a fresh `openssl rand -hex 32` value**,
+      equal to that project's Vault `jobs_secret`. `.env.example` carries a
+      known local value (`local-jobs-secret`); it must never reach production.
+      The Vault secrets and the cron schedule exist on the production project
+      (`SEARCH_SETUP.md`).
 - [ ] The catalog (services, tiers, prices, caps, turnarounds, add-ons, the
       identification fee, shipping zones) holds the client's price list, not
       the placeholders — see `docs/content-requests.md`.

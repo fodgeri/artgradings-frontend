@@ -13,7 +13,8 @@ import type { SlabData } from "./slab";
  * a landing page's needs would mean designing it twice — M4's version must also
  * serve population counts, Meilisearch sync and a detail page.
  *
- * These are replaced by real data at M4 through a single prop:
+ * The landing page replaces these with real graded copies once 8 exist (M4);
+ * until then they render through a single prop:
  *
  *     <Showcase cards={SAMPLE_SLABS} />        // M1, here
  *     <Showcase cards={await getTrending()} /> // M4, same SlabData[]

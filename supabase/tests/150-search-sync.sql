@@ -102,7 +102,7 @@ select ok('00000000-0000-0000-0000-0000000004a4'::uuid in (select i from public.
   'updating a copy surfaces its card');
 
 -- Public ids and documents
-select is((select array_agg(i order by i) from public.search_public_card_ids(null, 100) i),
+select is((select array_agg(i order by i) from public.search_public_card_ids(null, 100) i where i < '00000000-0000-0000-0000-0000005eed00'),
   array['00000000-0000-0000-0000-0000000004a1','00000000-0000-0000-0000-0000000004a3','00000000-0000-0000-0000-0000000004a4']::uuid[],
   'public ids exclude withdrawn-only and merged cards');
 select is((select array_agg(i) from public.search_public_card_ids('00000000-0000-0000-0000-0000000004a1', 1) i),
