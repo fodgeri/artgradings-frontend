@@ -341,6 +341,93 @@ export type Database = {
         }
         Relationships: []
       }
+      graded_copies: {
+        Row: {
+          autograph_authentication: string | null
+          autograph_grade: string | null
+          card_authentication: string | null
+          card_grade: string | null
+          catalog_card_id: string
+          cert_number: string
+          created_at: string
+          finalized_at: string | null
+          id: string
+          order_card_id: string | null
+          published_at: string | null
+          service: string
+          updated_at: string
+          withdrawn_at: string | null
+        }
+        Insert: {
+          autograph_authentication?: string | null
+          autograph_grade?: string | null
+          card_authentication?: string | null
+          card_grade?: string | null
+          catalog_card_id: string
+          cert_number: string
+          created_at?: string
+          finalized_at?: string | null
+          id?: string
+          order_card_id?: string | null
+          published_at?: string | null
+          service: string
+          updated_at?: string
+          withdrawn_at?: string | null
+        }
+        Update: {
+          autograph_authentication?: string | null
+          autograph_grade?: string | null
+          card_authentication?: string | null
+          card_grade?: string | null
+          catalog_card_id?: string
+          cert_number?: string
+          created_at?: string
+          finalized_at?: string | null
+          id?: string
+          order_card_id?: string | null
+          published_at?: string | null
+          service?: string
+          updated_at?: string
+          withdrawn_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "graded_copies_autograph_grade_fkey"
+            columns: ["autograph_grade"]
+            isOneToOne: false
+            referencedRelation: "grades"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "graded_copies_card_grade_fkey"
+            columns: ["card_grade"]
+            isOneToOne: false
+            referencedRelation: "grades"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "graded_copies_catalog_card_id_fkey"
+            columns: ["catalog_card_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "graded_copies_order_card_id_fkey"
+            columns: ["order_card_id"]
+            isOneToOne: false
+            referencedRelation: "order_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "graded_copies_service_fkey"
+            columns: ["service"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
       grades: {
         Row: {
           key: string
