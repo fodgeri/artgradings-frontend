@@ -78,6 +78,10 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Operator script for the scheduled jobs (`node scripts/run-job.mjs <job>`);
+# depends only on node:crypto. The standalone package.json carries no npm
+# scripts, so `npm run job` does not exist in this image.
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/run-job.mjs ./scripts/run-job.mjs
 
 USER nextjs
 EXPOSE 3000

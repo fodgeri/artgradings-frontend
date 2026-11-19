@@ -259,9 +259,11 @@ that talks to Meilisearch stays on netcup, with the hardening below.
    counts only (`pg_net` stores responses), are idempotent, and hold a lease
    (a lease row or an advisory lock) so two runs never overlap.
 5. **Failures are visible.** `pg_net` is fire-and-forget, so each job records
-   its last successful run and `/api/health` reports a job overdue past its
-   threshold — which Coolify's health check surfaces. Errors inside a job go to
-   Sentry, as today.
+   its last successful run and `/api/health` lists a job overdue past its
+   threshold in its body. Health stays 200 (Coolify restarts unhealthy
+   containers, which cannot fix a missed job); the overdue check instead
+   raises a `jobs/overdue` Sentry warning, on which an alert rule is set
+   (`SEARCH_SETUP.md`). Errors inside a job go to Sentry, as today.
 6. **Long jobs outlive `pg_net`'s timeout.** The route verifies the signature,
    answers `202` at once and does the work in Next's `after()`. The lease
    covers the run, not the request.

@@ -15,14 +15,15 @@ index is private: the browser never reaches Meilisearch, and no search key is
       `MEILISEARCH_MASTER_KEY` (the service's `MEILI_MASTER_KEY`), a fresh
       `openssl rand -hex 32`. The master key lives in the container only; the
       app never reads it.
-- [ ] Mint an **admin-scoped key** with the master key, from inside the
+- [ ] Mint a **scoped key** (search, documents, indexes including the swap,
+      settings and task polling; nothing else, no key or dump management) with the master key, from inside the
       container or the app network:
 
       ```sh
       curl -X POST http://meilisearch:7700/keys \
         -H "Authorization: Bearer $MEILISEARCH_MASTER_KEY" \
         -H 'Content-Type: application/json' \
-        -d '{"name":"app","description":"artgradings app","actions":["*"],"indexes":["pop_cards*"],"expiresAt":null}'
+        -d '{"name":"app","description":"artgradings app","actions":["search","documents.*","indexes.*","settings.*","tasks.get"],"indexes":["pop_cards*"],"expiresAt":null}'
       ```
 
 - [ ] On the **app**, set `MEILISEARCH_HOST` (`http://meilisearch:7700`) and
@@ -47,12 +48,32 @@ fresh per environment). Rotating it means updating both together.
 
 ## First index build
 
-- [ ] After deploy, from the app container: `npm run search:reindex`
-      (needs `JOBS_SECRET`; set `JOBS_BASE_URL` if the app is not on
-      `localhost:3000`). It triggers the `search-rebuild` job, which builds
-      a temporary `pop_cards_rebuild_*` index, applies the settings and swaps it in.
-- [ ] Run `npm run search:reindex` again whenever `POP_INDEX_SETTINGS`
-      changes; settings reach the live index only through a rebuild.
+- [ ] After deploy, in the app container (Coolify terminal) run
+      `node scripts/run-job.mjs search-rebuild`. The runtime image has no npm
+      scripts, only the script file; `JOBS_SECRET` is already in the
+      container's environment and `JOBS_BASE_URL` defaults to
+      `http://localhost:3000`, which is right inside the container. It
+      answers `202`; the job builds a temporary `pop_cards_rebuild_*` index,
+      applies the settings and swaps it in.
+- [ ] From a workstation instead (a checkout, with `npm install`):
+      `JOBS_SECRET=<value> JOBS_BASE_URL=https://<site> npm run search:reindex`.
+- [ ] Run the rebuild again whenever `POP_INDEX_SETTINGS` changes; settings
+      reach the live index only through a rebuild. Other jobs the same way:
+      `node scripts/run-job.mjs maintenance` (container) or
+      `npm run job maintenance` (workstation).
+
+## Alerting
+
+Overdue jobs do not fail `/api/health` (Coolify restarts an unhealthy
+container, which would not fix a missed job). They surface as a Sentry
+warning message.
+
+- [ ] In Sentry, create an **alert rule** on the message `jobs/overdue`
+      (issue alert: "The issue's title contains `jobs/overdue`", level
+      warning) that notifies the on-call channel. The `jobs.overdue` tag names
+      the jobs. While Meilisearch is unset, search jobs report a
+      `Job error in search-*` warning with `job.code=meili_unavailable`
+      instead of an exception.
 
 ## Checks
 

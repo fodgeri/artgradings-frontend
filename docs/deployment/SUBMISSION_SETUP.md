@@ -35,7 +35,9 @@ and the two keys from `npx supabase status -o env`).
       `requestChecksumCalculation: "WHEN_REQUIRED"` and
       `responseChecksumValidation: "WHEN_REQUIRED"`. `lib/storage/r2.ts`
       sets neither today. On the deployed host: upload a photo, view it,
-      remove it, and run `npm run job maintenance` once (it answers 202 with
+      remove it, and run the maintenance job once (in the app container
+      `node scripts/run-job.mjs maintenance`; from a workstation
+      `JOBS_SECRET=... JOBS_BASE_URL=https://<site> npm run job maintenance`) (it answers 202 with
       `{accepted}`; the work runs afterwards). Then check: the object is gone
       from the bucket, `select count(*) from private.photo_deletions` is 0,
       and the `maintenance` row of `private.job_runs` has an advanced
