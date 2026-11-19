@@ -3,7 +3,7 @@ import "server-only";
 import { createPublicClient } from "@/lib/supabase/public";
 
 import { reportPopError } from "./errors";
-import { GRADE_KEYS, type CategoryKey, type CategoryKind, type GradeKey } from "./keys";
+import { CATEGORY_KEYS, GRADE_KEYS, type CategoryKey, type CategoryKind, type GradeKey } from "./keys";
 import type {
   Grade,
   PopCard,
@@ -29,23 +29,42 @@ function gradeKey(v: unknown): GradeKey | null {
   return typeof v === "string" && (GRADE_KEYS as readonly string[]).includes(v) ? (v as GradeKey) : null;
 }
 
-function counts(v: unknown): Partial<Record<GradeKey, number>> {
+function categoryKey(v: unknown): CategoryKey | null {
+  return typeof v === "string" && (CATEGORY_KEYS as readonly string[]).includes(v) ? (v as CategoryKey) : null;
+}
+
+function kindOf(v: unknown): CategoryKind | null {
+  return v === "tcg" || v === "sports" ? v : null;
+}
+
+/** Reports an unknown grade key at most once per load call. */
+function unknownGradeReporter(): () => void {
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    reportPopError("population", "unknown_grade");
+  };
+}
+
+function counts(v: unknown, onUnknown: () => void): Partial<Record<GradeKey, number>> {
   const out: Partial<Record<GradeKey, number>> = {};
   if (v && typeof v === "object" && !Array.isArray(v)) {
     for (const [k, n] of Object.entries(v)) {
       const key = gradeKey(k);
-      if (key && typeof n === "number") out[key] = n;
+      if (!key) onUnknown();
+      else if (typeof n === "number") out[key] = n;
     }
   }
   return out;
 }
 
-function population(r: Row): Population {
+function population(r: Row, onUnknown: () => void): Population {
   return {
-    gradeCounts: counts(r.grade_counts),
+    gradeCounts: counts(r.grade_counts, onUnknown),
     authenticCount: reqNum(r.authentic_count),
     total: reqNum(r.total),
-    autographCounts: counts(r.autograph_counts),
+    autographCounts: counts(r.autograph_counts, onUnknown),
     autographTotal: reqNum(r.autograph_total),
   };
 }
@@ -73,12 +92,11 @@ export async function loadGrades(): Promise<Grade[]> {
 
 export async function loadCategories(): Promise<PopCategory[]> {
   const rows = await call("pop_categories");
-  return rows.map((r) => ({
-    key: r.key as CategoryKey,
-    kind: r.kind as CategoryKind,
-    setCount: reqNum(r.set_count),
-    total: reqNum(r.total),
-  }));
+  return rows.flatMap((r) => {
+    const key = categoryKey(r.key);
+    const kind = kindOf(r.kind);
+    return key && kind ? [{ key, kind, setCount: reqNum(r.set_count), total: reqNum(r.total) }] : [];
+  });
 }
 
 export async function loadCategorySets(category: string): Promise<PopSetSummary[]> {
@@ -97,11 +115,13 @@ export async function loadCategorySets(category: string): Promise<PopSetSummary[
 
 export async function loadSet(id: string): Promise<PopSet | null> {
   const [r] = await call("pop_set", { p_set: id });
-  if (!r) return null;
+  const category = r && categoryKey(r.category);
+  const kind = r && kindOf(r.kind);
+  if (!r || !category || !kind) return null;
   return {
     id: reqStr(r.id),
-    category: r.category as CategoryKey,
-    kind: r.kind as CategoryKind,
+    category,
+    kind,
     name: reqStr(r.name),
     code: str(r.code),
     language: str(r.language),
@@ -113,8 +133,9 @@ export async function loadSet(id: string): Promise<PopSet | null> {
 
 export async function loadSetCards(id: string): Promise<PopSetCard[]> {
   const rows = await call("pop_set_cards", { p_set: id });
+  const onUnknown = unknownGradeReporter();
   return rows.map((r) => ({
-    ...population(r),
+    ...population(r, onUnknown),
     id: reqStr(r.id),
     cardNumber: reqStr(r.card_number),
     name: reqStr(r.name),
@@ -124,15 +145,17 @@ export async function loadSetCards(id: string): Promise<PopSetCard[]> {
 
 export async function loadCard(id: string): Promise<PopCard | null> {
   const [r] = await call("pop_card", { p_card: id });
-  if (!r) return null;
+  const category = r && categoryKey(r.category);
+  const kind = r && kindOf(r.kind);
+  if (!r || !category || !kind) return null;
   return {
-    ...population(r),
+    ...population(r, unknownGradeReporter()),
     id: reqStr(r.id),
     setId: reqStr(r.set_id),
     setName: reqStr(r.set_name),
     setCode: str(r.set_code),
-    category: r.category as CategoryKey,
-    kind: r.kind as CategoryKind,
+    category,
+    kind,
     cardNumber: reqStr(r.card_number),
     name: reqStr(r.name),
     variant: str(r.variant),
@@ -155,7 +178,8 @@ export async function loadCertificate(certNumber: string): Promise<PopCertificat
   const [r] = await call("pop_certificate", { p_cert: certNumber });
   if (!r) return null;
   if (r.status === "withdrawn") return { status: "withdrawn", certNumber: reqStr(r.cert_number) };
-  if (r.status !== "public") return null;
+  const category = categoryKey(r.category);
+  if (r.status !== "public" || !category) return null;
   return {
     status: "public",
     certNumber: reqStr(r.cert_number),
@@ -165,7 +189,7 @@ export async function loadCertificate(certNumber: string): Promise<PopCertificat
     variant: str(r.variant),
     setId: reqStr(r.set_id),
     setName: reqStr(r.set_name),
-    category: r.category as CategoryKey,
+    category,
     releaseYear: num(r.release_year),
     language: str(r.language),
     service: str(r.service),
@@ -190,7 +214,8 @@ export async function loadRecentCopies(limit: number): Promise<PopRecentCopy[]> 
   }
   return rows.flatMap((r) => {
     const cardGrade = gradeKey(r.card_grade);
-    if (!cardGrade) return [];
+    const category = categoryKey(r.category);
+    if (!cardGrade || !category) return [];
     return [
       {
         certNumber: reqStr(r.cert_number),
@@ -200,7 +225,7 @@ export async function loadRecentCopies(limit: number): Promise<PopRecentCopy[]> 
         variant: str(r.variant),
         rarity: str(r.rarity),
         setName: reqStr(r.set_name),
-        category: r.category as CategoryKey,
+        category,
         releaseYear: num(r.release_year),
         cardGrade,
         publishedAt: reqStr(r.published_at),

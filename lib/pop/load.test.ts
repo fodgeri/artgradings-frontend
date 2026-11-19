@@ -39,6 +39,32 @@ describe("loadCard", () => {
     });
   });
 
+  test("reports a count for an unknown grade key once and keeps the server total", async () => {
+    rpc.mockResolvedValue({
+      data: [
+        {
+          id: "c1", set_id: "s1", set_name: "B", category: "pokemon", kind: "tcg",
+          card_number: "1", name: "N", grade_counts: { g10: 1, bogus: 2 }, authentic_count: 0,
+          total: 3, autograph_counts: {}, autograph_total: 0,
+        },
+      ],
+      error: null,
+    });
+    const card = await loadCard("c1");
+    expect(card?.gradeCounts).toEqual({ g10: 1 });
+    expect(card?.total).toBe(3);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith("population", "unknown_grade");
+  });
+
+  test("returns null for an unknown category", async () => {
+    rpc.mockResolvedValue({
+      data: [{ id: "c1", category: "nope", kind: "tcg", grade_counts: {}, autograph_counts: {} }],
+      error: null,
+    });
+    expect(await loadCard("c1")).toBeNull();
+  });
+
   test("returns null when there are no rows, throws on an RPC error", async () => {
     rpc.mockResolvedValueOnce({ data: [], error: null });
     expect(await loadCard("x")).toBeNull();

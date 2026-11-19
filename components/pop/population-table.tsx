@@ -2,11 +2,13 @@ import { useFormatter, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/cn";
 import type { Grade, Population } from "@/lib/pop/types";
 
 export type PopulationRow = { id: string; href?: string; label: ReactNode } & Population;
 
 const cell = "px-3 py-2 text-right font-mono tabular-nums";
+const head = "text-[11px] uppercase tracking-[0.14em]";
 
 /**
  * Columns are the grades that any row has a count for, highest first, then
@@ -46,18 +48,18 @@ export function PopulationTable({
               <th
                 key={g.key}
                 scope="col"
-                title={tg(`${g.key}.label`)}
-                className={`${cell} text-[11px] uppercase tracking-[0.14em]`}
+                className={cn(cell, head)}
               >
                 {format.number(g.value)}
+                <span className="sr-only"> {tg(`${g.key}.label`)}</span>
               </th>
             ))}
             {showAuthentic ? (
-              <th scope="col" className={`${cell} text-[11px] uppercase tracking-[0.14em]`}>
+              <th scope="col" className={cn(cell, head)}>
                 {t("authentic")}
               </th>
             ) : null}
-            <th scope="col" className={`${cell} text-[11px] uppercase tracking-[0.14em]`}>
+            <th scope="col" className={cn(cell, head)}>
               {t("total")}
             </th>
           </tr>
@@ -110,11 +112,11 @@ function RowGroup({
           </td>
         ))}
         {showAuthentic ? <td className={cell}>{n(row.authenticCount)}</td> : null}
-        <td className={`${cell} font-medium`}>{format.number(row.total)}</td>
+        <td className={cn(cell, "font-medium")}>{format.number(row.total)}</td>
       </tr>
       {row.autographTotal > 0 ? (
         <tr className="border-b border-hairline-faint text-muted">
-          <th scope="row" className="px-3 py-2 pl-6 text-left text-[13px] font-normal">
+          <th scope="row" className={cn("px-3 py-2 text-left text-[13px] font-normal", "pl-6")}>
             {autographLabel}
           </th>
           {columns.map((g) => (
@@ -123,7 +125,7 @@ function RowGroup({
             </td>
           ))}
           {showAuthentic ? <td className={cell}>–</td> : null}
-          <td className={`${cell} font-medium`}>{format.number(row.autographTotal)}</td>
+          <td className={cn(cell, "font-medium")}>{format.number(row.autographTotal)}</td>
         </tr>
       ) : null}
     </>

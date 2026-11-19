@@ -28,6 +28,7 @@ describe("PopulationTable", () => {
       messages.pop.table.authentic,
       messages.pop.table.total,
     ]);
+    expect(screen.queryByText(messages.pop.table.autograph)).toBeNull();
   });
 
   test("an autograph-only row shows the autograph line and a card total of 0", () => {
@@ -40,6 +41,7 @@ describe("PopulationTable", () => {
         ]}
       />,
     );
+    expect(screen.queryByText(messages.pop.table.authentic)).toBeNull();
     const rows = screen.getAllByRole("row");
     const line = within(rows[1]).getAllByRole("cell").map((c) => c.textContent);
     expect(line.at(-1)).toBe("0");
@@ -58,7 +60,16 @@ describe("PopulationTable", () => {
         ]}
       />,
     );
-    expect(headers().slice(1, -1)).toEqual(["10", "9", "7"]);
-    expect(screen.getByTitle(messages.catalog.grades.g10.label)).toBeTruthy();
+    const cols = screen.getAllByRole("columnheader").slice(1, -1);
+    const expected = [
+      ["10", messages.catalog.grades.g10.label],
+      ["9", messages.catalog.grades.g9.label],
+      ["7", messages.catalog.grades.g7.label],
+    ];
+    expect(cols).toHaveLength(3);
+    cols.forEach((c, i) => {
+      expect(c).toHaveAccessibleName(expect.stringContaining(expected[i][0]));
+      expect(c).toHaveAccessibleName(expect.stringContaining(expected[i][1]));
+    });
   });
 });
