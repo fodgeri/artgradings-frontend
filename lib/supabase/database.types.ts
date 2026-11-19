@@ -1078,6 +1078,127 @@ export type Database = {
       }
       expire_stale_drafts: { Args: never; Returns: number }
       list_photo_deletions: { Args: { p_limit: number }; Returns: string[] }
+      pop_card: {
+        Args: { p_card: string }
+        Returns: {
+          authentic_count: number
+          autograph_counts: Json
+          autograph_total: number
+          card_number: string
+          category: string
+          grade_counts: Json
+          id: string
+          kind: string
+          language: string
+          name: string
+          rarity: string
+          release_year: number
+          series: string
+          set_code: string
+          set_id: string
+          set_name: string
+          total: number
+          variant: string
+        }[]
+      }
+      pop_categories: {
+        Args: never
+        Returns: {
+          key: string
+          kind: string
+          set_count: number
+          total: number
+        }[]
+      }
+      pop_category_sets: {
+        Args: { p_category: string }
+        Returns: {
+          card_count: number
+          code: string
+          id: string
+          language: string
+          name: string
+          release_year: number
+          series: string
+          total: number
+        }[]
+      }
+      pop_certificate: {
+        Args: { p_cert: string }
+        Returns: {
+          autograph_authentication: string
+          autograph_grade: string
+          card_authentication: string
+          card_grade: string
+          card_id: string
+          card_name: string
+          card_number: string
+          card_total: number
+          category: string
+          cert_number: string
+          graded_higher: number
+          language: string
+          published_at: string
+          release_year: number
+          service: string
+          set_id: string
+          set_name: string
+          status: string
+          variant: string
+        }[]
+      }
+      pop_grades: {
+        Args: never
+        Returns: {
+          key: string
+          value: number
+        }[]
+      }
+      pop_recent_copies: {
+        Args: { p_limit: number }
+        Returns: {
+          card_grade: string
+          card_id: string
+          card_name: string
+          card_number: string
+          category: string
+          cert_number: string
+          published_at: string
+          rarity: string
+          release_year: number
+          set_name: string
+          variant: string
+        }[]
+      }
+      pop_resolve_card: { Args: { p_card: string }; Returns: string }
+      pop_set: {
+        Args: { p_set: string }
+        Returns: {
+          category: string
+          code: string
+          id: string
+          kind: string
+          language: string
+          name: string
+          release_year: number
+          series: string
+          total_cards: number
+        }[]
+      }
+      pop_set_cards: {
+        Args: { p_set: string }
+        Returns: {
+          authentic_count: number
+          autograph_counts: Json
+          autograph_total: number
+          card_number: string
+          grade_counts: Json
+          id: string
+          name: string
+          total: number
+          variant: string
+        }[]
+      }
       prepare_account_deletion: { Args: { p_user_id: string }; Returns: string }
       quote_order: { Args: never; Returns: Json }
       record_payment_failure: {
