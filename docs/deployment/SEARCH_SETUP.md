@@ -60,7 +60,7 @@ fresh per environment). Rotating it means updating both together.
       shows recent successful runs of each schedule.
 - [ ] `select * from private.job_runs;` shows `search-delta` advancing every
       few minutes and `maintenance` hourly.
-- [ ] `GET /api/health`: `jobs.overdue` is empty. Health always returns 200 by
+- [ ] `GET /api/health`: `jobs.overdue` is empty (it can lag up to 10 minutes: the health check memoises the overdue answer). Health always returns 200 by
       design; read the body.
 - [ ] The index document count equals the number of public cards:
       `GET /indexes/pop_cards/stats` (`numberOfDocuments`) against the paged

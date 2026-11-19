@@ -35,9 +35,11 @@ and the two keys from `npx supabase status -o env`).
       `requestChecksumCalculation: "WHEN_REQUIRED"` and
       `responseChecksumValidation: "WHEN_REQUIRED"`. `lib/storage/r2.ts`
       sets neither today. On the deployed host: upload a photo, view it,
-      remove it, and run `npm run job maintenance` once (it answers 202;
-      the `maintenance` row in `private.job_runs` then shows `deletedPhotos` of
-      at least 1, and the object must be gone from the bucket). Add the two
+      remove it, and run `npm run job maintenance` once (it answers 202 with
+      `{accepted}`; the work runs afterwards). Then check: the object is gone
+      from the bucket, `select count(*) from private.photo_deletions` is 0,
+      and the `maintenance` row of `private.job_runs` has an advanced
+      `last_success_started_at` / `last_finished_at`. Add the two
       options if any step fails.
 
 ## Cloudflare R2
@@ -93,7 +95,7 @@ signs with an HMAC and the Vault secret `jobs_secret`, sent to the Vault
 `JOBS_SECRET` the route returns 404; a bad signature, 401.
 
 `maintenance` drains the queue of R2 objects whose rows are gone
-(`lib/jobs/run-maintenance.ts`) and returns `{ deletedPhotos }`. It no longer
+(`lib/jobs/run-maintenance.ts`) and internally returns `{ deletedPhotos }` (not persisted, and not returned by the route, which only answers `{accepted}`). It no longer
 expires drafts; the SQL cron does that.
 
 - [ ] **`JOBS_SECRET`** = `openssl rand -hex 32`. Runtime variable, never

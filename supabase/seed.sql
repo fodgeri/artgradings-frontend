@@ -124,7 +124,7 @@ insert into public.graded_copies (
   finalized_at, published_at, withdrawn_at
 )
 values
-  ('TEST-0001', '00000000-0000-0000-0000-0000005eed20', '00000000-0000-0000-0000-0000005eed02', 'grading', 'g10', null, null, null, now(), now(), null),
+  ('TEST-0001', '00000000-0000-0000-0000-0000005eed20', null, 'grading', 'g10', null, null, null, now(), now(), null),
   ('TEST-0002', '00000000-0000-0000-0000-0000005eed20', null, 'grading', 'g9_5', null, null, null, now(), now(), null),
   ('TEST-0003', '00000000-0000-0000-0000-0000005eed20', null, 'grading', 'g9', null, null, null, now(), now(), null),
   ('TEST-0004', '00000000-0000-0000-0000-0000005eed21', null, 'grading', 'g8_5', null, null, null, now(), now(), null),
