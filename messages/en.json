@@ -739,5 +739,14 @@
       "identification": "ART identification",
       "totalPaid": "Total paid"
     }
+  },
+  "pop": {
+    "table": {
+      "card": "Card",
+      "authentic": "Authentic",
+      "total": "Total",
+      "autograph": "Autograph",
+      "empty": "No graded copies yet."
+    }
   }
 }
