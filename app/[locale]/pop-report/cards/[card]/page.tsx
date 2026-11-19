@@ -10,7 +10,7 @@ import { Section } from "@/components/ui/section";
 import { redirect } from "@/i18n/navigation";
 import { resolveLocale } from "@/lib/auth/action-state";
 import { isUuid } from "@/lib/uuid";
-import { loadCard, loadGrades, resolveCard } from "@/lib/pop/load";
+import { loadCard, loadCategories, loadGrades, resolveCard } from "@/lib/pop/load";
 
 export async function generateMetadata({
   params,
@@ -39,8 +39,9 @@ export default async function PopCardPage({ params }: PageProps<"/[locale]/pop-r
     notFound();
   }
 
-  const [grades, t, categories, tg, format] = await Promise.all([
+  const [grades, activeCategories, t, categories, tg, format] = await Promise.all([
     loadGrades(),
+    loadCategories(),
     getTranslations("pop.card"),
     getTranslations("catalog.categories"),
     getTranslations("catalog.grades"),
@@ -68,7 +69,7 @@ export default async function PopCardPage({ params }: PageProps<"/[locale]/pop-r
                 label: highest ? tg(`${highest.key}.label`) : categoryLabel,
               }}
             />
-            <CardDetails card={card} />
+            <CardDetails card={card} categoryLinkable={activeCategories.some((c) => c.key === card.category)} />
           </div>
           <PopulationTable
             grades={grades}

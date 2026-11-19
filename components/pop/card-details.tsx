@@ -4,7 +4,14 @@ import { Link } from "@/i18n/navigation";
 import type { PopCard } from "@/lib/pop/types";
 
 /** The facts about a card, as a definition list. Absent optional fields leave no line. */
-export function CardDetails({ card }: { card: PopCard }) {
+export function CardDetails({
+  card,
+  categoryLinkable = true,
+}: {
+  card: PopCard;
+  /** False when the category page would 404 (an inactive category): plain text then. */
+  categoryLinkable?: boolean;
+}) {
   const t = useTranslations("pop.card");
   const categories = useTranslations("catalog.categories");
 
@@ -20,7 +27,16 @@ export function CardDetails({ card }: { card: PopCard }) {
         </Link>
       ),
     },
-    { label: t("category"), value: categories(`${card.category}.label`) },
+    {
+      label: t("category"),
+      value: categoryLinkable ? (
+        <Link href={`/pop-report/${card.category}`} className="underline-offset-4 hover:underline">
+          {categories(`${card.category}.label`)}
+        </Link>
+      ) : (
+        categories(`${card.category}.label`)
+      ),
+    },
     ...(card.releaseYear !== null ? [{ label: t("year"), value: String(card.releaseYear) }] : []),
     ...(card.language ? [{ label: t("language"), value: card.language }] : []),
   ];

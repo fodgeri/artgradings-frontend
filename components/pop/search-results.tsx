@@ -35,7 +35,14 @@ export function SearchResults({
   const format = useFormatter();
 
   if (result.status === "unavailable") {
-    return <p role="status" className="text-muted">{t("unavailable")}</p>;
+    return (
+      <div role="status" className="flex flex-col gap-3 text-muted">
+        <p>{t("unavailable")}</p>
+        <Link href="/pop-report" className="text-ink underline underline-offset-4">
+          {t("browse")}
+        </Link>
+      </div>
+    );
   }
   if (result.hits.length === 0) {
     return <p role="status" className="text-muted">{t("empty")}</p>;

@@ -23,6 +23,16 @@ describe("CardDetails", () => {
     expect(screen.getByRole("link", { name: "Base Set" })).toHaveAttribute("href", "/pop-report/sets/s1");
   });
 
+  test("links the category, or shows plain text when the category page would 404", () => {
+    const label = messages.catalog.categories.pokemon.label;
+    const { unmount } = renderWithIntl(<CardDetails card={card()} />);
+    expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", "/pop-report/pokemon");
+    unmount();
+    renderWithIntl(<CardDetails card={card()} categoryLinkable={false} />);
+    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: label })).toBeNull();
+  });
+
   test("omits absent variant and rarity lines", () => {
     renderWithIntl(<CardDetails card={card({ variant: null, rarity: null })} />);
     expect(screen.queryByText(messages.pop.card.variant)).not.toBeInTheDocument();

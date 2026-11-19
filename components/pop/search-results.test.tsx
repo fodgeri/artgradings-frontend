@@ -51,6 +51,7 @@ describe("SearchResults", () => {
   test("renders the unavailable state", () => {
     renderWithIntl(<SearchResults result={{ status: "unavailable" }} search={search} grades={grades} />);
     expect(screen.getByText(messages.pop.search.results.unavailable)).toBeTruthy();
+    expect(screen.getByRole("link", { name: messages.pop.search.results.browse }).getAttribute("href")).toBe("/pop-report");
   });
 
   test("renders the empty state", () => {

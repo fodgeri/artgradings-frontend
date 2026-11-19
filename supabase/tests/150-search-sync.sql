@@ -1,5 +1,5 @@
 begin;
-select plan(30);
+select plan(32);
 
 insert into public.card_sets (id, category, name, code, language, release_year, series) values
   ('00000000-0000-0000-0000-0000000004b1', 'pokemon', 'Sync Set', 'SS', 'en', 2022, 'Sync Series'),
@@ -41,7 +41,7 @@ select is((select array_agg(j order by j) from unnest(public.overdue_jobs()) j),
   array['maintenance','search-delta','search-rebuild'], 'a fresh DB has every job overdue');
 select throws_ok($$select * from public.begin_job_run('search-delta', 600)$$, '42501', null, 'anon cannot begin a job run');
 select throws_ok($$select * from public.search_card_documents(array[gen_random_uuid()])$$, '42501', null, 'anon cannot read search documents');
-select throws_ok($$select * from public.search_changed_card_ids(now())$$, '42501', null, 'anon cannot read changed ids');
+select throws_ok($$select public.search_changed_card_ids(now())$$, '42501', null, 'anon cannot read changed ids');
 select throws_ok($$select * from public.search_public_card_ids(null, 10)$$, '42501', null, 'anon cannot page public ids');
 select throws_ok($$select public.finish_job_run('search-delta', now(), true)$$, '42501', null, 'anon cannot finish a job run');
 select set_config('role', 'authenticated', true);
@@ -88,18 +88,23 @@ select set_config('role', 'service_role', true);
 select ok('search-delta' = any (public.overdue_jobs()), 'a job whose last success is older than its threshold is overdue');
 
 -- Changed ids
-select is((select count(*)::int from public.search_changed_card_ids(now() - interval '1 minute')), 0, 'nothing changed yet');
+select is((select cardinality(public.search_changed_card_ids(now() - interval '1 minute'))), 0, 'nothing changed yet');
 reset role;
 update public.card_sets set name = 'Sync Set 2' where id = '00000000-0000-0000-0000-0000000004b1';
 select set_config('role', 'service_role', true);
-select is((select array_agg(i order by i) from public.search_changed_card_ids(now() - interval '1 minute') i),
+select is((select array_agg(i order by i) from unnest(public.search_changed_card_ids(now() - interval '1 minute')) i),
   array['00000000-0000-0000-0000-0000000004a1','00000000-0000-0000-0000-0000000004a2','00000000-0000-0000-0000-0000000004a3','00000000-0000-0000-0000-0000000004a5']::uuid[],
   'updating a set surfaces all its cards');
 reset role;
 update public.graded_copies set card_grade = 'g7' where cert_number = 'ART-S0000006';
 select set_config('role', 'service_role', true);
-select ok('00000000-0000-0000-0000-0000000004a4'::uuid in (select i from public.search_changed_card_ids(now() - interval '1 minute') i),
+select ok('00000000-0000-0000-0000-0000000004a4'::uuid in (select i from unnest(public.search_changed_card_ids(now() - interval '1 minute')) i),
   'updating a copy surfaces its card');
+
+select is(pg_typeof(public.search_changed_card_ids(now()))::text, 'uuid[]', 'changed ids come back as one uuid[]');
+select is(cardinality(public.search_changed_card_ids('-infinity')),
+  (select count(distinct i)::int from unnest(public.search_changed_card_ids('-infinity')) i),
+  'a full read comes back as one value without duplicates');
 
 -- Public ids and documents
 select is((select array_agg(i order by i) from public.search_public_card_ids(null, 100) i where i < '00000000-0000-0000-0000-0000005eed00'),
@@ -130,7 +135,7 @@ alter table public.catalog_cards enable trigger catalog_cards_touch_updated_at;
 alter table public.graded_copies enable trigger graded_copies_touch_updated_at;
 update public.graded_copies set catalog_card_id = '00000000-0000-0000-0000-0000000004a3' where cert_number = 'ART-S0000006';
 select set_config('role', 'service_role', true);
-select is((select array_agg(i order by i) from public.search_changed_card_ids(now() - interval '1 minute') i),
+select is((select array_agg(i order by i) from unnest(public.search_changed_card_ids(now() - interval '1 minute')) i),
   array['00000000-0000-0000-0000-0000000004a3','00000000-0000-0000-0000-0000000004a4']::uuid[],
   'a repointed copy surfaces both the old and the new card');
 

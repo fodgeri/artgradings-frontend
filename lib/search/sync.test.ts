@@ -114,6 +114,18 @@ describe("runSearchDelta", () => {
     });
   });
 
+  test("indexes every changed id past 1000, in SYNC_BATCH chunks", async () => {
+    const ids = Array.from({ length: 1200 }, (_, i) => `c${i}`);
+    rpc.mockImplementation(async (name: string) =>
+      name === "search_changed_card_ids" ? { data: ids, error: null } : { data: [], error: null });
+    await runSearchDelta(ctx(new Date("2026-11-19T12:00:00Z")));
+    const sizes = rpc.mock.calls
+      .filter(([n]) => n === "search_card_documents")
+      .map(([, a]) => a.p_card_ids.length);
+    expect(sizes).toEqual([500, 500, 200]);
+    expect(idx.deleteDocuments).toHaveBeenCalledTimes(3);
+  });
+
   test("with no previous success it rebuilds", async () => {
     rpc.mockResolvedValue({ data: [], error: null });
     await runSearchDelta(ctx(null));

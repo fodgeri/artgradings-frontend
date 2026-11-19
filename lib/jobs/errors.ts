@@ -5,7 +5,12 @@ import * as Sentry from "@sentry/nextjs";
  * never row data.
  */
 export function reportJobError(job: string, code: string): void {
-  Sentry.captureException(new Error(`Job error in ${job}`), {
-    tags: { "job.name": job, "job.code": code },
-  });
+  const tags = { "job.name": job, "job.code": code };
+  // Meilisearch not configured (yet) is expected state, not a crash: a warning
+  // each run, not an exception every fifteen minutes. The run still fails.
+  if (code === "meili_unavailable") {
+    Sentry.captureMessage(`Job error in ${job}`, { level: "warning", tags });
+    return;
+  }
+  Sentry.captureException(new Error(`Job error in ${job}`), { tags });
 }

@@ -779,6 +779,7 @@
       "authentic": "Authentic",
       "total": "Total",
       "autograph": "Autograph",
+      "none": "–",
       "empty": "No graded copies yet."
     },
     "search": {
@@ -804,6 +805,7 @@
         "noGrades": "No card grades yet",
         "empty": "No cards match your search. Try fewer filters or a different spelling.",
         "unavailable": "Search is unavailable right now. Please try again in a few minutes, or browse by category.",
+        "browse": "Browse by category",
         "pagination": "Search results pages",
         "previous": "Previous",
         "next": "Next",
@@ -825,7 +827,6 @@
       "title": "{set} Pop Report",
       "metaDescription": "Graded copy counts for every card in {set}.",
       "back": "{category} Pop Report",
-      "details": "{year} · {language}",
       "code": "Set code {code}",
       "tableCaption": "Graded copies per card in {set}",
       "empty": "No graded cards in this set yet."
@@ -841,7 +842,6 @@
       "category": "Category",
       "year": "Release year",
       "language": "Language",
-      "highest": "Highest grade",
       "noGrade": "–"
     }
   }

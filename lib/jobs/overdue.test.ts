@@ -59,6 +59,23 @@ describe("checkOverdueJobs", () => {
     expect(captureMessage).not.toHaveBeenCalled();
   });
 
+  test("a hung RPC times out, keeps the previous result and reports nothing", async () => {
+    vi.useFakeTimers();
+    try {
+      const check = await fresh();
+      rpc.mockResolvedValueOnce({ data: ["search-delta"], error: null });
+      await check(0);
+      captureMessage.mockClear();
+      rpc.mockReturnValueOnce(new Promise(() => {}));
+      const pending = check(OVERDUE_CHECK_INTERVAL_MS);
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(await pending).toEqual(["search-delta"]);
+      expect(captureMessage).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test("a thrown client error also returns the previous result", async () => {
     const check = await fresh();
     rpc.mockRejectedValueOnce(new Error("network"));

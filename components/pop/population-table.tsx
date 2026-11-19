@@ -8,7 +8,7 @@ import type { Grade, Population } from "@/lib/pop/types";
 export type PopulationRow = { id: string; href?: string; label: ReactNode } & Population;
 
 const cell = "px-3 py-2 text-right font-mono tabular-nums";
-const head = "text-[11px] uppercase tracking-[0.14em]";
+const head = "text-label uppercase";
 
 /**
  * Columns are the grades that any row has a count for, highest first, then
@@ -37,11 +37,11 @@ export function PopulationTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-[14px] text-ink">
+      <table className="w-full border-collapse text-sm text-ink">
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr className="border-b border-hairline text-muted">
-            <th scope="col" className="px-3 py-2 text-left font-mono text-[11px] uppercase tracking-[0.14em]">
+            <th scope="col" className="px-3 py-2 text-left font-mono text-label uppercase">
               {t("card")}
             </th>
             {columns.map((g) => (
@@ -72,6 +72,7 @@ export function PopulationTable({
               columns={columns}
               showAuthentic={showAuthentic}
               autographLabel={t("autograph")}
+              none={t("none")}
             />
           ))}
         </tbody>
@@ -85,14 +86,16 @@ function RowGroup({
   columns,
   showAuthentic,
   autographLabel,
+  none,
 }: {
   row: PopulationRow;
   columns: Grade[];
   showAuthentic: boolean;
   autographLabel: string;
+  none: string;
 }) {
   const format = useFormatter();
-  const n = (v: number | undefined) => (v ? format.number(v) : "–");
+  const n = (v: number | undefined) => (v ? format.number(v) : none);
 
   return (
     <>
@@ -116,7 +119,7 @@ function RowGroup({
       </tr>
       {row.autographTotal > 0 ? (
         <tr className="border-b border-hairline-faint text-muted">
-          <th scope="row" className={cn("px-3 py-2 text-left text-[13px] font-normal", "pl-6")}>
+          <th scope="row" className={cn("px-3 py-2 text-left text-sm font-normal", "pl-6")}>
             {autographLabel}
           </th>
           {columns.map((g) => (
@@ -124,7 +127,7 @@ function RowGroup({
               {n(row.autographCounts[g.key])}
             </td>
           ))}
-          {showAuthentic ? <td className={cell}>–</td> : null}
+          {showAuthentic ? <td className={cell}>{none}</td> : null}
           <td className={cn(cell, "font-medium")}>{format.number(row.autographTotal)}</td>
         </tr>
       ) : null}

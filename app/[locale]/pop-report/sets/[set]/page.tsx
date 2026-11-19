@@ -7,7 +7,7 @@ import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { Link } from "@/i18n/navigation";
 import { isUuid } from "@/lib/uuid";
-import { loadGrades, loadSet, loadSetCards } from "@/lib/pop/load";
+import { loadCategories, loadGrades, loadSet, loadSetCards } from "@/lib/pop/load";
 
 export async function generateMetadata({
   params,
@@ -29,9 +29,10 @@ export default async function PopSetPage({ params }: PageProps<"/[locale]/pop-re
   const set = await loadSet(id);
   if (!set) notFound();
 
-  const [cards, grades, t, names, format] = await Promise.all([
+  const [cards, grades, categories, t, names, format] = await Promise.all([
     loadSetCards(id),
     loadGrades(),
+    loadCategories(),
     getTranslations("pop.set"),
     getTranslations("catalog.categories"),
     getFormatter(),
@@ -45,12 +46,17 @@ export default async function PopSetPage({ params }: PageProps<"/[locale]/pop-re
       <Container>
         <div className="mx-auto flex max-w-[960px] flex-col gap-10">
           <header>
-            <Link
-              href={`/pop-report/${set.category}`}
-              className="text-sm text-muted underline-offset-4 hover:text-ink hover:underline"
-            >
-              {t("back", { category: names(`${set.category}.label`) })}
-            </Link>
+            {/* An inactive category's page 404s (R4); say its name without linking. */}
+            {categories.some((c) => c.key === set.category) ? (
+              <Link
+                href={`/pop-report/${set.category}`}
+                className="text-sm text-muted underline-offset-4 hover:text-ink hover:underline"
+              >
+                {t("back", { category: names(`${set.category}.label`) })}
+              </Link>
+            ) : (
+              <span className="text-sm text-muted">{t("back", { category: names(`${set.category}.label`) })}</span>
+            )}
             <h1 className="mt-4 font-serif text-display text-ink">{set.name}</h1>
             {meta.length > 0 ? <p className="mt-2 text-muted">{meta.join(" · ")}</p> : null}
           </header>
